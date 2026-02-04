@@ -1,0 +1,122 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\itxas\\source\\repos\\Lab01\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{AD4BDA4B-6DCB-4970-866E-D04A4FE60C2E}|BEZaKontsola_DatuGeruzaz\\BEZaKontsola_DatuGeruzaz.vbproj|c:\\users\\itxas\\source\\repos\\lab01\\bezakontsola_datugeruzaz\\console.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}",
+      "RelativeMoniker": "D:0:0:{AD4BDA4B-6DCB-4970-866E-D04A4FE60C2E}|BEZaKontsola_DatuGeruzaz\\BEZaKontsola_DatuGeruzaz.vbproj|solutionrelative:bezakontsola_datugeruzaz\\console.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{337EE479-F59C-456A-8AF8-09C637BEF687}|BEZaren_Kalkulua_DatuGeruzaz_DLL\\BEZaren_Kalkulua_DatuGeruzaz_DLL.vbproj|c:\\users\\itxas\\source\\repos\\lab01\\bezaren_kalkulua_datugeruzaz_dll\\bezkalkulu_datusortzaileaz.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}",
+      "RelativeMoniker": "D:0:0:{337EE479-F59C-456A-8AF8-09C637BEF687}|BEZaren_Kalkulua_DatuGeruzaz_DLL\\BEZaren_Kalkulua_DatuGeruzaz_DLL.vbproj|solutionrelative:bezaren_kalkulua_datugeruzaz_dll\\bezkalkulu_datusortzaileaz.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{CEE6E157-29CB-49EA-82FE-EC4AAB3954BB}|DatuGeruza\\DatuGeruza.vbproj|C:\\Users\\itxas\\source\\repos\\Lab01\\datugeruza\\datusortzailea.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}",
+      "RelativeMoniker": "D:0:0:{CEE6E157-29CB-49EA-82FE-EC4AAB3954BB}|DatuGeruza\\DatuGeruza.vbproj|solutionrelative:datugeruza\\datusortzailea.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DEF81CDF-1AB9-4133-A831-47F484D73BC5}|Lab01\\BEZaren_Kalkulua_DLL.vbproj|C:\\Users\\itxas\\source\\repos\\Lab01\\lab01\\bezkalkulu.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}",
+      "RelativeMoniker": "D:0:0:{DEF81CDF-1AB9-4133-A831-47F484D73BC5}|Lab01\\BEZaren_Kalkulua_DLL.vbproj|solutionrelative:lab01\\bezkalkulu.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{94EE989B-F8DD-46C3-871B-16618B31C748}|BEZaWindowsBezeroa\\BEZaWindowsBezeroa.vbproj|C:\\Users\\itxas\\source\\repos\\Lab01\\bezawindowsbezeroa\\form1.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}",
+      "RelativeMoniker": "D:0:0:{94EE989B-F8DD-46C3-871B-16618B31C748}|BEZaWindowsBezeroa\\BEZaWindowsBezeroa.vbproj|solutionrelative:bezawindowsbezeroa\\form1.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{94EE989B-F8DD-46C3-871B-16618B31C748}|BEZaWindowsBezeroa\\BEZaWindowsBezeroa.vbproj|C:\\Users\\itxas\\source\\repos\\Lab01\\bezawindowsbezeroa\\form1.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}|Form",
+      "RelativeMoniker": "D:0:0:{94EE989B-F8DD-46C3-871B-16618B31C748}|BEZaWindowsBezeroa\\BEZaWindowsBezeroa.vbproj|solutionrelative:bezawindowsbezeroa\\form1.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}|Form"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 3,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "BEZKalkulu.vb",
+              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\Lab01\\Lab01\\BEZKalkulu.vb",
+              "RelativeDocumentMoniker": "Lab01\\BEZKalkulu.vb",
+              "ToolTip": "C:\\Users\\itxas\\source\\repos\\Lab01\\Lab01\\BEZKalkulu.vb",
+              "RelativeToolTip": "Lab01\\BEZKalkulu.vb",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003361|",
+              "WhenOpened": "2026-01-27T11:34:02.236Z",
+              "IsPinned": true,
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "BEZKalkulu_DatuSortzaileaz.vb",
+              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\Lab01\\BEZaren_Kalkulua_DatuGeruzaz_DLL\\BEZKalkulu_DatuSortzaileaz.vb",
+              "RelativeDocumentMoniker": "BEZaren_Kalkulua_DatuGeruzaz_DLL\\BEZKalkulu_DatuSortzaileaz.vb",
+              "ToolTip": "C:\\Users\\itxas\\source\\repos\\Lab01\\BEZaren_Kalkulua_DatuGeruzaz_DLL\\BEZKalkulu_DatuSortzaileaz.vb",
+              "RelativeToolTip": "BEZaren_Kalkulua_DatuGeruzaz_DLL\\BEZKalkulu_DatuSortzaileaz.vb",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAALAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003361|",
+              "WhenOpened": "2026-01-29T12:37:49.416Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "DatuSortzailea.vb",
+              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\Lab01\\DatuGeruza\\DatuSortzailea.vb",
+              "RelativeDocumentMoniker": "DatuGeruza\\DatuSortzailea.vb",
+              "ToolTip": "C:\\Users\\itxas\\source\\repos\\Lab01\\DatuGeruza\\DatuSortzailea.vb",
+              "RelativeToolTip": "DatuGeruza\\DatuSortzailea.vb",
+              "ViewState": "AgIAAAQAAAAAAAAAAAAQwAcAAAAaAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003361|",
+              "WhenOpened": "2026-01-29T11:50:55.576Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Console.vb",
+              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\Lab01\\BEZaKontsola_DatuGeruzaz\\Console.vb",
+              "RelativeDocumentMoniker": "BEZaKontsola_DatuGeruzaz\\Console.vb",
+              "ToolTip": "C:\\Users\\itxas\\source\\repos\\Lab01\\BEZaKontsola_DatuGeruzaz\\Console.vb",
+              "RelativeToolTip": "BEZaKontsola_DatuGeruzaz\\Console.vb",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAgAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003361|",
+              "WhenOpened": "2026-02-03T12:18:42.427Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "Form1.vb",
+              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\Lab01\\BEZaWindowsBezeroa\\Form1.vb",
+              "RelativeDocumentMoniker": "BEZaWindowsBezeroa\\Form1.vb",
+              "ToolTip": "C:\\Users\\itxas\\source\\repos\\Lab01\\BEZaWindowsBezeroa\\Form1.vb",
+              "RelativeToolTip": "BEZaWindowsBezeroa\\Form1.vb",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAPAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003361|",
+              "WhenOpened": "2026-01-29T09:46:20.376Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "Form1.vb [Dise\u00F1o]",
+              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\Lab01\\BEZaWindowsBezeroa\\Form1.vb",
+              "RelativeDocumentMoniker": "BEZaWindowsBezeroa\\Form1.vb",
+              "ToolTip": "C:\\Users\\itxas\\source\\repos\\Lab01\\BEZaWindowsBezeroa\\Form1.vb [Dise\u00F1o]",
+              "RelativeToolTip": "BEZaWindowsBezeroa\\Form1.vb [Dise\u00F1o]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003361|",
+              "WhenOpened": "2026-01-27T12:04:44.433Z",
+              "EditorCaption": " [Dise\u00F1o]"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
