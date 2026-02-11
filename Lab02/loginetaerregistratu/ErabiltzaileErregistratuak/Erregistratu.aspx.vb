@@ -8,7 +8,7 @@ Public Class Erregistratu
     End Sub
 
     Protected Sub Button1_Click(sender As Object, e As EventArgs) Handles Button1.Click
-        Dim emaila As String = TextBox1.Text
+        Dim emaila As String = TextBox1.Text.Trim()
         Dim izena As String = TextBox2.Text
         Dim abizena As String = TextBox3.Text
         Dim galdera As String = TextBox4.Text
@@ -34,13 +34,22 @@ Public Class Erregistratu
         Try
             DatuAtzipena.ErabiltzaileaGehitu(emaila, izena, abizena, galdera, erantzuna, na, egiaztatzeZenbakia, pasahitza)
             hlEgiaztatu.NavigateUrl = "Egiaztatu.aspx?erab=" & emaila & "&egZenb=" & egiaztatzeZenbakia
-            Dim asuntoa As String = "Erregistratu zure kontua"
-            Dim mezua As String = "Kaixo " & izena & ", zure kontua erregistratu da. Egiaztatu zure emaila honako esteka honetan: http://localhost:portua/Egiaztatu.aspx?erab=" & emaila & "&egZenb=" & egiaztatzeZenbakia
-            Dim link As String = "https://localhost:" & Request.ServerVariables("SERVER_PORT") & "/Egiaztatu.aspx?erab=" & emaila & "&egZenb=" & egiaztatzeZenbakia
-            Dim gorputza As String = "Kaixo " & izena & ", zure kontua erregistratu da. Egiaztatu zure emaila honako esteka honetan: " & link
-            DatuAtzipena.BidaliEmaila(emaila, asuntoa, gorputza)
+            hlEgiaztatu.Visible = True
+            Label1.ForeColor = Drawing.Color.Green
+            Label1.Text = "Erabiltzailea ondo erregistratu da."
+            Try
+                Dim asuntoa As String = "Erregistratu zure kontua"
+                Dim link As String = "https://localhost:" & Request.ServerVariables("SERVER_PORT") & "/Egiaztatu.aspx?erab=" & emaila & "&egZenb=" & egiaztatzeZenbakia
+                Dim gorputza As String = "Kaixo " & izena & ", zure kontua erregistratu da. Egiaztatu zure emaila honako esteka honetan: " & link
+
+                DatuAtzipena.BidaliEmaila(emaila, asuntoa, gorputza)
+            Catch exMail As Exception
+                Label1.Text &= " (Baina emaila ezin izan da bidali: " & exMail.Message & ")"
+            End Try
+
         Catch ex As Exception
-            Label1.Text = "Errorea gertatu da erabiltzailea erregistratzean."
+            Label1.ForeColor = Drawing.Color.Red
+            Label1.Text = "Errorea gertatu da erabiltzailea erregistratzean." & ex.Message
         End Try
 
     End Sub

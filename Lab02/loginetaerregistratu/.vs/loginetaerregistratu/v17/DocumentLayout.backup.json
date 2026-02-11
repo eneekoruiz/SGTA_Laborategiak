@@ -1,65 +1,65 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\",
+  "WorkspaceRootPath": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{1CDDB354-DDB3-4000-8E1A-A4821FE226FD}|loginetaerregistratu\\DatuAtzipenekoak.vbproj|C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\loginetaerregistratu\\datuatzipena.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}",
-      "RelativeMoniker": "D:0:0:{1CDDB354-DDB3-4000-8E1A-A4821FE226FD}|loginetaerregistratu\\DatuAtzipenekoak.vbproj|solutionrelative:loginetaerregistratu\\datuatzipena.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\menua.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}",
-      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\menua.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\amaiera.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
-      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\amaiera.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\amaiera.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}",
-      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\amaiera.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\pasahitzaberreskuratu.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
-      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\pasahitzaberreskuratu.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\pasahitzaaldatu.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
-      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\pasahitzaaldatu.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\menua.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
-      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\menua.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\login.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
-      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\login.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\hasiera.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
-      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\hasiera.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|c:\\users\\itxas\\source\\repos\\sgta_laborategiak\\lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\erregistratu.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
-      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\erregistratu.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|c:\\users\\itxas\\source\\repos\\sgta_laborategiak\\lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\egiaztatu.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
-      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\egiaztatu.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\pasahitzaaldatu.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}",
-      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\pasahitzaaldatu.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\pasahitzaberreskuratu.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}",
+      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|c:\\users\\user\\source\\repos\\sgta_laborategiak\\lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\pasahitzaberreskuratu.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}",
       "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\pasahitzaberreskuratu.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\erregistratu.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}",
+      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\pasahitzaaldatu.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
+      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\pasahitzaaldatu.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1CDDB354-DDB3-4000-8E1A-A4821FE226FD}|loginetaerregistratu\\DatuAtzipenekoak.vbproj|C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\loginetaerregistratu\\datuatzipena.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}",
+      "RelativeMoniker": "D:0:0:{1CDDB354-DDB3-4000-8E1A-A4821FE226FD}|loginetaerregistratu\\DatuAtzipenekoak.vbproj|solutionrelative:loginetaerregistratu\\datuatzipena.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\pasahitzaberreskuratu.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
+      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\pasahitzaberreskuratu.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\pasahitzaaldatu.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}",
+      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\pasahitzaaldatu.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\menua.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}",
+      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\menua.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\erregistratu.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}",
       "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\erregistratu.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\login.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}",
+      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\erregistratu.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
+      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\erregistratu.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\amaiera.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}",
+      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\amaiera.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\amaiera.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
+      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\amaiera.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\menua.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
+      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\menua.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\login.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
+      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\login.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\hasiera.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
+      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\hasiera.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\egiaztatu.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}",
+      "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\egiaztatu.aspx||{57312C73-6202-49E9-B1E1-40EA1A6DC1F6}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\erabiltzaileerregistratuak\\login.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}",
       "RelativeMoniker": "D:0:0:{EDD9B469-C16A-4EBD-9404-268A0F228EE0}|ErabiltzaileErregistratuak\\ErabiltzaileErregistratuak.vbproj|solutionrelative:erabiltzaileerregistratuak\\login.aspx.vb||{2C015C70-C72C-11D0-88C3-00A0C9110049}"
     },
     {
@@ -79,31 +79,30 @@
       "DocumentGroups": [
         {
           "DockedWidth": 374,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 3,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 5,
               "Title": "Menua.aspx.vb",
-              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Menua.aspx.vb",
+              "DocumentMoniker": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Menua.aspx.vb",
               "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\Menua.aspx.vb",
-              "ToolTip": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Menua.aspx.vb",
+              "ToolTip": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Menua.aspx.vb",
               "RelativeToolTip": "ErabiltzaileErregistratuak\\Menua.aspx.vb",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAABBAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003361|",
               "WhenOpened": "2026-02-10T11:38:43.841Z",
-              "IsPinned": true,
-              "EditorCaption": ""
+              "IsPinned": true
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 2,
               "Title": "DatuAtzipena.vb",
-              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\loginetaerregistratu\\DatuAtzipena.vb",
+              "DocumentMoniker": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\loginetaerregistratu\\DatuAtzipena.vb",
               "RelativeDocumentMoniker": "loginetaerregistratu\\DatuAtzipena.vb",
-              "ToolTip": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\loginetaerregistratu\\DatuAtzipena.vb",
+              "ToolTip": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\loginetaerregistratu\\DatuAtzipena.vb",
               "RelativeToolTip": "loginetaerregistratu\\DatuAtzipena.vb",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAPAAAAAAAAAA==",
+              "ViewState": "AgIAAE4AAAAAAAAAAAAjwFgAAAAfAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003361|",
               "WhenOpened": "2026-02-10T12:01:36.917Z",
               "IsPinned": true,
@@ -111,102 +110,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
-              "Title": "Erregistratu.aspx",
-              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Erregistratu.aspx",
-              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\Erregistratu.aspx",
-              "ToolTip": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Erregistratu.aspx",
-              "RelativeToolTip": "ErabiltzaileErregistratuak\\Erregistratu.aspx",
-              "LogicalView": "7651a703-06e5-11d1-8ebd-00a0c90f26ea",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000195|",
-              "WhenOpened": "2026-02-11T10:53:06.779Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "Amaiera.aspx",
-              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Amaiera.aspx",
-              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\Amaiera.aspx",
-              "ToolTip": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Amaiera.aspx",
-              "RelativeToolTip": "ErabiltzaileErregistratuak\\Amaiera.aspx",
-              "LogicalView": "7651a703-06e5-11d1-8ebd-00a0c90f26ea",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000195|",
-              "WhenOpened": "2026-02-10T11:55:38.446Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "Amaiera.aspx.vb",
-              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Amaiera.aspx.vb",
-              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\Amaiera.aspx.vb",
-              "ToolTip": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Amaiera.aspx.vb",
-              "RelativeToolTip": "ErabiltzaileErregistratuak\\Amaiera.aspx.vb",
-              "ViewState": "AgIAABMAAAAAAAAAAAAQwAQAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003361|",
-              "WhenOpened": "2026-02-10T11:55:43.528Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 8,
-              "Title": "Hasiera.aspx",
-              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Hasiera.aspx",
-              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\Hasiera.aspx",
-              "ToolTip": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Hasiera.aspx",
-              "RelativeToolTip": "ErabiltzaileErregistratuak\\Hasiera.aspx",
-              "LogicalView": "7651a703-06e5-11d1-8ebd-00a0c90f26ea",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000195|",
-              "WhenOpened": "2026-02-11T11:29:42.424Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 7,
-              "Title": "Login.aspx",
-              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Login.aspx",
-              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\Login.aspx",
-              "ToolTip": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Login.aspx",
-              "RelativeToolTip": "ErabiltzaileErregistratuak\\Login.aspx",
-              "LogicalView": "7651a703-06e5-11d1-8ebd-00a0c90f26ea",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000195|",
-              "WhenOpened": "2026-02-11T09:57:25.954Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "PasahitzaBerreskuratu.aspx",
-              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\PasahitzaBerreskuratu.aspx",
-              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\PasahitzaBerreskuratu.aspx",
-              "ToolTip": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\PasahitzaBerreskuratu.aspx",
-              "RelativeToolTip": "ErabiltzaileErregistratuak\\PasahitzaBerreskuratu.aspx",
-              "LogicalView": "7651a703-06e5-11d1-8ebd-00a0c90f26ea",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000195|",
-              "WhenOpened": "2026-02-11T09:47:36.523Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "Menua.aspx",
-              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Menua.aspx",
-              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\Menua.aspx",
-              "ToolTip": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Menua.aspx",
-              "RelativeToolTip": "ErabiltzaileErregistratuak\\Menua.aspx",
-              "LogicalView": "7651a703-06e5-11d1-8ebd-00a0c90f26ea",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000195|",
-              "WhenOpened": "2026-02-10T11:38:19.153Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 1,
               "Title": "PasahitzaAldatu.aspx",
-              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\PasahitzaAldatu.aspx",
+              "DocumentMoniker": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\PasahitzaAldatu.aspx",
               "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\PasahitzaAldatu.aspx",
-              "ToolTip": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\PasahitzaAldatu.aspx",
+              "ToolTip": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\PasahitzaAldatu.aspx",
               "RelativeToolTip": "ErabiltzaileErregistratuak\\PasahitzaAldatu.aspx",
               "LogicalView": "7651a703-06e5-11d1-8ebd-00a0c90f26ea",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000195|",
@@ -215,68 +123,148 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
-              "Title": "Egiaztatu.aspx",
-              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Egiaztatu.aspx",
-              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\Egiaztatu.aspx",
-              "ToolTip": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Egiaztatu.aspx",
-              "RelativeToolTip": "ErabiltzaileErregistratuak\\Egiaztatu.aspx",
-              "LogicalView": "7651a703-06e5-11d1-8ebd-00a0c90f26ea",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000195|",
-              "WhenOpened": "2026-02-11T14:25:43.648Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 11,
-              "Title": "PasahitzaAldatu.aspx.vb",
-              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\PasahitzaAldatu.aspx.vb",
-              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\PasahitzaAldatu.aspx.vb",
-              "ToolTip": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\PasahitzaAldatu.aspx.vb",
-              "RelativeToolTip": "ErabiltzaileErregistratuak\\PasahitzaAldatu.aspx.vb",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAB0AAAA0AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003361|",
-              "WhenOpened": "2026-02-10T11:58:28.348Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 0,
               "Title": "PasahitzaBerreskuratu.aspx.vb",
-              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\PasahitzaBerreskuratu.aspx.vb",
+              "DocumentMoniker": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\PasahitzaBerreskuratu.aspx.vb",
               "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\PasahitzaBerreskuratu.aspx.vb",
-              "ToolTip": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\PasahitzaBerreskuratu.aspx.vb",
+              "ToolTip": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\PasahitzaBerreskuratu.aspx.vb",
               "RelativeToolTip": "ErabiltzaileErregistratuak\\PasahitzaBerreskuratu.aspx.vb",
-              "ViewState": "AgIAAAwAAAAAAAAAAADwvyAAAAA8AAAAAAAAAA==",
+              "ViewState": "AgIAAB0AAAAAAAAAAAAgwCMAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003361|",
               "WhenOpened": "2026-02-11T09:48:50.474Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
-              "Title": "Erregistratu.aspx.vb",
-              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Erregistratu.aspx.vb",
-              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\Erregistratu.aspx.vb",
-              "ToolTip": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Erregistratu.aspx.vb",
-              "RelativeToolTip": "ErabiltzaileErregistratuak\\Erregistratu.aspx.vb",
-              "ViewState": "AgIAABgAAAAAAAAAAAAYwCwAAAAAAAAAAAAAAA==",
+              "DocumentIndex": 10,
+              "Title": "Menua.aspx",
+              "DocumentMoniker": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Menua.aspx",
+              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\Menua.aspx",
+              "ToolTip": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Menua.aspx",
+              "RelativeToolTip": "ErabiltzaileErregistratuak\\Menua.aspx",
+              "LogicalView": "7651a703-06e5-11d1-8ebd-00a0c90f26ea",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000195|",
+              "WhenOpened": "2026-02-10T11:38:19.153Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "Amaiera.aspx",
+              "DocumentMoniker": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Amaiera.aspx",
+              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\Amaiera.aspx",
+              "ToolTip": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Amaiera.aspx",
+              "RelativeToolTip": "ErabiltzaileErregistratuak\\Amaiera.aspx",
+              "LogicalView": "7651a703-06e5-11d1-8ebd-00a0c90f26ea",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000195|",
+              "WhenOpened": "2026-02-10T11:55:38.446Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "Erregistratu.aspx",
+              "DocumentMoniker": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Erregistratu.aspx",
+              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\Erregistratu.aspx",
+              "ToolTip": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Erregistratu.aspx",
+              "RelativeToolTip": "ErabiltzaileErregistratuak\\Erregistratu.aspx",
+              "LogicalView": "7651a702-06e5-11d1-8ebd-00a0c90f26ea",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000195|",
+              "WhenOpened": "2026-02-11T10:53:06.779Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "PasahitzaAldatu.aspx.vb",
+              "DocumentMoniker": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\PasahitzaAldatu.aspx.vb",
+              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\PasahitzaAldatu.aspx.vb",
+              "ToolTip": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\PasahitzaAldatu.aspx.vb",
+              "RelativeToolTip": "ErabiltzaileErregistratuak\\PasahitzaAldatu.aspx.vb",
+              "ViewState": "AgIAAEoAAAAAAAAAAAAuwGIAAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003361|",
-              "WhenOpened": "2026-02-11T10:53:09.458Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-10T11:58:28.348Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "PasahitzaBerreskuratu.aspx",
+              "DocumentMoniker": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\PasahitzaBerreskuratu.aspx",
+              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\PasahitzaBerreskuratu.aspx",
+              "ToolTip": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\PasahitzaBerreskuratu.aspx",
+              "RelativeToolTip": "ErabiltzaileErregistratuak\\PasahitzaBerreskuratu.aspx",
+              "LogicalView": "7651a703-06e5-11d1-8ebd-00a0c90f26ea",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000195|",
+              "WhenOpened": "2026-02-11T09:47:36.523Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "Amaiera.aspx.vb",
+              "DocumentMoniker": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Amaiera.aspx.vb",
+              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\Amaiera.aspx.vb",
+              "ToolTip": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Amaiera.aspx.vb",
+              "RelativeToolTip": "ErabiltzaileErregistratuak\\Amaiera.aspx.vb",
+              "ViewState": "AgIAABMAAAAAAAAAAAAQwAQAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003361|",
+              "WhenOpened": "2026-02-10T11:55:43.528Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "Hasiera.aspx",
+              "DocumentMoniker": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Hasiera.aspx",
+              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\Hasiera.aspx",
+              "ToolTip": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Hasiera.aspx",
+              "RelativeToolTip": "ErabiltzaileErregistratuak\\Hasiera.aspx",
+              "LogicalView": "7651a703-06e5-11d1-8ebd-00a0c90f26ea",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000195|",
+              "WhenOpened": "2026-02-11T11:29:42.424Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "Erregistratu.aspx.vb",
+              "DocumentMoniker": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Erregistratu.aspx.vb",
+              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\Erregistratu.aspx.vb",
+              "ToolTip": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Erregistratu.aspx.vb",
+              "RelativeToolTip": "ErabiltzaileErregistratuak\\Erregistratu.aspx.vb",
+              "ViewState": "AgIAABYAAAAAAAAAAAAkwC4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003361|",
+              "WhenOpened": "2026-02-11T10:53:09.458Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "Login.aspx",
+              "DocumentMoniker": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Login.aspx",
+              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\Login.aspx",
+              "ToolTip": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Login.aspx",
+              "RelativeToolTip": "ErabiltzaileErregistratuak\\Login.aspx",
+              "LogicalView": "7651a703-06e5-11d1-8ebd-00a0c90f26ea",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000195|",
+              "WhenOpened": "2026-02-11T09:57:25.954Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "Egiaztatu.aspx",
+              "DocumentMoniker": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Egiaztatu.aspx",
+              "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\Egiaztatu.aspx",
+              "ToolTip": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Egiaztatu.aspx",
+              "RelativeToolTip": "ErabiltzaileErregistratuak\\Egiaztatu.aspx",
+              "LogicalView": "7651a703-06e5-11d1-8ebd-00a0c90f26ea",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000195|",
+              "WhenOpened": "2026-02-11T14:25:43.648Z"
             },
             {
               "$type": "Document",
               "DocumentIndex": 14,
               "Title": "Login.aspx.vb",
-              "DocumentMoniker": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Login.aspx.vb",
+              "DocumentMoniker": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Login.aspx.vb",
               "RelativeDocumentMoniker": "ErabiltzaileErregistratuak\\Login.aspx.vb",
-              "ToolTip": "C:\\Users\\itxas\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Login.aspx.vb",
+              "ToolTip": "C:\\Users\\User\\source\\repos\\SGTA_Laborategiak\\Lab02\\loginetaerregistratu\\ErabiltzaileErregistratuak\\Login.aspx.vb",
               "RelativeToolTip": "ErabiltzaileErregistratuak\\Login.aspx.vb",
               "ViewState": "AgIAAA0AAAAAAAAAAAAAABMAAAAMAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003361|",
-              "WhenOpened": "2026-02-10T11:44:50.705Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-02-10T11:44:50.705Z"
             },
             {
               "$type": "Document",
@@ -292,9 +280,9 @@
               "DocumentIndex": 16,
               "Title": "mpeqdwob..sql",
               "DocumentMoniker": "C:\\Users\\itxas\\AppData\\Local\\Temp\\mpeqdwob..sql",
-              "RelativeDocumentMoniker": "..\\..\\..\\..\\..\\AppData\\Local\\Temp\\mpeqdwob..sql",
+              "RelativeDocumentMoniker": "..\\..\\..\\..\\..\\..\\itxas\\AppData\\Local\\Temp\\mpeqdwob..sql",
               "ToolTip": "C:\\Users\\itxas\\AppData\\Local\\Temp\\mpeqdwob..sql",
-              "RelativeToolTip": "..\\..\\..\\..\\..\\AppData\\Local\\Temp\\mpeqdwob..sql",
+              "RelativeToolTip": "..\\..\\..\\..\\..\\..\\itxas\\AppData\\Local\\Temp\\mpeqdwob..sql",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000826|",
               "WhenOpened": "2026-02-11T09:42:50.99Z"
             },
@@ -303,9 +291,9 @@
               "DocumentIndex": 17,
               "Title": "bm3iaxgp..sql",
               "DocumentMoniker": "C:\\Users\\itxas\\AppData\\Local\\Temp\\bm3iaxgp..sql",
-              "RelativeDocumentMoniker": "..\\..\\..\\..\\..\\AppData\\Local\\Temp\\bm3iaxgp..sql",
+              "RelativeDocumentMoniker": "..\\..\\..\\..\\..\\..\\itxas\\AppData\\Local\\Temp\\bm3iaxgp..sql",
               "ToolTip": "C:\\Users\\itxas\\AppData\\Local\\Temp\\bm3iaxgp..sql",
-              "RelativeToolTip": "..\\..\\..\\..\\..\\AppData\\Local\\Temp\\bm3iaxgp..sql",
+              "RelativeToolTip": "..\\..\\..\\..\\..\\..\\itxas\\AppData\\Local\\Temp\\bm3iaxgp..sql",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000826|",
               "WhenOpened": "2026-02-11T09:35:10.163Z"
             }

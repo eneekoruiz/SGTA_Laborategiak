@@ -80,10 +80,10 @@ Public Class DatuAtzipena
         smtp.EnableSsl = True
         smtp.UseDefaultCredentials = False
         smtp.DeliveryMethod = SmtpDeliveryMethod.Network
-        smtp.Credentials = New NetworkCredential("SARTU ZURE EMAILA", "SARTU ZURE PASAHITZA")
+        smtp.Credentials = New NetworkCredential("SARTU HEMEN ZURE ERABILTZAILEA", "SARTU HEMEN ZURE PASAHITZA")
 
         Dim mensaje As New MailMessage()
-        mensaje.From = New MailAddress("SARTU ZURE EMAILA")
+        mensaje.From = New MailAddress("SARTU HEMEN ZURE ERABILTZAILEA")
         mensaje.To.Add(nora)
         mensaje.Subject = asuntoa
         mensaje.Body = gorputza

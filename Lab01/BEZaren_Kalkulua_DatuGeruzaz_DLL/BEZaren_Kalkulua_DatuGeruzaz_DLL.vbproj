@@ -101,13 +101,13 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\BEZaren_Kalkulua_DLL\BEZaren_Kalkulua_DLL.vbproj">
+      <Project>{def81cdf-1ab9-4133-a831-47f484d73bc5}</Project>
+      <Name>BEZaren_Kalkulua_DLL</Name>
+    </ProjectReference>
     <ProjectReference Include="..\DatuGeruza\DatuGeruza.vbproj">
       <Project>{cee6e157-29cb-49ea-82fe-ec4aab3954bb}</Project>
       <Name>DatuGeruza</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Lab01\BEZaren_Kalkulua_DLL.vbproj">
-      <Project>{def81cdf-1ab9-4133-a831-47f484d73bc5}</Project>
-      <Name>BEZaren_Kalkulua_DLL</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />

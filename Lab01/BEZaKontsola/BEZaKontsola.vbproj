@@ -110,10 +110,6 @@
       <Project>{337EE479-F59C-456A-8AF8-09C637BEF687}</Project>
       <Name>BEZaren_Kalkulua_DatuGeruzaz_DLL</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Lab01\BEZaren_Kalkulua_DLL.vbproj">
-      <Project>{def81cdf-1ab9-4133-a831-47f484d73bc5}</Project>
-      <Name>BEZaren_Kalkulua_DLL</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
 </Project>

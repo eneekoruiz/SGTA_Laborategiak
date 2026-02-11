@@ -22,7 +22,7 @@ Public Class BEZKalkulu_DatuSortzaileaz
 
         End Try
 
-            Dim bezEnum As BEZKalkulu.bezMotak
+        Dim bezEnum As BEZKalkulu.bezMotak
         Select Case CInt(Math.Round(bezMota))
             Case 21
                 bezEnum = BEZKalkulu.bezMotak.Orokorra

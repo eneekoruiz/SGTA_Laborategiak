@@ -8,3 +8,13 @@ C:\Users\itxas\source\repos\SGTA_Laborategiak\Lab02\loginetaerregistratu\Salbues
 C:\Users\itxas\source\repos\SGTA_Laborategiak\Lab02\loginetaerregistratu\Salbuespenak\obj\Debug\Salbuespenak.dll
 C:\Users\itxas\source\repos\SGTA_Laborategiak\Lab02\loginetaerregistratu\Salbuespenak\obj\Debug\Salbuespenak.xml
 C:\Users\itxas\source\repos\SGTA_Laborategiak\Lab02\loginetaerregistratu\Salbuespenak\obj\Debug\Salbuespenak.pdb
+C:\Users\User\source\repos\SGTA_Laborategiak\Lab02\loginetaerregistratu\Salbuespenak\bin\Debug\Salbuespenak.dll
+C:\Users\User\source\repos\SGTA_Laborategiak\Lab02\loginetaerregistratu\Salbuespenak\bin\Debug\Salbuespenak.pdb
+C:\Users\User\source\repos\SGTA_Laborategiak\Lab02\loginetaerregistratu\Salbuespenak\bin\Debug\Salbuespenak.xml
+C:\Users\User\source\repos\SGTA_Laborategiak\Lab02\loginetaerregistratu\Salbuespenak\obj\Debug\Salbuespenak.vbproj.AssemblyReference.cache
+C:\Users\User\source\repos\SGTA_Laborategiak\Lab02\loginetaerregistratu\Salbuespenak\obj\Debug\Salbuespenak.Resources.resources
+C:\Users\User\source\repos\SGTA_Laborategiak\Lab02\loginetaerregistratu\Salbuespenak\obj\Debug\Salbuespenak.vbproj.GenerateResource.cache
+C:\Users\User\source\repos\SGTA_Laborategiak\Lab02\loginetaerregistratu\Salbuespenak\obj\Debug\Salbuespenak.vbproj.CoreCompileInputs.cache
+C:\Users\User\source\repos\SGTA_Laborategiak\Lab02\loginetaerregistratu\Salbuespenak\obj\Debug\Salbuespenak.dll
+C:\Users\User\source\repos\SGTA_Laborategiak\Lab02\loginetaerregistratu\Salbuespenak\obj\Debug\Salbuespenak.xml
+C:\Users\User\source\repos\SGTA_Laborategiak\Lab02\loginetaerregistratu\Salbuespenak\obj\Debug\Salbuespenak.pdb
