@@ -46,8 +46,13 @@
     <NoWarn>42016,41999,42017,42018,42019,42032,42036,42020,42021,42022</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="PresentationCore">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\PresentationCore.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
-    <Reference Include="System.Data" />
+    <Reference Include="System.Data">
+      <HintPath>..\..\..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Data.dll</HintPath>
+    </Reference>
     <Reference Include="System.Drawing" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -221,11 +226,14 @@
       <DependentUpon>Web.config</DependentUpon>
     </None>
   </ItemGroup>
-  <ItemGroup />
   <ItemGroup>
-    <ProjectReference Include="..\..\Lab02\loginetaerregistratu\loginetaerregistratu\DatuAtzipenekoak.vbproj">
+    <ProjectReference Include="..\loginetaerregistratu\DatuAtzipenekoak.vbproj">
       <Project>{1cddb354-ddb3-4000-8e1a-a4821fe226fd}</Project>
       <Name>DatuAtzipenekoak</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Salbuespenak\Salbuespenak.vbproj">
+      <Project>{df641501-c47c-4bf5-a560-bf4c47025972}</Project>
+      <Name>Salbuespenak</Name>
     </ProjectReference>
   </ItemGroup>
   <PropertyGroup>

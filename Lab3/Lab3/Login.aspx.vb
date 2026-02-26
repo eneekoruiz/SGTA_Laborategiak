@@ -1,6 +1,9 @@
-﻿Imports System.Data.SqlClient
-Imports System.Net
+﻿Imports System
+Imports System.Data.SqlClient
+Imports System.Web
 Imports loginetaerregistratu
+
+
 
 Public Class Login
     Inherits System.Web.UI.Page

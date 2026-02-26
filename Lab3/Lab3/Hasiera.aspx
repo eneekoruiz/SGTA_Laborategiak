@@ -19,6 +19,7 @@
             color: #1d1d1f;
         }
 
+
         
         .welcome-card {
             background-color: rgba(255, 255, 255, 0.8);
