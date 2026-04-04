@@ -7,6 +7,7 @@
   import EducationHealthPanel from './components/EducationHealthPanel.svelte';
   import FloatingModal from './components/FloatingModal.svelte';
   import SlidingDrawer from './components/SlidingDrawer.svelte';
+  import DataOverlaySelector from './components/DataOverlaySelector.svelte';
   import * as apiService from './services/apiService';
   import { recomputeAllRoads } from './services/autoTiling';
   import * as gameStore from './store/game';
@@ -55,6 +56,7 @@
   let showInfrastructure = true;
   let showZones = true;
   let showStatusIcons = false;
+  let activeOverlay: string | null = null;
 
   const zoneTools: Array<{ label: string; value: ZoneType }> = [
     { label: 'R Light', value: 'residential_light' },
@@ -442,6 +444,7 @@
         showInfrastructure={showInfrastructure}
         showZones={showZones}
         showStatusIcons={showStatusIcons}
+        activeOverlay={activeOverlay}
         on:zonePainted={handleZonePaint}
         on:infrastructureDrawn={handleInfraDraw}
       />
@@ -477,6 +480,11 @@
           👁️ {showStatusIcons ? 'Icons: ON' : 'Icons: OFF'}
         </button>
       </div>
+
+      <DataOverlaySelector
+        activeOverlay={activeOverlay}
+        onOverlayChange={(type) => (activeOverlay = type)}
+      />
 
       <SlidingDrawer
         open={$educationDrawerOpen}
@@ -604,6 +612,14 @@
 
   .infra-toolbar {
     top: 128px;
+  }
+
+  :global(.overlay-selector) {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    z-index: 11;
+    width: 220px;
   }
 
   .zone-toolbar button,

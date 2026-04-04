@@ -4,8 +4,9 @@
   import { createEventDispatcher } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { updateAutoTiling, getRoadVariant, computeRoadConnections } from '../services/autoTiling';
+  import { getOverlayData } from '../services/overlayService';
   import * as apiService from '../services/apiService';
-  import type { InfrastructureType, Tile, Zone, ZoneType } from '../types/game';
+  import type { InfrastructureType, Tile, Zone, ZoneType, OverlayData } from '../types/game';
 
   export let tiles: Tile[][] = [];
   export let mapWidth = 64;
@@ -20,6 +21,7 @@
   export let showInfrastructure = true;
   export let showZones = true;
   export let showStatusIcons = false;
+  export let activeOverlay: string | null = null;
   export let gameId = 'game-001';
 
   type Point = { x: number; y: number };
@@ -42,6 +44,7 @@
   let pointerScreen: Point | null = null;
   let dpr = 1;
   let grainPattern: CanvasPattern | null = null;
+  let overlayData: OverlayData | null = null;
   let pendingOperations = new Set<string>(); // Track x:y positions with pending API calls
 
   const textureKeys = [
@@ -690,6 +693,65 @@
     ctx.restore();
   }
 
+  function getOverlayColor(value: number, type: string): string {
+    // Normalize value to 0-1 range
+    const ratio = Math.max(0, Math.min(1, value / 255));
+
+    // HSL-based color gradients for better visual clarity
+    const colorMap: Record<string, { light: [number, number, number]; dark: [number, number, number] }> = {
+      crime: { light: [0, 100, 90], dark: [0, 100, 50] },           // Red
+      pollution_air: { light: [280, 70, 85], dark: [280, 70, 40] }, // Purple-Grey
+      pollution_water: { light: [40, 90, 85], dark: [40, 90, 45] }, // Brown
+      land_value: { light: [120, 100, 90], dark: [120, 100, 50] },  // Green
+      traffic: { light: [30, 100, 85], dark: [30, 100, 50] },       // Orange
+      power: { light: [60, 100, 90], dark: [60, 100, 50] },         // Yellow
+      water: { light: [180, 100, 90], dark: [180, 100, 50] },       // Cyan
+      fire_coverage: { light: [0, 100, 90], dark: [0, 100, 50] },   // Red
+      police_coverage: { light: [210, 100, 90], dark: [210, 100, 50] }, // Blue
+      health: { light: [160, 100, 90], dark: [160, 100, 50] },      // Teal
+      education: { light: [260, 100, 90], dark: [260, 100, 50] }    // Purple
+    };
+
+    const [hLight, sLight, lLight] = colorMap[type]?.light || [0, 0, 90];
+    const [hDark, sDark, lDark] = colorMap[type]?.dark || [0, 0, 40];
+
+    // Interpolate HSL values
+    const h = hLight * (1 - ratio) + hDark * ratio;
+    const s = sLight * (1 - ratio) + sDark * ratio;
+    const l = lLight * (1 - ratio) + lDark * ratio;
+
+    return `hsl(${Math.round(h)}, ${Math.round(s)}%, ${Math.round(l)}%)`;
+  }
+
+  function drawOverlay(ctx: CanvasRenderingContext2D): void {
+    if (!overlayData) return;
+
+    // Apply overlay alpha blending
+    ctx.globalAlpha = 0.4;
+
+    const visibleEntries = getVisibleEntries();
+    for (const entry of visibleEntries) {
+      const { x, y } = entry;
+      const value = overlayData.data[y]?.[x];
+      if (value === undefined) continue;
+
+      const center = worldToScreen(tileCenter(x, y));
+
+      // Scale overlay rhombus by zoom with integer precision
+      const scaledW = Math.round(tileWidth * camera.zoom);
+      const scaledH = Math.round(tileHeight * camera.zoom);
+
+      ctx.save();
+      drawDiamondPath(ctx, Math.round(center.x), Math.round(center.y), scaledW, scaledH);
+      ctx.fillStyle = getOverlayColor(value, overlayData.overlay_type);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Immediately reset alpha to prevent affecting subsequent draws
+    ctx.globalAlpha = 1.0;
+  }
+
   function drawNoRoadIcon(ctx: CanvasRenderingContext2D, x: number, y: number, tile: Tile): void {
     if (!tile.zone || !tile.zone.type.startsWith('residential') || tile.road_access) return;
     const center = worldToScreen(tileCenter(x, y));
@@ -931,6 +993,11 @@
         ctx.restore();
       }
       drawNoRoadIcon(ctx, x, y, tile);
+    }
+
+    // 6) Data Overlays (if active)
+    if (overlayData) {
+      drawOverlay(ctx);
     }
 
     drawSelectedTile(ctx);
@@ -1328,6 +1395,17 @@
   $: if (canvas && tiles.length > 0) {
     resizeCanvas();
     render();
+  }
+
+  $: if (activeOverlay && tiles.length > 0) {
+    void getOverlayData(tiles, mapWidth, mapHeight, activeOverlay).then((data) => {
+      overlayData = data;
+    }).catch((err) => {
+      console.error('Failed to load overlay:', err);
+      overlayData = null;
+    });
+  } else {
+    overlayData = null;
   }
 
   onMount(() => {
