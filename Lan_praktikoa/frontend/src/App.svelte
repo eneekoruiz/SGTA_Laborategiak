@@ -52,6 +52,9 @@
   let mounted = false;
   let tickTimer: number | null = null;
   let rafId: number | null = null;
+  let showInfrastructure = true;
+  let showZones = true;
+  let showStatusIcons = false;
 
   const zoneTools: Array<{ label: string; value: ZoneType }> = [
     { label: 'R Light', value: 'residential_light' },
@@ -428,6 +431,7 @@
       </div>
 
       <IsometricMap
+        gameId={gameId}
         tiles={liveTiles}
         mapWidth={$gameState.map.size.width}
         mapHeight={$gameState.map.size.height}
@@ -435,6 +439,9 @@
         zoneTool={$selectedZone}
         infrastructureTool={$selectedInfra}
         undergroundMode={$undergroundMode}
+        showInfrastructure={showInfrastructure}
+        showZones={showZones}
+        showStatusIcons={showStatusIcons}
         on:zonePainted={handleZonePaint}
         on:infrastructureDrawn={handleInfraDraw}
       />
@@ -460,6 +467,15 @@
           </button>
         {/each}
         <button class:active={$undergroundMode} on:click={toggleUnderground}>Underground (U)</button>
+        <button
+          class="layers-toggle"
+          title="Toggle layer visibility"
+          on:click={() => {
+            showStatusIcons = !showStatusIcons;
+          }}
+        >
+          👁️ {showStatusIcons ? 'Icons: ON' : 'Icons: OFF'}
+        </button>
       </div>
 
       <SlidingDrawer

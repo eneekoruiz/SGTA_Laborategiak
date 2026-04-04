@@ -4,6 +4,7 @@
   import { createEventDispatcher } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { updateAutoTiling, getRoadVariant, computeRoadConnections } from '../services/autoTiling';
+  import * as apiService from '../services/apiService';
   import type { InfrastructureType, Tile, Zone, ZoneType } from '../types/game';
 
   export let tiles: Tile[][] = [];
@@ -16,6 +17,10 @@
   export let zoneTool: ZoneType | null = null;
   export let infrastructureTool: InfrastructureType | null = null;
   export let undergroundMode = false;
+  export let showInfrastructure = true;
+  export let showZones = true;
+  export let showStatusIcons = false;
+  export let gameId = 'game-001';
 
   type Point = { x: number; y: number };
   type TileRef = { x: number; y: number; tile: Tile };
@@ -37,6 +42,7 @@
   let pointerScreen: Point | null = null;
   let dpr = 1;
   let grainPattern: CanvasPattern | null = null;
+  let pendingOperations = new Set<string>(); // Track x:y positions with pending API calls
 
   const textureKeys = [
     'grass',
@@ -459,6 +465,7 @@
     if (tile.building?.type === 'hospital' || tile.building?.type === 'school' || tile.building?.type === 'university') {
       return 42;
     }
+    // Scale emoji size by development level: level 1 = 32, level 2 = 38, level 3 = 46
     return level === 1 ? 32 : level === 2 ? 38 : 46;
   }
 
@@ -516,6 +523,10 @@
   }
 
   function drawStatusIcons(ctx: CanvasRenderingContext2D, x: number, y: number, cx: number, cy: number, tile: Tile): void {
+    // Only show status icons if explicitly enabled OR if power/water tool is active
+    const shouldShowIcons = showStatusIcons || infrastructureTool === 'power_line' || infrastructureTool === 'water_pipe';
+    if (!shouldShowIcons) return;
+
     if (!hasBuilding(tile)) return;
     const anchor = getBuildingAnchor(x, y, cx, cy, tile);
     if (!anchor) return;
@@ -846,15 +857,18 @@
     }
 
     // 2) Infrastructure
-    for (const entry of visibleEntries) {
-      const { x, y, tile } = entry;
-      const center = worldToScreen(tileCenter(x, y));
-      drawInfrastructure(ctx, center.x, center.y, tile);
+    if (showInfrastructure) {
+      for (const entry of visibleEntries) {
+        const { x, y, tile } = entry;
+        const center = worldToScreen(tileCenter(x, y));
+        drawInfrastructure(ctx, center.x, center.y, tile);
+      }
     }
 
     // 2.5) Shadows (under buildings/zones for 3D depth)
     for (const entry of visibleEntries) {
       const { x, y, tile } = entry;
+      if (!hasBuilding(tile) && !showZones) continue;
       if (!hasBuilding(tile) && !tile.zone) continue;
       const center = worldToScreen(tileCenter(x, y));
 
@@ -882,15 +896,17 @@
       ctx.restore();
     }
 
-    // 3) Buildings (sprite render)
-    for (const entry of visibleEntries) {
-      const { x, y, tile } = entry;
-      if (!hasBuilding(tile)) continue;
-      const center = worldToScreen(tileCenter(x, y));
-      ctx.save();
-      if (undergroundMode) ctx.globalAlpha = 0.2;
-      drawBuilding(ctx, x, y, center.x, center.y, tile);
-      ctx.restore();
+    // 3) Buildings (sprite render) - only if zones are visible
+    if (showZones) {
+      for (const entry of visibleEntries) {
+        const { x, y, tile } = entry;
+        if (!hasBuilding(tile)) continue;
+        const center = worldToScreen(tileCenter(x, y));
+        ctx.save();
+        if (undergroundMode) ctx.globalAlpha = 0.2;
+        drawBuilding(ctx, x, y, center.x, center.y, tile);
+        ctx.restore();
+      }
     }
 
     // 4) Grounding shadows
@@ -1003,25 +1019,56 @@
     const tile = tiles[tilePos.y]?.[tilePos.x];
     if (!tile || tile.terrain_type === 'water') return;
 
-    if (!tile.infrastructure.includes(infrastructureTool)) {
-      tile.infrastructure = [...tile.infrastructure, infrastructureTool];
+    if (tile.infrastructure.includes(infrastructureTool)) return;
 
-      // Update auto-tiling for roads
+    // Prevent duplicate submissions
+    const key = `infra-${tilePos.x}:${tilePos.y}-${infrastructureTool}`;
+    if (pendingOperations.has(key)) return;
+    pendingOperations.add(key);
+
+    // Store original state for rollback
+    const originalInfra = [...tile.infrastructure];
+
+    // Apply optimistically (instant feedback)
+    tile.infrastructure = [...tile.infrastructure, infrastructureTool];
+
+    // Update auto-tiling for roads
+    if (infrastructureTool === 'road') {
+      updateAutoTiling(tiles, tilePos.x, tilePos.y);
+      tile.road_access = true;
+    }
+
+    if (infrastructureTool === 'power_line') {
+      tile.powered = true;
+    }
+    if (infrastructureTool === 'water_pipe') {
+      tile.watered = true;
+    }
+
+    drawnThisStroke.add(keyForPoint(tilePos));
+    triggerPlacementFeedback(tilePos.x, tilePos.y, infrastructureTool === 'road' ? 10 : 5);
+
+    // Send to backend in background
+    void apiService.placeInfrastructure(gameId, infrastructureTool, [{ from: tilePos, to: tilePos }]).then((result) => {
+      pendingOperations.delete(key);
+      if (!result.success) {
+        // Rollback on failure
+        tile.infrastructure = originalInfra;
+        if (infrastructureTool === 'road') {
+          updateAutoTiling(tiles, tilePos.x, tilePos.y);
+        }
+        tiles = [...tiles];
+      }
+    }).catch((err) => {
+      pendingOperations.delete(key);
+      console.error('Infrastructure placement failed:', err);
+      // Rollback on error
+      tile.infrastructure = originalInfra;
       if (infrastructureTool === 'road') {
         updateAutoTiling(tiles, tilePos.x, tilePos.y);
-        tile.road_access = true;
       }
-
-      if (infrastructureTool === 'power_line') {
-        tile.powered = true;
-      }
-      if (infrastructureTool === 'water_pipe') {
-        tile.watered = true;
-      }
-
-      drawnThisStroke.add(keyForPoint(tilePos));
-      triggerPlacementFeedback(tilePos.x, tilePos.y, infrastructureTool === 'road' ? 10 : 5);
-    }
+      tiles = [...tiles];
+    });
   }
 
   function zonePaintCost(type: ZoneType): number {
@@ -1036,6 +1083,15 @@
 
     if (tile.zone?.type === zoneTool) return;
 
+    // Prevent duplicate submissions
+    const key = `${tilePos.x}:${tilePos.y}`;
+    if (pendingOperations.has(key)) return;
+    pendingOperations.add(key);
+
+    // Store original state for rollback
+    const originalZone = tile.zone ? { ...tile.zone } : null;
+
+    // Apply optimistically (instant feedback)
     tile.zone = {
       id: `z-${tilePos.x}-${tilePos.y}-${Date.now()}`,
       type: zoneTool,
@@ -1053,6 +1109,31 @@
 
     zonedThisStroke.add(keyForPoint(tilePos));
     triggerPlacementFeedback(tilePos.x, tilePos.y, zonePaintCost(zoneTool));
+
+    // Send to backend in background
+    const cost = zonePaintCost(zoneTool);
+    void apiService.placeZone(gameId, zoneTool, tilePos, { w: 1, h: 1 }).then((result) => {
+      pendingOperations.delete(key);
+      if (!result.success) {
+        // Rollback on failure
+        if (originalZone) {
+          tile.zone = originalZone;
+        } else {
+          tile.zone = null;
+        }
+        tiles = [...tiles];
+      }
+    }).catch((err) => {
+      pendingOperations.delete(key);
+      console.error('Zone placement failed:', err);
+      // Rollback on error
+      if (originalZone) {
+        tile.zone = originalZone;
+      } else {
+        tile.zone = null;
+      }
+      tiles = [...tiles];
+    });
   }
 
   function applyZoneSegment(next: GridPoint): void {
