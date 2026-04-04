@@ -130,7 +130,7 @@
               key as keyof typeof localTaxRates,
               Number(e.currentTarget.value)
             )}
-          {disabled={loading}}
+          disabled={loading}
         />
         <span class="value">
           {(localTaxRates[key as keyof typeof localTaxRates] || 0).toFixed(1)}%
@@ -154,7 +154,7 @@
               key as keyof typeof localFunding,
               Number(e.currentTarget.value)
             )}
-          {disabled={loading}}
+          disabled={loading}
         />
         <span class="value">
           {(localFunding[key as keyof typeof localFunding] || 100).toFixed(0)}%

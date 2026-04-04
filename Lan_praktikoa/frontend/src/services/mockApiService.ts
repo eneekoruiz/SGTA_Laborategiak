@@ -331,47 +331,47 @@ export const mockApiService = {
     return delayed({ road_connected, power_connected, water_connected }, 80);
   },
 
-  async placeZone(): Promise<any> {
+  async placeZone(_gameId: string, _zoneType: any, _pos: any, _size: any): Promise<any> {
     return delayed({ success: true, cost: 250, treasury_after: 0 });
   },
 
-  async placeInfrastructure(): Promise<any> {
+  async placeInfrastructure(_gameId: string, _type: any, _segments: any): Promise<any> {
     return delayed({ success: true, cost: 100, segments_placed: 1, treasury_after: 0 });
   },
 
-  async buildStructure(): Promise<any> {
+  async buildStructure(_gameId: string, _type: any, _pos: any): Promise<any> {
     return delayed({ success: true, cost: 1000, treasury_after: 0 });
   },
 
-  async demolish(): Promise<any> {
+  async demolish(_gameId: string, _pos: any, _type: any): Promise<any> {
     return delayed({ success: true, refund: 500 });
   },
 
-  async updateBudget(): Promise<any> {
+  async updateBudget(_gameId: string, _taxRates?: any, _funding?: any): Promise<any> {
     return delayed({ success: true, budget: baseBudget(), estimated_monthly_balance: 0 });
   },
 
-  async toggleOrdinance(): Promise<any> {
+  async toggleOrdinance(_gameId: string, _ordinanceId: any, _action: any): Promise<any> {
     return delayed({ success: true, budget_impact: 0 });
   },
 
-  async issueBond(): Promise<any> {
+  async issueBond(_gameId: string, _amount: any): Promise<any> {
     return delayed({ success: true, treasury_after: 0 });
   },
 
-  async attackRival(): Promise<any> {
+  async attackRival(_gameId: string, _disasterType: any, _target: any): Promise<any> {
     return delayed({ success: true, cost: 5000, treasury_after: 0 });
   },
 
-  async endMonth(): Promise<any> {
+  async endMonth(_gameId: string): Promise<any> {
     return delayed({ success: true, new_date: { year: 2050, month: 6 }, game_state: mockGameState });
   },
 
-  async submitCheat(): Promise<any> {
-    return delayed({ success: true, cheat_code: 'test', message: 'Cheat applied' });
+  async submitCheat(_gameId: string, _cheatCode: string): Promise<any> {
+    return delayed({ success: true, cheat_code: _cheatCode, message: 'Cheat applied' });
   },
 
-  async getOverlay(): Promise<any> {
-    return delayed({ overlay_type: '', data: [], min_value: 0, max_value: 255 });
+  async getOverlay(_gameId: string, _type: string): Promise<any> {
+    return delayed({ overlay_type: _type, data: [], min_value: 0, max_value: 255 });
   }
 };
