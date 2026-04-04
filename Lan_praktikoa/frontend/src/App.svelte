@@ -8,6 +8,7 @@
   import FloatingModal from './components/FloatingModal.svelte';
   import SlidingDrawer from './components/SlidingDrawer.svelte';
   import * as apiService from './services/apiService';
+  import { recomputeAllRoads } from './services/autoTiling';
   import * as gameStore from './store/game';
   import * as uiStore from './store/ui';
   import type {
@@ -309,6 +310,10 @@
       gameStore.setEducation(educationRes);
       gameStore.setHealth(healthRes);
       liveTiles = cloneTiles(gameRes.game_state.map.tiles);
+
+      // Compute road variants for all existing roads
+      recomputeAllRoads(liveTiles);
+
       series = {
         eq: createSeries(educationRes.eq, educationRes.eq_trend),
         hq: createSeries(healthRes.hq, healthRes.hq_trend),

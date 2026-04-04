@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { createEventDispatcher } from 'svelte';
   import { fade, fly } from 'svelte/transition';
+  import { updateAutoTiling, getRoadVariant, computeRoadConnections } from '../services/autoTiling';
   import type { InfrastructureType, Tile, Zone, ZoneType } from '../types/game';
 
   export let tiles: Tile[][] = [];
@@ -295,6 +296,12 @@
     ctx.save();
     drawDiamondPath(ctx, cx, cy);
     ctx.clip();
+
+    // Add +1 overlap to prevent sub-pixel gaps at fractional zoom levels
+    const overlap = 1;
+    const tileX = cx - tileWidth / 2;
+    const tileY = cy - tileHeight / 2;
+
     if (atlasImage && frame) {
       ctx.drawImage(
         atlasImage,
@@ -302,19 +309,19 @@
         frame.y,
         frame.w,
         frame.h,
-        cx - tileWidth / 2,
-        cy - tileHeight / 2,
-        tileWidth,
-        tileHeight
+        tileX,
+        tileY,
+        tileWidth + overlap,
+        tileHeight + overlap
       );
     } else if (image) {
-      ctx.drawImage(image, cx - tileWidth / 2, cy - tileHeight / 2, tileWidth, tileHeight);
+      ctx.drawImage(image, tileX, tileY, tileWidth + overlap, tileHeight + overlap);
     }
 
     if (grainPattern) {
       ctx.globalAlpha = 0.13;
       ctx.fillStyle = grainPattern;
-      ctx.fillRect(cx - tileWidth / 2, cy - tileHeight / 2, tileWidth, tileHeight);
+      ctx.fillRect(tileX, tileY, tileWidth + overlap, tileHeight + overlap);
       ctx.globalAlpha = 1;
     }
     ctx.restore();
@@ -324,25 +331,48 @@
     const infra = tile.infrastructure || [];
     if (!infra.length) return;
 
-    const drawStroke = (color: string, width: number) => {
+    const drawStroke = (color: string, width: number, directionMask?: number) => {
       ctx.strokeStyle = color;
       ctx.lineWidth = width;
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(cx - tileWidth * 0.22, cy);
-      ctx.lineTo(cx + tileWidth * 0.22, cy);
-      ctx.moveTo(cx, cy - tileHeight * 0.22);
-      ctx.lineTo(cx, cy + tileHeight * 0.22);
+
+      // If directionMask provided (for roads), only draw active connections
+      if (directionMask !== undefined) {
+        const hasNorth = directionMask & 1;
+        const hasSouth = directionMask & 2;
+        const hasEast = directionMask & 4;
+        const hasWest = directionMask & 8;
+
+        if (hasNorth || hasSouth) {
+          ctx.moveTo(cx, cy - tileHeight * 0.22);
+          ctx.lineTo(cx, cy + tileHeight * 0.22);
+        }
+        if (hasEast || hasWest) {
+          ctx.moveTo(cx - tileWidth * 0.22, cy);
+          ctx.lineTo(cx + tileWidth * 0.22, cy);
+        }
+      } else {
+        // Default: draw cross pattern (for non-road infrastructure)
+        ctx.moveTo(cx - tileWidth * 0.22, cy);
+        ctx.lineTo(cx + tileWidth * 0.22, cy);
+        ctx.moveTo(cx, cy - tileHeight * 0.22);
+        ctx.lineTo(cx, cy + tileHeight * 0.22);
+      }
+
       ctx.stroke();
     };
 
     const dimSurface = undergroundMode ? 0.08 : 1;
 
-    if (!undergroundMode && infra.includes('highway')) {
+    // Roads with auto-tiling
+    if (!undergroundMode && infra.includes('road')) {
+      const variant = (tile as any).roadVariant ?? 0;
+      drawStroke(`rgba(121, 137, 152, ${0.95 * dimSurface})`, 5, variant);
+      drawStroke(`rgba(238, 220, 179, ${0.45 * dimSurface})`, 1.2, variant);
+    } else if (!undergroundMode && infra.includes('highway')) {
       drawStroke(`rgba(121, 137, 152, ${0.95 * dimSurface})`, 5);
       drawStroke(`rgba(238, 220, 179, ${0.45 * dimSurface})`, 1.2);
-    } else if (!undergroundMode && infra.includes('road')) {
-      drawStroke(`rgba(68, 74, 82, ${0.9 * dimSurface})`, 3.4);
     }
 
     if (!undergroundMode && infra.includes('power_line')) {
@@ -816,22 +846,10 @@
     monthDrift += dt * 0.00006;
     if (monthDrift > 12) monthDrift -= 12;
 
+    // Camera motion: use springs, they handle interpolation smoothly
     if (!isDragging) {
-      velocityX += (dragVelocity.x - velocityX) * 0.05;
-      velocityY += (dragVelocity.y - velocityY) * 0.05;
-      targetX += velocityX * (dt / 14.5);
-      targetY += velocityY * (dt / 14.5);
       springX.set(targetX);
       springY.set(targetY);
-      velocityX *= friction;
-      velocityY *= friction;
-      dragVelocity.x *= 0.88;
-      dragVelocity.y *= 0.88;
-
-      if (Math.abs(velocityX) < velocityMin) velocityX = 0;
-      if (Math.abs(velocityY) < velocityMin) velocityY = 0;
-      if (Math.abs(dragVelocity.x) < velocityMin) dragVelocity.x = 0;
-      if (Math.abs(dragVelocity.y) < velocityMin) dragVelocity.y = 0;
     }
 
     if (shake > 0) {
@@ -898,9 +916,13 @@
 
     if (!tile.infrastructure.includes(infrastructureTool)) {
       tile.infrastructure = [...tile.infrastructure, infrastructureTool];
+
+      // Update auto-tiling for roads
       if (infrastructureTool === 'road') {
+        updateAutoTiling(tiles, tilePos.x, tilePos.y);
         tile.road_access = true;
       }
+
       if (infrastructureTool === 'power_line') {
         tile.powered = true;
       }
@@ -983,9 +1005,6 @@
 
     isDragging = true;
     lastPointer = { x: event.offsetX, y: event.offsetY };
-    velocityX = 0;
-    velocityY = 0;
-    dragVelocity = { x: 0, y: 0 };
   }
 
   function stopDragging(): void {
@@ -1035,8 +1054,6 @@
       targetY += dy;
       springX.set(targetX, { hard: true });
       springY.set(targetY, { hard: true });
-      dragVelocity.x = dragVelocity.x * 0.65 + dx * 0.35;
-      dragVelocity.y = dragVelocity.y * 0.65 + dy * 0.35;
       lastPointer = { x: event.offsetX, y: event.offsetY };
     }
 
