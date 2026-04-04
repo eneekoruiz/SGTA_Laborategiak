@@ -80,11 +80,12 @@
     width: min(1320px, calc(100vw - 32px));
     padding: 8px 10px;
     border-radius: 16px;
-    background: linear-gradient(170deg, rgba(17, 31, 53, 0.76), rgba(13, 24, 42, 0.68));
-    border: 1px solid rgba(248, 252, 255, 0.16);
-    backdrop-filter: blur(24px) saturate(110%);
+    background: linear-gradient(170deg, rgba(17, 31, 53, 0.78), rgba(13, 24, 42, 0.72));
+    border: 1px solid rgba(248, 252, 255, 0.18);
+    backdrop-filter: blur(18px) saturate(120%);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 1px 2px rgba(255, 255, 255, 0.12),
+      inset 0 0 20px rgba(255, 255, 255, 0.04),
       0 18px 56px rgba(2, 9, 20, 0.42);
   }
 

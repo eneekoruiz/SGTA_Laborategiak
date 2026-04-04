@@ -737,6 +737,36 @@
       drawInfrastructure(ctx, center.x, center.y, tile);
     }
 
+    // 2.5) Shadows (under buildings/zones for 3D depth)
+    for (const entry of visibleEntries) {
+      const { x, y, tile } = entry;
+      if (!hasBuilding(tile) && !tile.zone) continue;
+      const center = worldToScreen(tileCenter(x, y));
+
+      // Shadow parameters based on development level
+      const devLevel = tile.zone?.development_level || 0;
+      const shadowOpacity = Math.min(0.25, 0.1 + devLevel * 0.04);
+      const shadowHeight = 8;
+      const shadowWidth = 40;
+      const shadowHeight2 = 6;
+
+      ctx.save();
+      ctx.fillStyle = `rgba(0, 0, 0, ${shadowOpacity})`;
+      // Draw shadow as an ellipse beneath the tile
+      ctx.beginPath();
+      ctx.ellipse(
+        center.x,
+        center.y + shadowHeight,
+        shadowWidth,
+        shadowHeight2,
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+      ctx.restore();
+    }
+
     // 3) Buildings (sprite render)
     for (const entry of visibleEntries) {
       const { x, y, tile } = entry;
