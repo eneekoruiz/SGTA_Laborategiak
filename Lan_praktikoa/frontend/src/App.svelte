@@ -51,6 +51,7 @@
   let error = '';
   let mounted = false;
   let tickTimer: number | null = null;
+  let rafId: number | null = null;
 
   const zoneTools: Array<{ label: string; value: ZoneType }> = [
     { label: 'R Light', value: 'residential_light' },
@@ -262,14 +263,23 @@
   function simulationTick(): void {
     if (!$gameState || !$stats || !$education || !$health) return;
 
-    const nextMonth = $gameState.current_date.month === 12 ? 1 : $gameState.current_date.month + 1;
-    const nextYear = nextMonth === 1 ? $gameState.current_date.year + 1 : $gameState.current_date.year;
-    gameStore.setGameState({
-      ...$gameState,
-      current_date: { year: nextYear, month: nextMonth }
+    // Apply monthly simulation using the new centralized function
+    gameStore.applyMonthlySimulation((updatedState) => {
+      // Update stats based on new state
+      const newTreasury = updatedState.player_city.treasury;
+      gameStore.setStats({
+        ...$stats,
+        player: {
+          ...$stats.player,
+          treasury: newTreasury
+        }
+      });
     });
 
+    // Apply connectivity and zone development
     void applyConnectivityAndDevelopment();
+
+    // Update education and health trends
     gameStore.setEducation({
       ...$education,
       eq: Math.max(0, Math.min(200, Math.round(($education.eq + $education.eq_trend * 0.08) * 10) / 10))
@@ -278,6 +288,8 @@
       ...$health,
       hq: Math.max(0, Math.min(200, Math.round(($health.hq + $health.hq_trend * 0.08) * 10) / 10))
     });
+
+    // Update UI series
     series = {
       eq: createSeries($education.eq, $education.eq_trend),
       hq: createSeries($health.hq, $health.hq_trend),
@@ -287,14 +299,44 @@
 
   function resetTickTimer(): void {
     if (!mounted) return;
+
+    // Clean up existing timers
     if (tickTimer !== null) {
       window.clearInterval(tickTimer);
       tickTimer = null;
     }
-    tickTimer = window.setInterval(() => {
-      simulationTick();
-    }, speedIntervals[$gameSpeed]);
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+
+    const interval = gameStore.getTickInterval($gameSpeed);
+
+    if (interval > 0) {
+      // Normal or fast mode: use setInterval
+      tickTimer = window.setInterval(() => {
+        simulationTick();
+      }, interval);
+    } else {
+      // Instant mode: run via RAF with minimum 50ms throttle
+      let lastInstantTick = 0;
+      const checkInstantTick = () => {
+        const now = performance.now();
+        if (now - lastInstantTick > 50) {
+          simulationTick();
+          lastInstantTick = now;
+        }
+        rafId = requestAnimationFrame(checkInstantTick);
+      };
+      rafId = requestAnimationFrame(checkInstantTick);
+    }
   }
+
+  // Watch gameSpeed and reset timer when it changes
+  $: if (mounted) {
+    resetTickTimer();
+  }
+
 
   onMount(async () => {
     try {
@@ -332,6 +374,7 @@
       if (event.key.toLowerCase() === 'u') toggleUnderground();
       if (event.ctrlKey && event.key === 'Tab') {
         event.preventDefault();
+        event.stopPropagation();
         uiStore.toggleCheatConsole();
       }
       if (event.key === 'Escape' && $cheatConsoleOpen) {
@@ -349,6 +392,10 @@
       if (tickTimer !== null) {
         window.clearInterval(tickTimer);
         tickTimer = null;
+      }
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
       }
     };
   });
@@ -375,6 +422,7 @@
           rci={$stats.player.rci_demand}
           speed={$gameSpeed}
           onSpeedChange={(next) => uiStore.setGameSpeed(next)}
+          onNextMonth={simulationTick}
           on:menu={(event) => handleMenu(event.detail.panel)}
         />
       </div>

@@ -1,4 +1,5 @@
 import { mockApiService } from './mockApiService';
+import { deductTreasury } from '../store/game';
 import type {
   GameState,
   StatsResponse,
@@ -171,9 +172,9 @@ export async function placeZone(
   cost: number;
   zone: any;
   treasury_after: number;
-  game_state: GameState; // Return full updated state
+  game_state: GameState;
 }> {
-  return tryRealElseMock(
+  const result = await tryRealElseMock(
     `/api/games/${gameId}/zone`,
     {
       method: 'POST',
@@ -185,6 +186,13 @@ export async function placeZone(
         game_state: { /* Will be populated by mock */ } as GameState
       }))
   );
+
+  // Deduct cost from treasury immediately
+  if (result.success) {
+    deductTreasury(result.cost);
+  }
+
+  return result;
 }
 
 export async function placeInfrastructure(
@@ -198,7 +206,7 @@ export async function placeInfrastructure(
   treasury_after: number;
   game_state: GameState;
 }> {
-  return tryRealElseMock(
+  const result = await tryRealElseMock(
     `/api/games/${gameId}/infrastructure`,
     {
       method: 'POST',
@@ -210,6 +218,13 @@ export async function placeInfrastructure(
         game_state: { /* Will be populated by mock */ } as GameState
       }))
   );
+
+  // Deduct cost from treasury immediately
+  if (result.success) {
+    deductTreasury(result.cost);
+  }
+
+  return result;
 }
 
 export async function buildStructure(
@@ -223,7 +238,7 @@ export async function buildStructure(
   treasury_after: number;
   game_state: GameState;
 }> {
-  return tryRealElseMock(
+  const result = await tryRealElseMock(
     `/api/games/${gameId}/build`,
     {
       method: 'POST',
@@ -235,6 +250,13 @@ export async function buildStructure(
         game_state: { /* Will be populated by mock */ } as GameState
       }))
   );
+
+  // Deduct cost from treasury immediately
+  if (result.success) {
+    deductTreasury(result.cost);
+  }
+
+  return result;
 }
 
 export async function demolish(
@@ -247,7 +269,7 @@ export async function demolish(
   refund: number;
   game_state: GameState;
 }> {
-  return tryRealElseMock(
+  const result = await tryRealElseMock(
     `/api/games/${gameId}/demolish`,
     {
       method: 'POST',
@@ -259,6 +281,13 @@ export async function demolish(
         game_state: { /* Will be populated by mock */ } as GameState
       }))
   );
+
+  // Add refund to treasury immediately
+  if (result.success) {
+    deductTreasury(-result.refund); // Negative deduction = addition
+  }
+
+  return result;
 }
 
 export async function updateBudget(

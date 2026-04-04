@@ -8,6 +8,7 @@
   export let rci = { r: 0, c: 0, i: 0 };
   export let speed: 'normal' | 'fast' | 'instant' = 'normal';
   export let onSpeedChange: (next: 'normal' | 'fast' | 'instant') => void = () => {};
+  export let onNextMonth: () => void = () => {};
 
   const dispatch = createEventDispatcher<{ menu: { panel: string } }>();
 
@@ -19,6 +20,10 @@
 
   function openPanel(panel: string): void {
     dispatch('menu', { panel });
+  }
+
+  function handleNextMonth(): void {
+    onNextMonth();
   }
 
   function rciPath(value: number, idx: number): string {
@@ -56,11 +61,16 @@
   </div>
 
   <div class="actions">
-    <div class="speed" aria-label="AA Turn Speed">
-      <button class:active={speed === 'normal'} on:click={() => onSpeedChange('normal')}>Normal</button>
-      <button class:active={speed === 'fast'} on:click={() => onSpeedChange('fast')}>Fast</button>
-      <button class:active={speed === 'instant'} on:click={() => onSpeedChange('instant')}>Instant</button>
+    <div class="speed" aria-label="Game Speed">
+      <button class:active={speed === 'normal'} on:click={() => onSpeedChange('normal')}>● Normal</button>
+      <button class:active={speed === 'fast'} on:click={() => onSpeedChange('fast')}>► Fast</button>
+      <button class:active={speed === 'instant'} on:click={() => onSpeedChange('instant')}>⏸ Manual</button>
     </div>
+
+    {#if speed === 'instant'}
+      <button class="next-month" on:click={handleNextMonth}>↻ Next Month</button>
+    {/if}
+
     <div class="menu-icons">
       <button aria-label="Budget" on:click={() => openPanel('budget')}>$</button>
       <button aria-label="Ordinances" on:click={() => openPanel('ordinance')}>O</button>
@@ -211,6 +221,28 @@
     background: rgba(182, 154, 99, 0.86);
     color: #14243e;
     font-weight: 600;
+  }
+
+  .next-month {
+    background: rgba(144, 188, 145, 0.12);
+    border: 1px solid rgba(144, 188, 145, 0.3);
+    color: #b8e5ba;
+    font-weight: 500;
+    animation: pulse-glow 1.2s ease-in-out infinite;
+  }
+
+  .next-month:hover {
+    background: rgba(144, 188, 145, 0.22);
+    border-color: rgba(144, 188, 145, 0.5);
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(144, 188, 145, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 0 4px rgba(144, 188, 145, 0.1);
+    }
   }
 
   .menu-icons {

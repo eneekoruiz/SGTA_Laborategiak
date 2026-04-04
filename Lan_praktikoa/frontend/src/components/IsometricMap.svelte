@@ -77,9 +77,9 @@
   let atlasImage: HTMLImageElement | null = null;
 
   const camera: CameraState = { x: 0, y: 0, zoom: 1 };
-  const springX = spring(0, { stiffness: 0.1, damping: 0.72, precision: 0.08 });
-  const springY = spring(0, { stiffness: 0.1, damping: 0.72, precision: 0.08 });
-  const springZoom = spring(1, { stiffness: 0.12, damping: 0.76, precision: 0.001 });
+  const springX = spring(0, { stiffness: 0.11, damping: 0.74, precision: 0.05 });
+  const springY = spring(0, { stiffness: 0.11, damping: 0.74, precision: 0.05 });
+  const springZoom = spring(1, { stiffness: 0.13, damping: 0.78, precision: 0.001 });
 
   springX.subscribe((v) => (camera.x = v));
   springY.subscribe((v) => (camera.y = v));
@@ -124,21 +124,21 @@
 
   function toIso(x: number, y: number): Point {
     return {
-      x: (x - y) * (tileWidth / 2),
-      y: (x + y) * (tileHeight / 2)
+      x: Math.round((x - y) * (tileWidth / 2)),
+      y: Math.round((x + y) * (tileHeight / 2))
     };
   }
 
   function tileCenter(x: number, y: number): Point {
     const o = origin();
     const iso = toIso(x, y);
-    return { x: o.x + iso.x, y: o.y + iso.y };
+    return { x: Math.round(o.x + iso.x), y: Math.round(o.y + iso.y) };
   }
 
   function worldToScreen(p: Point): Point {
     return {
-      x: p.x * camera.zoom + camera.x,
-      y: p.y * camera.zoom + camera.y
+      x: Math.round(p.x * camera.zoom + camera.x),
+      y: Math.round(p.y * camera.zoom + camera.y)
     };
   }
 
@@ -216,9 +216,9 @@
     };
   }
 
-  function drawDiamondPath(ctx: CanvasRenderingContext2D, cx: number, cy: number): void {
-    const hw = tileWidth / 2;
-    const hh = tileHeight / 2;
+  function drawDiamondPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, scaleW?: number, scaleH?: number): void {
+    const hw = (scaleW ?? tileWidth) / 2;
+    const hh = (scaleH ?? tileHeight) / 2;
     ctx.beginPath();
     ctx.moveTo(cx, cy - hh);
     ctx.lineTo(cx + hw, cy);
@@ -286,21 +286,25 @@
     const image = textures[key] ?? textures.grass;
     const frame = atlasFrames[key];
 
+    // Scale render dimensions by camera zoom, with integer precision
+    const scaledW = Math.round(tileWidth * camera.zoom);
+    const scaledH = Math.round(tileHeight * camera.zoom);
+    const overlapW = Math.ceil(scaledW + 1);
+    const overlapH = Math.ceil(scaledH + 1);
+
     if (!image && !(atlasImage && frame)) {
-      drawDiamondPath(ctx, cx, cy);
+      drawDiamondPath(ctx, Math.round(cx), Math.round(cy), scaledW, scaledH);
       ctx.fillStyle = '#8ea88c';
       ctx.fill();
       return;
     }
 
     ctx.save();
-    drawDiamondPath(ctx, cx, cy);
+    drawDiamondPath(ctx, Math.round(cx), Math.round(cy), scaledW, scaledH);
     ctx.clip();
 
-    // Add +1 overlap to prevent sub-pixel gaps at fractional zoom levels
-    const overlap = 1;
-    const tileX = cx - tileWidth / 2;
-    const tileY = cy - tileHeight / 2;
+    const tileX = Math.round(cx - scaledW / 2);
+    const tileY = Math.round(cy - scaledH / 2);
 
     if (atlasImage && frame) {
       ctx.drawImage(
@@ -311,17 +315,17 @@
         frame.h,
         tileX,
         tileY,
-        tileWidth + overlap,
-        tileHeight + overlap
+        overlapW,
+        overlapH
       );
     } else if (image) {
-      ctx.drawImage(image, tileX, tileY, tileWidth + overlap, tileHeight + overlap);
+      ctx.drawImage(image, tileX, tileY, overlapW, overlapH);
     }
 
     if (grainPattern) {
       ctx.globalAlpha = 0.13;
       ctx.fillStyle = grainPattern;
-      ctx.fillRect(tileX, tileY, tileWidth + overlap, tileHeight + overlap);
+      ctx.fillRect(tileX, tileY, overlapW, overlapH);
       ctx.globalAlpha = 1;
     }
     ctx.restore();
@@ -330,6 +334,27 @@
   function drawInfrastructure(ctx: CanvasRenderingContext2D, cx: number, cy: number, tile: Tile): void {
     const infra = tile.infrastructure || [];
     if (!infra.length) return;
+
+    // Scale infrastructure dimensions by zoom, integer precision
+    const scaledW = Math.round(tileWidth * camera.zoom);
+    const scaledH = Math.round(tileHeight * camera.zoom);
+
+    // Fallback: draw solid gray slab for roads (full tile coverage for seamlessness)
+    const drawRoadSlab = (directionMask: number) => {
+      ctx.save();
+      ctx.globalAlpha = undergroundMode ? 0.3 : 0.65;
+      ctx.fillStyle = 'rgba(100, 105, 110, 1)';
+
+      // Draw diamond-shaped slab centered on tile (full coverage = seamless)
+      ctx.beginPath();
+      ctx.moveTo(Math.round(cx), Math.round(cy - scaledH / 2));
+      ctx.lineTo(Math.round(cx + scaledW / 2), Math.round(cy));
+      ctx.lineTo(Math.round(cx), Math.round(cy + scaledH / 2));
+      ctx.lineTo(Math.round(cx - scaledW / 2), Math.round(cy));
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    };
 
     const drawStroke = (color: string, width: number, directionMask?: number) => {
       ctx.strokeStyle = color;
@@ -345,47 +370,55 @@
         const hasWest = directionMask & 8;
 
         if (hasNorth || hasSouth) {
-          ctx.moveTo(cx, cy - tileHeight * 0.22);
-          ctx.lineTo(cx, cy + tileHeight * 0.22);
+          ctx.moveTo(Math.round(cx), Math.round(cy - scaledH * 0.22));
+          ctx.lineTo(Math.round(cx), Math.round(cy + scaledH * 0.22));
         }
         if (hasEast || hasWest) {
-          ctx.moveTo(cx - tileWidth * 0.22, cy);
-          ctx.lineTo(cx + tileWidth * 0.22, cy);
+          ctx.moveTo(Math.round(cx - scaledW * 0.22), Math.round(cy));
+          ctx.lineTo(Math.round(cx + scaledW * 0.22), Math.round(cy));
         }
       } else {
         // Default: draw cross pattern (for non-road infrastructure)
-        ctx.moveTo(cx - tileWidth * 0.22, cy);
-        ctx.lineTo(cx + tileWidth * 0.22, cy);
-        ctx.moveTo(cx, cy - tileHeight * 0.22);
-        ctx.lineTo(cx, cy + tileHeight * 0.22);
+        ctx.moveTo(Math.round(cx - scaledW * 0.22), Math.round(cy));
+        ctx.lineTo(Math.round(cx + scaledW * 0.22), Math.round(cy));
+        ctx.moveTo(Math.round(cx), Math.round(cy - scaledH * 0.22));
+        ctx.lineTo(Math.round(cx), Math.round(cy + scaledH * 0.22));
       }
 
       ctx.stroke();
     };
 
+    // Only show Power/Water in Underground mode
     const dimSurface = undergroundMode ? 0.08 : 1;
 
-    // Roads with auto-tiling
-    if (!undergroundMode && infra.includes('road')) {
-      const variant = (tile as any).roadVariant ?? 0;
-      drawStroke(`rgba(121, 137, 152, ${0.95 * dimSurface})`, 5, variant);
-      drawStroke(`rgba(238, 220, 179, ${0.45 * dimSurface})`, 1.2, variant);
+    // Roads with auto-tiling: draw solid gray slab (full-tile rhombus = seamless)
+    if (infra.includes('road')) {
+      if (!undergroundMode) {
+        const variant = (tile as any).roadVariant ?? 0;
+        drawRoadSlab(variant);
+      }
     } else if (!undergroundMode && infra.includes('highway')) {
       drawStroke(`rgba(121, 137, 152, ${0.95 * dimSurface})`, 5);
       drawStroke(`rgba(238, 220, 179, ${0.45 * dimSurface})`, 1.2);
     }
 
-    if (!undergroundMode && infra.includes('power_line')) {
-      drawStroke('rgba(233, 201, 86, 0.95)', 1.4);
-    }
-
-    if (infra.includes('water_pipe')) {
+    // Power lines: only visible in Underground mode
+    if (infra.includes('power_line')) {
       drawStroke(
-        undergroundMode ? 'rgba(84, 220, 255, 0.96)' : 'rgba(84, 220, 255, 0.44)',
-        undergroundMode ? 3 : 1.8
+        undergroundMode ? 'rgba(233, 201, 86, 0.95)' : 'rgba(0, 0, 0, 0)',
+        undergroundMode ? 2.8 : 1.4
       );
     }
 
+    // Water pipes: always visible, stronger in Underground
+    if (infra.includes('water_pipe')) {
+      drawStroke(
+        undergroundMode ? 'rgba(84, 220, 255, 0.98)' : 'rgba(84, 220, 255, 0.44)',
+        undergroundMode ? 4.2 : 1.8
+      );
+    }
+
+    // Subway: always visible, stronger in Underground
     if (infra.includes('subway')) {
       drawStroke(
         undergroundMode ? 'rgba(173, 103, 255, 0.96)' : 'rgba(173, 103, 255, 0.32)',
@@ -393,6 +426,7 @@
       );
     }
 
+    // Rails: only visible in normal mode
     if (!undergroundMode && infra.includes('rail')) {
       drawStroke(`rgba(37, 52, 68, ${0.84 * dimSurface})`, 1.4);
     }
@@ -439,16 +473,19 @@
     if (!emoji) return null;
     const fontSize = buildingEmojiFontSize(tile);
 
+    // Scale emoji positioning by zoom with integer precision
+    const verticalOffset = Math.round(tileHeight * camera.zoom * 0.56);
+
     // Center on tile while slightly lifted so the emoji reads as a standing building.
-    const emojiX = cx;
-    const emojiY = cy - tileHeight * 0.56;
+    const emojiX = Math.round(cx);
+    const emojiY = Math.round(cy - verticalOffset);
     return {
       emoji,
       emojiX,
       emojiY,
       fontSize,
       roofX: emojiX,
-      roofY: emojiY - fontSize * 0.52
+      roofY: Math.round(emojiY - fontSize * 0.52)
     };
   }
 
@@ -519,6 +556,14 @@
   }
 
   function drawShadow(ctx: CanvasRenderingContext2D, cx: number, cy: number): void {
+    // Scale shadow dimensions by zoom with integer precision
+    const scaledW = Math.round(tileWidth * camera.zoom);
+    const scaledH = Math.round(tileHeight * camera.zoom);
+    const overlapW = Math.ceil(scaledW + 1);
+    const overlapH = Math.ceil(scaledH + 1);
+    const shadowX = Math.round(cx - scaledW / 2);
+    const shadowY = Math.round(cy - scaledH / 2 + 3);
+
     const atlasShadow = atlasFrames.tile_shadow;
     if (atlasImage && atlasShadow) {
       ctx.globalAlpha = 0.35;
@@ -528,10 +573,10 @@
         atlasShadow.y,
         atlasShadow.w,
         atlasShadow.h,
-        cx - tileWidth / 2,
-        cy - tileHeight / 2 + 3,
-        tileWidth,
-        tileHeight
+        shadowX,
+        shadowY,
+        overlapW,
+        overlapH
       );
       ctx.globalAlpha = 1;
       return;
@@ -540,17 +585,32 @@
     const shadow = textures.tile_shadow;
     if (shadow) {
       ctx.globalAlpha = 0.4;
-      ctx.drawImage(shadow, cx - tileWidth / 2, cy - tileHeight / 2 + 3, tileWidth, tileHeight);
+      ctx.drawImage(shadow, shadowX, shadowY, overlapW, overlapH);
       ctx.globalAlpha = 1;
       return;
     }
 
-    const g = ctx.createRadialGradient(cx, cy + 4, 2, cx, cy + 4, tileWidth * 0.35);
+    const g = ctx.createRadialGradient(
+      Math.round(cx),
+      Math.round(cy + 4),
+      2,
+      Math.round(cx),
+      Math.round(cy + 4),
+      Math.round(scaledW * 0.35)
+    );
     g.addColorStop(0, 'rgba(15,23,42,0.3)');
     g.addColorStop(1, 'rgba(15,23,42,0)');
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.ellipse(cx, cy + 6, tileWidth * 0.33, tileHeight * 0.25, 0, 0, Math.PI * 2);
+    ctx.ellipse(
+      Math.round(cx),
+      Math.round(cy + 6),
+      Math.round(scaledW * 0.33),
+      Math.round(scaledH * 0.25),
+      0,
+      0,
+      Math.PI * 2
+    );
     ctx.fill();
   }
 
@@ -559,9 +619,20 @@
     const center = worldToScreen(tileCenter(hover.x, hover.y));
     const pulse = 0.82 + Math.sin(performance.now() * 0.005) * 0.18;
 
+    // Scale tile dimensions by zoom for consistent hover appearance
+    const scaledW = Math.round(tileWidth * camera.zoom);
+    const scaledH = Math.round(tileHeight * camera.zoom);
+
     ctx.save();
-    drawDiamondPath(ctx, center.x, center.y);
-    const gradient = ctx.createRadialGradient(center.x, center.y, tileHeight * 0.1, center.x, center.y, tileWidth * 0.7);
+    drawDiamondPath(ctx, Math.round(center.x), Math.round(center.y), scaledW, scaledH);
+    const gradient = ctx.createRadialGradient(
+      Math.round(center.x),
+      Math.round(center.y),
+      scaledH * 0.1,
+      Math.round(center.x),
+      Math.round(center.y),
+      scaledW * 0.7
+    );
     gradient.addColorStop(0, `rgba(182, 154, 99, ${0.3 * pulse})`);
     gradient.addColorStop(0.6, `rgba(140, 168, 138, ${0.18 * pulse})`);
     gradient.addColorStop(1, 'rgba(140, 168, 138, 0)');
@@ -573,7 +644,7 @@
     ctx.restore();
 
     ctx.beginPath();
-    ctx.arc(pointerScreen.x, pointerScreen.y, 3.6, 0, Math.PI * 2);
+    ctx.arc(Math.round(pointerScreen.x), Math.round(pointerScreen.y), 3.6, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(217, 193, 142, 0.94)';
     ctx.fill();
   }
@@ -584,9 +655,20 @@
     const center = worldToScreen(tileCenter(selected.x, selected.y));
     const pulse = 0.78 + Math.sin(performance.now() * 0.004) * 0.22;
 
+    // Scale the tile dimensions by zoom with integer precision
+    const scaledW = Math.round(tileWidth * camera.zoom);
+    const scaledH = Math.round(tileHeight * camera.zoom);
+
     ctx.save();
-    drawDiamondPath(ctx, center.x, center.y);
-    const bloom = ctx.createRadialGradient(center.x, center.y, tileHeight * 0.1, center.x, center.y, tileWidth * 0.95);
+    drawDiamondPath(ctx, Math.round(center.x), Math.round(center.y), scaledW, scaledH);
+    const bloom = ctx.createRadialGradient(
+      Math.round(center.x),
+      Math.round(center.y),
+      scaledH * 0.1,
+      Math.round(center.x),
+      Math.round(center.y),
+      scaledW * 0.95
+    );
     bloom.addColorStop(0, `rgba(188, 164, 115, ${0.35 * pulse})`);
     bloom.addColorStop(1, 'rgba(188, 164, 115, 0)');
     ctx.fillStyle = bloom;
@@ -600,8 +682,8 @@
   function drawNoRoadIcon(ctx: CanvasRenderingContext2D, x: number, y: number, tile: Tile): void {
     if (!tile.zone || !tile.zone.type.startsWith('residential') || tile.road_access) return;
     const center = worldToScreen(tileCenter(x, y));
-    const iconX = center.x;
-    const iconY = center.y - tileHeight * 1.2;
+    const iconX = Math.round(center.x);
+    const iconY = Math.round(center.y - tileHeight * camera.zoom * 1.2);
 
     ctx.save();
     ctx.globalAlpha = undergroundMode ? 0.25 : 1;
@@ -734,8 +816,11 @@
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const shakeOffsetX = shake > 0 ? (Math.random() - 0.5) * shake : 0;
-    const shakeOffsetY = shake > 0 ? (Math.random() - 0.5) * shake * 0.6 : 0;
+    // Disable image smoothing for crisp pixel art / sprite rendering
+    ctx.imageSmoothingEnabled = false;
+
+    const shakeOffsetX = shake > 0 ? Math.round((Math.random() - 0.5) * shake) : 0;
+    const shakeOffsetY = shake > 0 ? Math.round((Math.random() - 0.5) * shake * 0.6) : 0;
 
     ctx.save();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -785,8 +870,8 @@
       // Draw shadow as an ellipse beneath the tile
       ctx.beginPath();
       ctx.ellipse(
-        center.x,
-        center.y + shadowHeight,
+        Math.round(center.x),
+        Math.round(center.y + shadowHeight),
         shadowWidth,
         shadowHeight2,
         0,
@@ -846,17 +931,19 @@
     monthDrift += dt * 0.00006;
     if (monthDrift > 12) monthDrift -= 12;
 
-    // Camera motion: use springs, they handle interpolation smoothly
+    // Camera motion: use springs for smooth interpolation (only when not dragging)
     if (!isDragging) {
       springX.set(targetX);
       springY.set(targetY);
     }
 
+    // Decay shake effect
     if (shake > 0) {
       shake *= 0.84;
       if (shake < 0.2) shake = 0;
     }
 
+    // Update particles with gravity
     particles = particles
       .map((p) => ({
         ...p,
@@ -868,10 +955,12 @@
       }))
       .filter((p) => p.life > 0);
 
+    // Update floating cost labels
     floatingCosts = floatingCosts
       .map((f) => ({ ...f, y: f.y - 0.4 * (dt / 16), life: f.life - dt * 0.06 }))
       .filter((f) => f.life > 0);
 
+    // Request next frame
     render();
     rafId = requestAnimationFrame(animate);
   }
@@ -1075,8 +1164,10 @@
 
   function onWheel(event: WheelEvent): void {
     event.preventDefault();
+    event.stopPropagation();
+
     const rect = canvas.getBoundingClientRect();
-    const screen = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    const screen = { x: Math.round(event.clientX - rect.left), y: Math.round(event.clientY - rect.top) };
     const before = screenToWorld(screen);
 
     const direction = event.deltaY > 0 ? -1 : 1;
@@ -1173,8 +1264,10 @@
     };
 
     const handleWindowMouseUp = () => stopDragging();
+
     window.addEventListener('resize', handleResize);
     window.addEventListener('mouseup', handleWindowMouseUp);
+
     rafId = requestAnimationFrame(animate);
 
     return () => {
