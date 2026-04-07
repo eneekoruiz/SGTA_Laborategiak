@@ -84,7 +84,7 @@
 
 {#if $cheatConsoleOpen}
   <div class="cheat-console-overlay" transition:fade={{ duration: 200 }} on:click={close} role="button" tabindex="0" on:keydown={(e) => e.key === 'Escape' && close()}>
-    <div class="cheat-console" on:click|stopPropagation on:keydown|stopPropagation transition:slide={{ duration: 250, axis: 'y' }} role="dialog" aria-label="Cheat Console">
+    <div class="cheat-console" on:click|stopPropagation on:keydown|stopPropagation transition:slide={{ duration: 250, axis: 'y' }} role="dialog" aria-label="Cheat Console" tabindex="-1">
       <div class="cheat-header">
         <h3>🎮 Cheat Console</h3>
         <div class="cheat-controls">

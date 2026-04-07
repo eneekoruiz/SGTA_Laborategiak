@@ -63,15 +63,15 @@
   $: hqPath = splinePath(hqPoints);
   $: eqArea = areaPath(eqPoints, eqPath);
   $: hqArea = areaPath(hqPoints, hqPath);
-  $: eqStatus = education.eq >= 120 ? 'High' : education.eq >= 95 ? 'Stable' : 'Fragile';
-  $: hqStatus = health.hq >= 110 ? 'Strong' : health.hq >= 90 ? 'Stable' : 'Vulnerable';
+  $: eqStatus = education.eq >= 120 ? 'Altua' : education.eq >= 95 ? 'Egonkorra' : 'Hauskorra';
+  $: hqStatus = health.hq >= 110 ? 'Indartsua' : health.hq >= 90 ? 'Egonkorra' : 'Ahula';
   $: tickerItems = [
     `EDU // EQ ${education.eq} (${eqStatus})`,
-    `HEALTH // HQ ${health.hq} (${hqStatus})`,
-    `LIFESPAN // ${health.average_lifespan.toFixed(1)} years`,
-    `INDUSTRY // High-Tech ${(education.effects.high_tech_industry_pct * 100).toFixed(0)}%`,
-    `RISK // Pollution impact ${health.pollution_health_impact}`,
-    `CIVIC // Crime reduction ${education.effects.crime_reduction.toFixed(1)}`
+    `OSASUNA // HQ ${health.hq} (${hqStatus})`,
+    `BIZI-ITXAROPENA // ${health.average_lifespan.toFixed(1)} urte`,
+    `INDUSTRIA // Goi-teknologia ${(education.effects.high_tech_industry_pct * 100).toFixed(0)}%`,
+    `ARRISKUA // Kutsaduraren eragina ${health.pollution_health_impact}`,
+    `HERRITAR // Krimen murrizketa ${education.effects.crime_reduction.toFixed(1)}`
   ];
   $: tickY = [0, 50, 100, 150, 200].map((value) => {
     const innerH = chartHeight - chartPaddingY * 2;
@@ -91,35 +91,35 @@
 <section class="panel">
   <header class="topline">
     <h2>Hezkuntza &amp; Osasuna</h2>
-    <p>Education Quotient and Health Quotient operational monitor</p>
+    <p>Hezkuntza eta Osasun adierazleen monitorizazio operatiboa</p>
   </header>
 
   <div class="metrics-grid">
     <article>
       <h3>EQ</h3>
       <p class="value mono">{education.eq}</p>
-      <p class="trend" class:up={education.eq_trend >= 0}>Trend: {education.eq_trend >= 0 ? '+' : ''}{education.eq_trend}</p>
+      <p class="trend" class:up={education.eq_trend >= 0}>Joera: {education.eq_trend >= 0 ? '+' : ''}{education.eq_trend}</p>
     </article>
     <article>
       <h3>HQ</h3>
       <p class="value mono">{health.hq}</p>
-      <p class="trend" class:up={health.hq_trend >= 0}>Trend: {health.hq_trend >= 0 ? '+' : ''}{health.hq_trend}</p>
+      <p class="trend" class:up={health.hq_trend >= 0}>Joera: {health.hq_trend >= 0 ? '+' : ''}{health.hq_trend}</p>
     </article>
     <article>
-      <h3>Average Lifespan</h3>
+      <h3>Bizi-itxaropena</h3>
       <p class="value mono">{health.average_lifespan.toFixed(1)} y</p>
-      <p class="sub">Mortality: {health.mortality_rate.toFixed(1)}%</p>
+      <p class="sub">Hilkortasuna: {health.mortality_rate.toFixed(1)}%</p>
     </article>
     <article>
-      <h3>High-Tech Industry</h3>
+      <h3>Teknologia handiko industria</h3>
       <p class="value mono">{(education.effects.high_tech_industry_pct * 100).toFixed(0)}%</p>
-      <p class="sub">Crime reduction: {education.effects.crime_reduction.toFixed(1)}</p>
+      <p class="sub">Krimen murrizketa: {education.effects.crime_reduction.toFixed(1)}</p>
     </article>
   </div>
 
   <div class="funding-card">
     <div class="funding-head">
-      <h3>Funding Multiplier</h3>
+      <h3>Finantzaketa biderkatzailea</h3>
       <p class="mono">{fundingPct}%</p>
     </div>
     <input
@@ -129,14 +129,14 @@
       step="1"
       value={fundingPct}
       on:input={onFundingInput}
-      aria-label="Education and health funding"
+      aria-label="Hezkuntza eta osasun finantzaketa"
     />
-    <p class="sub">Higher funding accelerates EQ/HQ trend updates immediately.</p>
+    <p class="sub">Finantzaketa handiagoak EQ/HQ joeren eguneraketa azkartzen du.</p>
   </div>
 
   <div class="chart-card">
     <h3>EQ / HQ azken 12 hilabeteak</h3>
-    <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img" aria-label="EQ HQ trend chart">
+    <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img" aria-label="EQ HQ joera grafikoa">
       <defs>
         <linearGradient id="eqStroke" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0" stop-color="#7f9a7e" />
@@ -190,11 +190,11 @@
     <div class="legend">
       <span><i class="eq"></i>EQ</span>
       <span><i class="hq"></i>HQ</span>
-      <span>Last: {labels[labels.length - 1] ?? 'Now'}</span>
+      <span>Azkena: {labels[labels.length - 1] ?? 'Orain'}</span>
     </div>
   </div>
 
-  <div class="ticker" aria-label="Education and health ticker">
+  <div class="ticker" aria-label="Hezkuntza eta osasun tikerra">
     <div class="ticker-track">
       {#each [...tickerItems, ...tickerItems] as item}
         <span>{item}</span>
@@ -204,14 +204,14 @@
 
   <div class="tables">
     <article>
-      <h3>Education Facilities</h3>
+      <h3>Hezkuntza azpiegiturak</h3>
       <table>
         <thead>
           <tr>
-            <th>Type</th>
-            <th>Count</th>
-            <th>Funding %</th>
-            <th>Coverage %</th>
+            <th>Mota</th>
+            <th>Kopurua</th>
+            <th>Finantzaketa %</th>
+            <th>Estaldura %</th>
           </tr>
         </thead>
         <tbody>
@@ -228,11 +228,11 @@
     </article>
 
     <article>
-      <h3>Health Snapshot</h3>
+      <h3>Osasun laburpena</h3>
       <ul>
-        <li>Hospitals: {health.hospitals}</li>
-        <li>Pollution impact: {health.pollution_health_impact}</li>
-        <li>Land value bonus (EQ): {education.effects.land_value_bonus.toFixed(1)}</li>
+        <li>Ospitaleak: {health.hospitals}</li>
+        <li>Kutsaduraren eragina: {health.pollution_health_impact}</li>
+        <li>Lurzoru balioaren hobaria (EQ): {education.effects.land_value_bonus.toFixed(1)}</li>
       </ul>
     </article>
   </div>

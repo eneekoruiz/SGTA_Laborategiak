@@ -12,7 +12,7 @@ import { gameState, gameSpeed, simTick, applyAutoGrowth, incrementSimTick } from
 import { endMonth } from './apiService';
 import { get } from 'svelte/store';
 
-let loopInterval: NodeJS.Timeout | null = null;
+let loopInterval: ReturnType<typeof setInterval> | null = null;
 let isRunning = false;
 
 /**
@@ -74,14 +74,11 @@ export async function advanceMonth() {
     if (result.success) {
       // The API has already updated game_state, just sync it
       gameState.set(result.game_state);
-
-      // Log events if any
-      if (result.player_simulation?.events) {
-        console.log('Month events:', result.player_simulation.events);
-      }
     }
   } catch (err) {
-    console.error('Error advancing month:', err);
+    if (import.meta.env.DEV) {
+      console.error('Error advancing month:', err);
+    }
   }
 }
 

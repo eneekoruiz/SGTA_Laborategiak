@@ -116,37 +116,37 @@
   }
 
   const zoneTools: Array<{ label: string; value: ZoneType; accent: string }> = [
-    { label: 'Residential Light', value: 'residential_light', accent: '#6fd98f' },
-    { label: 'Residential Dense', value: 'residential_dense', accent: '#44b26a' },
-    { label: 'Commercial Light', value: 'commercial_light', accent: '#57a7ff' },
-    { label: 'Commercial Dense', value: 'commercial_dense', accent: '#3489e5' },
-    { label: 'Industrial Light', value: 'industrial_light', accent: '#e3d360' },
-    { label: 'Industrial Dense', value: 'industrial_dense', accent: '#c7b849' }
+    { label: 'Erresidentzial arina', value: 'residential_light', accent: '#6fd98f' },
+    { label: 'Erresidentzial trinkoa', value: 'residential_dense', accent: '#44b26a' },
+    { label: 'Komertzial arina', value: 'commercial_light', accent: '#57a7ff' },
+    { label: 'Komertzial trinkoa', value: 'commercial_dense', accent: '#3489e5' },
+    { label: 'Industrial arina', value: 'industrial_light', accent: '#e3d360' },
+    { label: 'Industrial trinkoa', value: 'industrial_dense', accent: '#c7b849' }
   ];
 
   const infraGroups: Record<InfraGroup, Array<{ label: string; value: InfrastructureType }>> = {
     roads: [
-      { label: 'Road', value: 'road' },
-      { label: 'Highway', value: 'highway' },
-      { label: 'Highway Ramp', value: 'highway_ramp' }
+      { label: 'Errepidea', value: 'road' },
+      { label: 'Autobidea', value: 'highway' },
+      { label: 'Autobide sarbidea', value: 'highway_ramp' }
     ],
     water: [
-      { label: 'Water Pipe', value: 'water_pipe' },
-      { label: 'Subway Tunnel', value: 'subway_tunnel' }
+      { label: 'Ur-hodia', value: 'water_pipe' },
+      { label: 'Metro tunela', value: 'subway_tunnel' }
     ],
-    power: [{ label: 'Power Line', value: 'power_line' }],
-    transit: [{ label: 'Rail', value: 'rail' }]
+    power: [{ label: 'Energia linea', value: 'power_line' }],
+    transit: [{ label: 'Trenbidea', value: 'rail' }]
   };
 
   const buildingTools: Array<{ label: string; value: BuildingType; cost: number }> = [
-    { label: 'Coal Plant', value: 'coal_power', cost: 4000 },
-    { label: 'Nuclear Plant', value: 'nuclear_power', cost: 15000 },
-    { label: 'Police Station', value: 'police_station', cost: 500 },
-    { label: 'Fire Station', value: 'fire_station', cost: 500 },
-    { label: 'Hospital', value: 'hospital', cost: 500 },
-    { label: 'School', value: 'school', cost: 250 },
-    { label: 'Bus Depot', value: 'bus_depot', cost: 250 },
-    { label: 'Water Pump', value: 'water_pump', cost: 100 }
+    { label: 'Ikatz zentrala', value: 'coal_power', cost: 4000 },
+    { label: 'Zentral nuklearra', value: 'nuclear_power', cost: 15000 },
+    { label: 'Polizia etxea', value: 'police_station', cost: 500 },
+    { label: 'Suhiltzaile etxea', value: 'fire_station', cost: 500 },
+    { label: 'Ospitalea', value: 'hospital', cost: 500 },
+    { label: 'Eskola', value: 'school', cost: 250 },
+    { label: 'Bus geltokia', value: 'bus_depot', cost: 250 },
+    { label: 'Ur-ponpa', value: 'water_pump', cost: 100 }
   ];
 
   const overlayTools = [
@@ -165,19 +165,19 @@
   const UNDERGROUND_INFRA_TYPES = new Set<InfrastructureType>(['water_pipe', 'subway', 'subway_tunnel']);
 
   const bottomDockItems: Array<{ id: Exclude<ShelfType, null>; label: string }> = [
-    { id: 'zones', label: 'Zones' },
-    { id: 'roads', label: 'Roads' },
-    { id: 'buildings', label: 'Buildings' },
-    { id: 'stats', label: 'Stats' },
-    { id: 'rival', label: 'Rival AI' },
-    { id: 'newspaper', label: 'Newspaper' }
+    { id: 'zones', label: 'Zonak' },
+    { id: 'roads', label: 'Azpiegiturak' },
+    { id: 'buildings', label: 'Eraikinak' },
+    { id: 'stats', label: 'Estatistikak' },
+    { id: 'rival', label: 'AA aurkaria' },
+    { id: 'newspaper', label: 'Egunkaria' }
   ];
 
   const serviceBuildingTools: Array<{ label: string; value: BuildingType; cost: number }> = [
-    { label: 'Police', value: 'police_station', cost: 500 },
-    { label: 'Fire', value: 'fire_station', cost: 500 },
-    { label: 'Hospital', value: 'hospital', cost: 500 },
-    { label: 'School', value: 'school', cost: 250 }
+    { label: 'Polizia', value: 'police_station', cost: 500 },
+    { label: 'Suhiltzaileak', value: 'fire_station', cost: 500 },
+    { label: 'Ospitalea', value: 'hospital', cost: 500 },
+    { label: 'Eskola', value: 'school', cost: 250 }
   ];
 
   function cloneTiles(data: Tile[][]): Tile[][] {
@@ -477,10 +477,10 @@
     savePending = true;
     try {
       await apiService.saveGame(gameId);
-      pushNotification('Saved', 'Game state saved successfully.', 'medium');
+      pushNotification('Gordeta', 'Partidaren egoera ondo gorde da.', 'medium');
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Failed to save game';
-      pushNotification('Save failed', message, 'high', true);
+      const message = e instanceof Error ? e.message : 'Ezin izan da partida gorde';
+      pushNotification('Gordetze errorea', message, 'high', true);
     } finally {
       savePending = false;
     }
@@ -529,19 +529,19 @@
       }
 
       if (result.victory_check?.status === 'player_bankrupt') {
-        pushNotification('Bankruptcy', 'Treasury remained below -100,000 for 12 consecutive months. Administration has been dissolved.', 'high', true);
+        pushNotification('Porrota', 'Altxorra -100,000 azpitik egon da 12 hilabetez jarraian. Administrazioa desegin da.', 'high', true);
       }
 
       const aiActions = Array.isArray(result.ai_turn?.actions) ? result.ai_turn.actions.length : 0;
       const aiReasoning = typeof result.ai_turn?.reasoning === 'string' ? result.ai_turn.reasoning : '';
       pushNotification(
-        'AI turn complete',
-        aiActions > 0 ? `${aiActions} AI actions executed.` : 'AI completed its turn.',
+        'AA txanda osatuta',
+        aiActions > 0 ? `${aiActions} AA ekintza exekutatu dira.` : 'AAk txanda osatu du.',
         'low'
       );
 
       if (aiReasoning) {
-        pushNotification('Advisor feed', aiReasoning.slice(0, 140), 'medium');
+        pushNotification('Aholkulariaren mezua', aiReasoning.slice(0, 140), 'medium');
       }
 
       const focusCandidate = result.ai_turn?.actions?.find(
@@ -552,8 +552,8 @@
         aiFocusTile = { x: focusCandidate.position.x, y: focusCandidate.position.y, zoom: 1.3 };
       }
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Failed to end month';
-      pushNotification('Simulation failed', message, 'high', true);
+      const message = e instanceof Error ? e.message : 'Ezin izan da hilabetea amaitu';
+      pushNotification('Simulazio errorea', message, 'high', true);
     } finally {
       endMonthPending = false;
     }
@@ -568,17 +568,17 @@
 
     const cost = buildingCostFor(selectedBuilding);
     if (gameState.player_city.treasury < cost) {
-      pushNotification('Blocked', 'Insufficient treasury for this building.', 'high', true);
+      pushNotification('Blokeatuta', 'Ez dago altxor nahikorik eraikin honetarako.', 'high', true);
       return;
     }
 
     const tile = tileAt({ x, y });
     if (isRuinTile(tile)) {
-      pushNotification('Build blocked', 'Ruins must be cleared with Bulldozer before rebuilding.', 'high', true);
+      pushNotification('Eraikuntza blokeatuta', 'Hondakinak Bulldozerrarekin garbitu behar dira berreraiki aurretik.', 'high', true);
       return;
     }
     if (!bulldozerActive && isSurfaceOccupied(tile)) {
-      pushNotification('Build blocked', 'Surface tile is occupied. Activate Bulldozer to replace it.', 'medium');
+      pushNotification('Eraikuntza blokeatuta', 'Azaleko laukia okupatuta dago. Aktibatu Bulldozer ordezkatzeko.', 'medium');
       return;
     }
 
@@ -637,8 +637,8 @@
         liveTiles[y][x] = previousTile;
         liveTiles = cloneTiles(liveTiles);
       }
-      const message = e instanceof Error ? e.message : 'Failed to place building';
-      pushNotification('Build failed', message, 'high', true);
+      const message = e instanceof Error ? e.message : 'Ezin izan da eraikina kokatu';
+      pushNotification('Eraikuntza errorea', message, 'high', true);
     } finally {
       buildingPlacementPending.delete(key);
     }
@@ -648,7 +648,7 @@
     if (isGameOver) return;
     const details = event.detail;
     if (!details?.message) return;
-    pushNotification('Placement blocked', details.message, 'medium');
+    pushNotification('Kokapena blokeatuta', details.message, 'medium');
   }
 
   async function handleBulldozerCleared(
@@ -684,15 +684,15 @@
 
     const net = totalRefund - totalCost;
     pushNotification(
-      'Demolition complete',
-      `Refund §${Math.round(totalRefund).toLocaleString()} | Fees §${Math.round(totalCost).toLocaleString()} | Net §${Math.round(net).toLocaleString()}`,
+      'Eraispena osatuta',
+      `Itzulketa §${Math.round(totalRefund).toLocaleString()} | Tasak §${Math.round(totalCost).toLocaleString()} | Garbia §${Math.round(net).toLocaleString()}`,
       'medium'
     );
 
     try {
       stats = await apiService.getStats(gameId);
     } catch {
-      pushNotification('Stats delayed', 'Demolition applied, stats refresh failed.', 'medium');
+      pushNotification('Estatistikak atzeratuta', 'Eraispena aplikatu da, baina estatistiken freskapenak huts egin du.', 'medium');
     }
   }
 
@@ -723,22 +723,35 @@
     if (isGameOver) return;
     if (!selectedZone || event.detail.updatedTiles.length === 0) return;
 
-    const chunkSize = 20;
-    const points = event.detail.updatedTiles;
-    for (let start = 0; start < points.length; start += chunkSize) {
-      const chunk = points.slice(start, start + chunkSize);
-      const requests = chunk.map((point) => apiService.placeZone(gameId, selectedZone as ZoneType, point, { w: 1, h: 1 }));
-      const settled = await Promise.allSettled(requests);
-      const hasFailure = settled.some((result) => result.status === 'rejected');
-      if (hasFailure) {
+    markDirtyTiles(event.detail.updatedTiles);
+
+    try {
+      const chunkSize = 20;
+      const points = event.detail.updatedTiles;
+      let hadFailure = false;
+
+      for (let start = 0; start < points.length; start += chunkSize) {
+        const chunk = points.slice(start, start + chunkSize);
+        const requests = chunk.map((point) => apiService.placeZone(gameId, selectedZone as ZoneType, point, { w: 1, h: 1 }));
+        const settled = await Promise.allSettled(requests);
+        if (settled.some((result) => result.status === 'rejected')) {
+          hadFailure = true;
+        }
+      }
+
+      if (hadFailure) {
         pushNotification(
-          'Zone paint delayed',
-          'Some zone tiles could not be confirmed by the server yet.',
+          'Zonen margoketa atzeratuta',
+          'Zonaren lauki batzuk oraindik ezin izan dira zerbitzarian baieztatu.',
           'high',
           false,
           { dragOperation: true, isError: true }
         );
+        const fresh = await apiService.getGame(gameId);
+        gameState = fresh.game_state;
       }
+    } finally {
+      releaseDirtyTiles(event.detail.updatedTiles);
     }
   }
 
@@ -758,8 +771,8 @@
         stats = await apiService.getStats(gameId);
       }
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Failed to place infrastructure';
-      pushNotification('Infrastructure failed', message, 'high', true);
+      const message = e instanceof Error ? e.message : 'Ezin izan da azpiegitura kokatu';
+      pushNotification('Azpiegitura errorea', message, 'high', true);
     }
   }
 
@@ -769,12 +782,18 @@
     if (isGameOver) return;
     if (!selectedInfra || event.detail.updatedTiles.length === 0) return;
 
+    markDirtyTiles(event.detail.updatedTiles);
+
     try {
       const segments = event.detail.updatedTiles.map((point) => ({ from: point, to: point }));
       await apiService.placeInfrastructure(gameId, selectedInfra, segments);
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Infrastructure stroke could not be confirmed.';
-      pushNotification('Infrastructure delayed', message, 'high', false, { dragOperation: true, isError: true });
+      const message = e instanceof Error ? e.message : 'Azpiegitura trazua ezin izan da baieztatu.';
+      pushNotification('Azpiegitura atzeratuta', message, 'high', false, { dragOperation: true, isError: true });
+      const fresh = await apiService.getGame(gameId);
+      gameState = fresh.game_state;
+    } finally {
+      releaseDirtyTiles(event.detail.updatedTiles);
     }
   }
 
@@ -828,7 +847,7 @@
   );
 
   $: gameOverMessage = isGameOver
-    ? 'Game Over: treasury stayed below -100,000 for 12 consecutive months. All city tools are now locked.'
+    ? 'Partida amaituta: altxorra -100,000 azpitik egon da 12 hilabetez jarraian. Hiri tresna guztiak blokeatuta daude.'
     : '';
 
   onMount(async () => {
@@ -865,9 +884,9 @@
         metricHistory = value;
       });
 
-      pushNotification('Session loaded', `Welcome back, Mayor ${gameRes.game_state.player_city.name}.`, 'medium');
+      pushNotification('Saioa kargatuta', `Ongi etorri berriro, Alkate ${gameRes.game_state.player_city.name}.`, 'medium');
     } catch (e) {
-      error = e instanceof Error ? e.message : 'Failed loading game';
+      error = e instanceof Error ? e.message : 'Errorea partida kargatzean';
     } finally {
       loading = false;
     }
@@ -885,7 +904,7 @@
 
 <main class="app-shell">
   {#if loading}
-    <div class="state">Loading city simulation...</div>
+    <div class="state">Hiri simulazioa kargatzen...</div>
   {:else if error}
     <div class="state error">{error}</div>
   {:else if gameState && stats}
@@ -922,7 +941,7 @@
           class="map-interaction-blocker"
           role="button"
           tabindex="0"
-          aria-label="Close panel"
+          aria-label="Panela itxi"
           on:click={closeShelfOnMapInteraction}
           on:keydown={(event) => {
             if (event.key === 'Enter' || event.key === ' ') {
@@ -934,7 +953,7 @@
       {/if}
 
       <header class="topbar" in:fade={{ duration: 220 }}>
-        <button class="chip back" on:click={backToGames}>Back</button>
+        <button class="chip back" on:click={backToGames}>Atzera</button>
 
         <div class="hud-group">
           <div class="hud-item">
@@ -942,7 +961,7 @@
               <svg viewBox="0 0 24 24"><path d="M7 3v3M17 3v3M4 10h16M6 6h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>
             </span>
             <div class="hud-meta">
-              <span class="label">Date</span>
+              <span class="label">Data</span>
               <strong>{gameState.current_date.year}/{String(gameState.current_date.month).padStart(2, '0')}</strong>
             </div>
           </div>
@@ -951,7 +970,7 @@
               <svg viewBox="0 0 24 24"><path d="M4 20v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>
             </span>
             <div class="hud-meta">
-              <span class="label">Population</span>
+              <span class="label">Biztanleria</span>
               <strong>{stats.player.population.toLocaleString()}</strong>
             </div>
           </div>
@@ -960,7 +979,7 @@
               <svg viewBox="0 0 24 24"><path d="M4 12h16M12 4v16M6.5 6.5c1.4-1.4 3.4-2.3 5.5-2.3s4.1.9 5.5 2.3M6.5 17.5c1.4 1.4 3.4 2.3 5.5 2.3s4.1-.9 5.5-2.3"/></svg>
             </span>
             <div class="hud-meta">
-              <span class="label">Treasury</span>
+              <span class="label">Altxorra</span>
               <strong>§{Math.round(stats.player.treasury).toLocaleString()}</strong>
             </div>
           </div>
@@ -979,14 +998,14 @@
 
         <div class="top-actions">
           <button class="chip" class:active-chip={bulldozerActive} on:click={toggleBulldozer} disabled={isGameOver}>
-            {bulldozerActive ? 'Bulldozer On' : 'Bulldozer Off'}
+            {bulldozerActive ? 'Bulldozer aktibo' : 'Bulldozer itzalita'}
           </button>
           <button class="chip" disabled={savePending || isGameOver} on:click={() => void saveGame()}>
-            {savePending ? 'Saving...' : 'Save'}
+            {savePending ? 'Gordetzen...' : 'Gorde'}
           </button>
           <div class="button-group">
             <button class="chip accent" disabled={endMonthPending || isGameOver} on:click={() => void endMonth()}>
-              {endMonthPending ? 'Simulating...' : 'End Month'}
+              {endMonthPending ? 'Simulatzen...' : 'Hilabetea amaitu'}
             </button>
             <button 
               class="chip auto-toggle" 
@@ -996,9 +1015,9 @@
                 autoAdvance = !autoAdvance;
                 syncAutoAdvanceTimer();
               }}
-              title="Auto-advance each month (10s interval)"
+              title="Auto-aurrerapena hilero (10s)"
             >
-              {autoAdvance ? 'Auto: On' : 'Auto: Off'}
+              {autoAdvance ? 'Auto: Piztuta' : 'Auto: Itzalita'}
             </button>
           </div>
           <button
@@ -1007,7 +1026,7 @@
               activeShelf = 'rival';
               silentAIDotCount = 0;
             }}
-            aria-label="AI notifications"
+            aria-label="AA jakinarazpenak"
             disabled={isGameOver}
           >
             AI
@@ -1021,7 +1040,7 @@
       {#if activeToolText()}
         <div class="active-tool-indicator" in:fade={{ duration: 180 }}>
           <span class="pulse-dot" aria-hidden="true"></span>
-          <span>Active Tool</span>
+          <span>Tresna aktiboa</span>
           <strong>{activeToolText()}</strong>
         </div>
       {/if}
@@ -1029,7 +1048,7 @@
       {#if activeShelf}
         <section class="context-shelf" in:slide={{ axis: 'y', duration: 260, easing: cubicOut }} out:fade={{ duration: 140 }}>
           {#if activeShelf === 'zones'}
-            <div class="shelf-head"><h3>Zones</h3></div>
+            <div class="shelf-head"><h3>Zonak</h3></div>
             <div class="shelf-grid">
               {#each zoneTools as tool, idx}
                 <button class="stagger-item" style={`--stagger:${idx};`} class:selected={selectedZone === tool.value} on:click={() => chooseZone(tool.value)} disabled={isGameOver}>
@@ -1041,12 +1060,12 @@
           {/if}
 
           {#if activeShelf === 'roads'}
-            <div class="shelf-head"><h3>Roads</h3></div>
+            <div class="shelf-head"><h3>Azpiegiturak</h3></div>
             <div class="accordion-tabs segmented">
-              <button class:active={activeInfraGroup === 'roads'} on:click={() => (activeInfraGroup = 'roads')}>Roads</button>
-              <button class:active={activeInfraGroup === 'water'} on:click={() => (activeInfraGroup = 'water')}>Water</button>
-              <button class:active={activeInfraGroup === 'power'} on:click={() => (activeInfraGroup = 'power')}>Power</button>
-              <button class:active={activeInfraGroup === 'transit'} on:click={() => (activeInfraGroup = 'transit')}>Transit</button>
+              <button class:active={activeInfraGroup === 'roads'} on:click={() => (activeInfraGroup = 'roads')}>Errepideak</button>
+              <button class:active={activeInfraGroup === 'water'} on:click={() => (activeInfraGroup = 'water')}>Ura</button>
+              <button class:active={activeInfraGroup === 'power'} on:click={() => (activeInfraGroup = 'power')}>Energia</button>
+              <button class:active={activeInfraGroup === 'transit'} on:click={() => (activeInfraGroup = 'transit')}>Garraioa</button>
             </div>
             <div class={`shelf-grid tool-card-grid ${infraGroups[activeInfraGroup].length <= 3 ? 'three-up' : ''}`}>
               {#each infraGroups[activeInfraGroup] as tool, idx}
@@ -1072,8 +1091,8 @@
           {/if}
 
           {#if activeShelf === 'buildings'}
-            <div class="shelf-head"><h3>Build</h3></div>
-            <div class="mini-title">Power</div>
+            <div class="shelf-head"><h3>Eraiki</h3></div>
+            <div class="mini-title">Energia</div>
             <div class="shelf-grid">
               {#each buildingTools.filter((b) => b.value.includes('power')) as tool, idx}
                 <button class="stagger-item" style={`--stagger:${idx};`} class:selected={selectedBuilding === tool.value} on:click={() => chooseBuilding(tool.value)} disabled={isGameOver}>
@@ -1082,7 +1101,7 @@
                 </button>
               {/each}
             </div>
-            <div class="mini-title">Services</div>
+            <div class="mini-title">Zerbitzuak</div>
             <div class="shelf-grid">
               {#each serviceBuildingTools as tool, idx}
                 <button class="stagger-item" style={`--stagger:${idx + 3};`} class:selected={selectedBuilding === tool.value} on:click={() => chooseBuilding(tool.value)} disabled={isGameOver}>
@@ -1091,7 +1110,7 @@
                 </button>
               {/each}
             </div>
-            <div class="mini-title">Education</div>
+            <div class="mini-title">Hezkuntza</div>
             <div class="shelf-grid">
               {#each buildingTools.filter((b) => b.value === 'school') as tool, idx}
                 <button class="stagger-item" style={`--stagger:${idx + 6};`} class:selected={selectedBuilding === tool.value} on:click={() => chooseBuilding(tool.value)} disabled={isGameOver}>
@@ -1103,31 +1122,31 @@
           {/if}
 
           {#if activeShelf === 'stats'}
-            <div class="shelf-head"><h3>Stats</h3></div>
+            <div class="shelf-head"><h3>Estatistikak</h3></div>
             <section class="stats-dashboard">
               <article class="data-card wide">
                 <header>
-                  <span>Population Trend</span>
+                  <span>Biztanleriaren joera</span>
                   <strong>{stats.player.population.toLocaleString()}</strong>
                 </header>
-                <svg viewBox="0 0 164 34" preserveAspectRatio="none" aria-label="Population sparkline">
+                <svg viewBox="0 0 164 34" preserveAspectRatio="none" aria-label="Biztanleriaren mini grafikoa">
                   <polyline points={sparklinePoints(populationHistory)} />
                 </svg>
               </article>
 
               <article class="data-card wide">
                 <header>
-                  <span>Treasury Trend</span>
+                  <span>Altxorraren joera</span>
                   <strong>§{Math.round(stats.player.treasury).toLocaleString()}</strong>
                 </header>
-                <svg viewBox="0 0 164 34" preserveAspectRatio="none" aria-label="Treasury sparkline">
+                <svg viewBox="0 0 164 34" preserveAspectRatio="none" aria-label="Altxorraren mini grafikoa">
                   <polyline class="treasury" points={sparklinePoints(treasuryHistory)} />
                 </svg>
               </article>
 
               <article class="data-card">
                 <header>
-                  <span>Approval</span>
+                  <span>Onarpena</span>
                   <strong>{Math.round(stats.player.approval)}%</strong>
                 </header>
                 <div class="meter"><span style={`width:${metricPct(stats.player.approval, 0, 100)}%`}></span></div>
@@ -1135,7 +1154,7 @@
 
               <article class="data-card">
                 <header>
-                  <span>Crime Pressure</span>
+                  <span>Krimen presioa</span>
                   <strong>{Math.round(stats.player.crime_rate)}</strong>
                 </header>
                 <div class="meter danger"><span style={`width:${metricPct(stats.player.crime_rate, 0, 100)}%`}></span></div>
@@ -1143,7 +1162,7 @@
 
               <article class="data-card">
                 <header>
-                  <span>Pollution</span>
+                  <span>Kutsadura</span>
                   <strong>{Math.round(stats.player.pollution)}</strong>
                 </header>
                 <div class="meter warning"><span style={`width:${metricPct(stats.player.pollution, 0, 100)}%`}></span></div>
@@ -1151,10 +1170,10 @@
 
               <article class="data-card wide">
                 <header>
-                  <span>RCI Momentum</span>
+                  <span>RCI momentua</span>
                   <strong>R {stats.player.rci_demand.r} · C {stats.player.rci_demand.c} · I {stats.player.rci_demand.i}</strong>
                 </header>
-                <svg viewBox="0 0 164 34" preserveAspectRatio="none" aria-label="RCI sparkline">
+                <svg viewBox="0 0 164 34" preserveAspectRatio="none" aria-label="RCI mini grafikoa">
                   <polyline class="r" points={sparklinePoints(rciHistory.map((entry) => entry.r))} />
                   <polyline class="c" points={sparklinePoints(rciHistory.map((entry) => entry.c))} />
                   <polyline class="i" points={sparklinePoints(rciHistory.map((entry) => entry.i))} />
@@ -1169,17 +1188,17 @@
           {/if}
 
           {#if activeShelf === 'rival'}
-            <div class="shelf-head"><h3>Rival AI</h3></div>
+            <div class="shelf-head"><h3>AA aurkaria</h3></div>
             <RivalCityView gameState={gameState} stats={stats} aiTiles={gameState.map.tiles} />
           {/if}
 
           {#if activeShelf === 'newspaper'}
-            <div class="shelf-head"><h3>Newspaper</h3></div>
+            <div class="shelf-head"><h3>Egunkaria</h3></div>
             <div class="newspaper-card">
               <strong>SimHiri Times</strong>
-              <p>{formatGameDate(gameState.current_date)} edition</p>
-              <p>City population: {stats.player.population.toLocaleString()}</p>
-              <p>Rival summary: {stats.ai.population.toLocaleString()} citizens</p>
+              <p>{formatGameDate(gameState.current_date)} alea</p>
+              <p>Hiriaren biztanleria: {stats.player.population.toLocaleString()}</p>
+              <p>Aurkariaren laburpena: {stats.ai.population.toLocaleString()} biztanle</p>
             </div>
           {/if}
         </section>
@@ -1212,19 +1231,19 @@
       {#if hasPersistentTool()}
         <aside class="tool-options-panel" in:fade={{ duration: 160 }}>
           <header>
-            <span>Tool Options</span>
+            <span>Tresna aukerak</span>
             <strong>{activeToolText()}</strong>
           </header>
           <div class="tool-options-actions">
             {#if selectedInfra}
-              <button class="chip mini" on:click={cycleInfraTool} disabled={isGameOver}>Switch Road Type</button>
-              <button class="chip mini" on:click={enableInfraBulldozer} disabled={isGameOver}>Demolish Road</button>
+              <button class="chip mini" on:click={cycleInfraTool} disabled={isGameOver}>Errepide mota aldatu</button>
+              <button class="chip mini" on:click={enableInfraBulldozer} disabled={isGameOver}>Errepidea eraitsi</button>
             {:else}
               <button class="chip mini" on:click={toggleBulldozer} disabled={isGameOver}>
-                {bulldozerActive ? 'Disable Bulldozer' : 'Enable Bulldozer'}
+                {bulldozerActive ? 'Bulldozer desgaitu' : 'Bulldozer gaitu'}
               </button>
             {/if}
-            <button class="chip mini" on:click={closeActiveToolPanel} disabled={isGameOver}>Close Tool</button>
+            <button class="chip mini" on:click={closeActiveToolPanel} disabled={isGameOver}>Tresna itxi</button>
           </div>
         </aside>
       {/if}
@@ -1232,9 +1251,9 @@
       {#if isGameOver}
         <section class="game-over-overlay" in:fade={{ duration: 160 }}>
           <div class="game-over-card">
-            <h2>Game Over</h2>
+            <h2>Partida amaituta</h2>
             <p>{gameOverMessage}</p>
-            <button class="chip" on:click={backToGames}>Return to Games</button>
+            <button class="chip" on:click={backToGames}>Partiden zerrendara itzuli</button>
           </div>
         </section>
       {/if}
@@ -1243,12 +1262,12 @@
       <KeyboardLegend />
 
       {#if notifications.length > 0}
-        <aside class="notifications-layer" aria-live="polite" aria-label="Notifications">
+        <aside class="notifications-layer" aria-live="polite" aria-label="Jakinarazpenak">
           {#each notifications as entry (entry.id)}
-            <article class={`notice ${entry.priority} ${entry.title === 'Bankruptcy' ? 'bankruptcy' : ''}`}>
+            <article class={`notice ${entry.priority} ${entry.title === 'Porrota' ? 'bankruptcy' : ''}`}>
               <div class="notice-head">
                 <strong>{entry.title}</strong>
-                <button class="chip mini" on:click={() => clearNotification(entry.id)}>Dismiss</button>
+                <button class="chip mini" on:click={() => clearNotification(entry.id)}>Itxi</button>
               </div>
               <p>{entry.message}</p>
             </article>

@@ -7,20 +7,32 @@
   export let gameId: string = 'game-001';
 
   const disasters = [
-    { id: 'fire', name: 'Fire', cost: 5000 },
-    { id: 'flood', name: 'Flood', cost: 10000 },
-    { id: 'tornado', name: 'Tornado', cost: 20000 },
-    { id: 'earthquake', name: 'Earthquake', cost: 50000 }
+    { id: 'fire', name: 'Sua', cost: 5000 },
+    { id: 'flood', name: 'Uholde', cost: 10000 },
+    { id: 'tornado', name: 'Ehorzabal', cost: 20000 },
+    { id: 'earthquake', name: 'Lurrikara', cost: 50000 }
   ];
 
   let selectedDisaster = 'fire';
   let selectedTarget: 'player' | 'ai' = 'ai';
   let loading = false;
   let error = '';
+  let lastReport: {
+    target: 'player' | 'ai';
+    type: string;
+    buildings: number;
+    zones: number;
+    infrastructure: number;
+    repairCost: number;
+  } | null = null;
   let confirmOpen = false;
+  let monthsSinceAttack = 999;
+  let cooldownPercent = 100;
 
   $: selectedDisasterCost =
     disasters.find((d) => d.id === selectedDisaster)?.cost || 0;
+  $: selectedDisasterName =
+    disasters.find((d) => d.id === selectedDisaster)?.name || selectedDisaster;
 
   function getMonthsSinceLastAttack(): number {
     if (!gameState) return 999;
@@ -55,16 +67,26 @@
 
       if (result.success && result.game_state) {
         gameStore.setGameState(result.game_state);
+        if (result.damage_report) {
+          lastReport = {
+            target: selectedTarget,
+            type: selectedDisaster,
+            buildings: Number(result.damage_report.buildings_damaged ?? 0),
+            zones: Number(result.damage_report.zones_damaged ?? 0),
+            infrastructure: Number(result.damage_report.infrastructure_damaged ?? 0),
+            repairCost: Number(result.damage_report.estimated_repair_cost ?? 0)
+          };
+        }
       }
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to launch attack';
+      error = err instanceof Error ? err.message : 'Erasoa abiaraztean errorea gertatu da';
     } finally {
       loading = false;
     }
   }
 
-  const monthsSinceAttack = getMonthsSinceLastAttack();
-  const cooldownPercent = Math.max(0, Math.min(100, (monthsSinceAttack / 6) * 100));
+  $: monthsSinceAttack = getMonthsSinceLastAttack();
+  $: cooldownPercent = Math.max(0, Math.min(100, (monthsSinceAttack / 6) * 100));
 </script>
 
 <div class="disaster-panel">
@@ -73,7 +95,7 @@
   {/if}
 
   <section class="disaster-selection">
-    <h3>Select Disaster</h3>
+    <h3>Hondamendia aukeratu</h3>
     <div class="disaster-buttons">
       {#each disasters as disaster (disaster.id)}
         <button
@@ -90,7 +112,7 @@
   </section>
 
   <section class="target-select">
-    <h3>Target</h3>
+    <h3>Helburua</h3>
     <div class="target-buttons">
       <button
         class="target-btn"
@@ -98,28 +120,28 @@
         on:click={() => (selectedTarget = 'ai')}
         disabled={loading}
       >
-        {gameState?.ai_city.name || 'Rival City'}
+        {gameState?.ai_city.name || 'Hiri aurkaria'}
       </button>
       <button
         class="target-btn"
         class:active={selectedTarget === 'player'}
         on:click={() => (selectedTarget = 'player')}
         disabled={loading}
-        title="Self-inflict damage (cool!)"
+        title="Norberari kaltea eragin"
       >
-        Self (Bad Idea)
+        Norbera (ez gomendatua)
       </button>
     </div>
   </section>
 
   <section class="cooldown-section">
-    <h3>Attack Cooldown</h3>
+    <h3>Erasoaren hozte-denbora</h3>
     <div class="cooldown-info">
       <p class="months">
         {#if monthsSinceAttack >= 6}
-          <span class="ready">✓ Ready to attack!</span>
+          <span class="ready">✓ Erasorako prest!</span>
         {:else}
-          <span class="waiting">{6 - monthsSinceAttack} months until ready</span>
+          <span class="waiting">{6 - monthsSinceAttack} hilabete falta dira</span>
         {/if}
       </p>
       <div class="cooldown-bar">
@@ -135,13 +157,13 @@
         on:click={() => (confirmOpen = true)}
         disabled={loading || !canAttack()}
       >
-        {loading ? 'Launching...' : 'Launch Attack'}
+        {loading ? 'Abiarazten...' : 'Erasoa abiatu'}
       </button>
     {:else}
       <div class="confirm-box">
         <p class="warning">
-          ⚠ Confirm attack on <strong>{selectedTarget === 'ai' ? gameState?.ai_city.name : 'yourself'}</strong>
-          with <strong>{selectedDisaster.toUpperCase()}</strong> for <strong class="cost">§ {selectedDisasterCost.toLocaleString()}</strong>?
+          ⚠ Berretsi erasoa <strong>{selectedTarget === 'ai' ? gameState?.ai_city.name : 'zure hiria'}</strong> helburura,
+          <strong>{selectedDisasterName}</strong> erabiliz, <strong class="cost">§ {selectedDisasterCost.toLocaleString()}</strong> kostuarekin?
         </p>
         <div class="confirm-buttons">
           <button
@@ -149,19 +171,30 @@
             on:click={launchAttack}
             disabled={loading}
           >
-            Yes, Attack!
+            Bai, erasotu!
           </button>
           <button
             class="confirm-no"
             on:click={() => (confirmOpen = false)}
             disabled={loading}
           >
-            Cancel
+            Utzi
           </button>
         </div>
       </div>
     {/if}
   </section>
+
+  {#if lastReport}
+    <section class="damage-report">
+      <h3>Azken kalte txostena</h3>
+      <p>
+        {lastReport.type.toUpperCase()} {lastReport.target === 'ai' ? (gameState?.ai_city.name || 'hiri aurkaria') : 'zure hiria'} hirian:
+        eraikinak {lastReport.buildings}, zonak {lastReport.zones}, azpiegiturak {lastReport.infrastructure},
+        konponketen estimazioa § {lastReport.repairCost.toLocaleString()}.
+      </p>
+    </section>
+  {/if}
 </div>
 
 <style>
