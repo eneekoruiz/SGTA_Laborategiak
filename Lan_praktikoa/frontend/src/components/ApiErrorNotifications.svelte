@@ -25,39 +25,39 @@
   function getLevelColors(level: string) {
     switch (level) {
       case 'info':
-        return 'bg-blue-500/20 border-blue-500/50 text-blue-200';
+        return 'text-sky-900 border-sky-200 bg-sky-50/80';
       case 'warning':
-        return 'bg-yellow-500/20 border-yellow-500/50 text-yellow-200';
+        return 'text-amber-900 border-amber-200 bg-amber-50/80';
       case 'error':
-        return 'bg-red-500/20 border-red-500/50 text-red-200';
+        return 'text-rose-900 border-rose-200 bg-rose-50/80';
       case 'critical':
-        return 'bg-red-600/30 border-red-600/70 text-red-100';
+        return 'text-red-950 border-red-300 bg-red-100/85';
       default:
-        return 'bg-gray-500/20 border-gray-500/50 text-gray-200';
+        return 'text-slate-900 border-slate-200 bg-white/80';
     }
   }
 
   function getLevelIcon(level: string) {
     switch (level) {
       case 'info':
-        return 'ℹ️';
+        return 'Info';
       case 'warning':
-        return '⚠️';
+        return 'Warn';
       case 'error':
-        return '❌';
+        return 'Error';
       case 'critical':
-        return '🔴';
+        return 'Critical';
       default:
-        return '•';
+        return 'Notice';
     }
   }
 </script>
 
 <!-- Server Offline Banner -->
 {#if backendOffline}
-  <div class="fixed top-0 left-0 right-0 bg-red-600/20 border-b border-red-500/50 px-4 py-3 z-50">
-    <div class="flex items-center gap-3 text-red-100 text-sm">
-      <span class="text-lg">🔌</span>
+  <div class="fixed top-0 left-0 right-0 border-b border-rose-300/70 bg-rose-100/80 backdrop-blur-md px-4 py-3 z-50 shadow-sm">
+    <div class="flex items-center gap-3 text-rose-950 text-sm">
+      <span class="text-xs uppercase tracking-[0.18em] font-semibold">Offline</span>
       <span>
         <strong>Backend Server Offline</strong> — Some features may be limited. Using local mock data.
       </span>
@@ -71,25 +71,27 @@
     {#each errors as error (error.id)}
       <div
         transition:slide={{ duration: 300 }}
-        class="pointer-events-auto backdrop-blur-md rounded-lg border px-4 py-3 shadow-lg {getLevelColors(
+        class="pointer-events-auto backdrop-blur-xl rounded-2xl border px-4 py-3 shadow-[0_14px_40px_rgba(15,23,42,0.18)] {getLevelColors(
           error.level
         )}"
       >
         <div class="flex items-start gap-3">
-          <span class="text-lg flex-shrink-0">{getLevelIcon(error.level)}</span>
+          <span class="text-[10px] uppercase tracking-[0.16em] font-semibold px-2 py-1 rounded-full border border-current/20 bg-white/45 flex-shrink-0">{getLevelIcon(error.level)}</span>
           <div class="flex-1 min-w-0">
-            <div class="font-semibold text-sm">{error.title}</div>
-            <div class="text-xs opacity-90 mt-1">{error.message}</div>
+            <div class="font-semibold text-sm leading-tight">{error.title}</div>
+            <div class="text-xs opacity-80 mt-1 leading-relaxed">{error.message}</div>
             {#if error.endpoint}
-              <div class="text-xs opacity-75 mt-1 font-mono">{error.endpoint}</div>
+              <div class="text-[11px] opacity-60 mt-2 font-mono truncate">{error.endpoint}</div>
             {/if}
           </div>
           <button
             on:click={() => removeErrorNotification(error.id)}
-            class="flex-shrink-0 text-lg opacity-60 hover:opacity-100 transition-opacity"
+            class="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity rounded-xl bg-white/50 hover:bg-white/80 p-1"
             aria-label="Close notification"
           >
-            ×
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="w-3.5 h-3.5">
+              <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+            </svg>
           </button>
         </div>
 
@@ -99,7 +101,7 @@
               error.action?.();
               removeErrorNotification(error.id);
             }}
-            class="mt-2 text-xs px-2 py-1 rounded opacity-80 hover:opacity-100 bg-white/10 transition-opacity"
+            class="mt-2 text-xs px-2 py-1 rounded-lg opacity-80 hover:opacity-100 bg-white/60 transition-opacity"
           >
             Retry
           </button>

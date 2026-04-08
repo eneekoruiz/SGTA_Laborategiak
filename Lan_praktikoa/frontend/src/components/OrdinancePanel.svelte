@@ -11,14 +11,32 @@
     { id: 'income_tax', name: 'Income Tax', annualCost: -200, type: 'income' },
     { id: 'legalized_gambling', name: 'Legalized Gambling', annualCost: -150, type: 'income' },
     { id: 'parking_fines', name: 'Parking Fines', annualCost: -50, type: 'income' },
+    { id: 'tax_breaks', name: 'Tax Breaks', annualCost: 100, type: 'cost' },
     { id: 'free_clinics', name: 'Free Clinics', annualCost: 50, type: 'cost' },
     { id: 'junior_sports', name: 'Junior Sports', annualCost: 50, type: 'cost' },
     { id: 'pro_reading', name: 'Pro Reading', annualCost: 50, type: 'cost' },
     { id: 'anti_drug', name: 'Anti-Drug Campaign', annualCost: 50, type: 'cost' },
     { id: 'pollution_controls', name: 'Pollution Controls', annualCost: 50, type: 'cost' },
+    { id: 'green_city', name: 'Green City', annualCost: 75, type: 'cost' },
+    { id: 'digital_id', name: 'Digital ID', annualCost: 25, type: 'income' },
+    { id: 'transit_subsidy', name: 'Transit Subsidy', annualCost: 60, type: 'cost' },
     { id: 'tourist_promotion', name: 'Tourist Promotion', annualCost: 100, type: 'cost' },
     { id: 'nuclear_free', name: 'Nuclear-Free Zone', annualCost: 0, type: 'cost' },
-    { id: 'neighborhood_watch', name: 'Neighborhood Watch', annualCost: 25, type: 'cost' }
+    { id: 'neighborhood_watch', name: 'Neighborhood Watch', annualCost: 25, type: 'cost' },
+    { id: 'bike_lanes', name: 'Bike Lanes', annualCost: 40, type: 'cost' },
+    { id: 'park_renewal', name: 'Park Renewal', annualCost: 40, type: 'cost' },
+    { id: 'noise_control', name: 'Noise Control', annualCost: 35, type: 'cost' },
+    { id: 'smoke_restrictions', name: 'Smoke Restrictions', annualCost: 45, type: 'cost' },
+    { id: 'open_data', name: 'Open Data', annualCost: 20, type: 'income' },
+    { id: 'water_conservation', name: 'Water Conservation', annualCost: 35, type: 'cost' },
+    { id: 'recycling', name: 'Recycling', annualCost: 30, type: 'cost' },
+    { id: 'low_emission_zone', name: 'Low Emission Zone', annualCost: 80, type: 'cost' },
+    { id: 'farming_support', name: 'Farming Support', annualCost: 30, type: 'cost' },
+    { id: 'high_tech_grants', name: 'High-Tech Grants', annualCost: 90, type: 'cost' },
+    { id: 'historic_preservation', name: 'Historic Preservation', annualCost: 30, type: 'cost' },
+    { id: 'public_wifi', name: 'Public Wi-Fi', annualCost: 35, type: 'cost' },
+    { id: 'rent_control', name: 'Rent Control', annualCost: 60, type: 'cost' },
+    { id: 'climate_action', name: 'Climate Action', annualCost: 85, type: 'cost' }
   ];
 
   const effectsMap: Record<string, string> = {
@@ -26,23 +44,45 @@
     income_tax: 'R demand -5%',
     legalized_gambling: 'Crime +10%',
     parking_fines: 'Traffic -3%',
+    tax_breaks: 'Taxes -10%',
     free_clinics: 'Health +5%',
     junior_sports: 'Crime -5%',
     pro_reading: 'Education +5%',
     anti_drug: 'Crime -5%',
     pollution_controls: 'Pollution -15%',
+    green_city: 'Pollution -20%',
+    digital_id: 'Admin efficiency +',
+    transit_subsidy: 'Transit use +10%',
     tourist_promotion: 'C demand +10%',
     nuclear_free: 'No nuclear plants',
-    neighborhood_watch: 'Crime -3%'
+    neighborhood_watch: 'Crime -3%',
+    bike_lanes: 'Traffic -5%',
+    park_renewal: 'Land value +',
+    noise_control: 'Happiness +',
+    smoke_restrictions: 'Health +',
+    open_data: 'Transparency +',
+    water_conservation: 'Water use -10%',
+    recycling: 'Pollution -8%',
+    low_emission_zone: 'Traffic -8%',
+    farming_support: 'Industrial pressure -',
+    high_tech_grants: 'EQ +, tech industry +',
+    historic_preservation: 'Tourism +',
+    public_wifi: 'Commercial demand +',
+    rent_control: 'Residential pressure -',
+    climate_action: 'Pollution -25%'
   };
 
   let loading = false;
   let error = '';
   let hoveredOrdinance: string | null = null;
 
+  function isActive(ordinanceId: string): boolean {
+    return activeOrdinances.includes(ordinanceId);
+  }
+
   async function toggleOrdinance(ordinanceId: string) {
-    const isActive = activeOrdinances.includes(ordinanceId);
-    const action = isActive ? 'repeal' : 'enact';
+    const currentlyActive = isActive(ordinanceId);
+    const action = currentlyActive ? 'repeal' : 'enact';
 
     loading = true;
     error = '';
@@ -51,12 +91,11 @@
       const result = await apiService.toggleOrdinance(gameId, ordinanceId, action);
       if (result.success && result.game_state) {
         gameStore.setGameState(result.game_state);
-        // Update local active list
-        if (action === 'enact') {
-          activeOrdinances = [...activeOrdinances, ordinanceId];
-        } else {
-          activeOrdinances = activeOrdinances.filter((id) => id !== ordinanceId);
-        }
+      } else if (result.success) {
+        const nextOrdinances = currentlyActive
+          ? activeOrdinances.filter((id) => id !== ordinanceId)
+          : [...activeOrdinances, ordinanceId];
+        gameStore.updatePlayerCity({ ordinances: nextOrdinances as any });
       }
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to toggle ordinance';
@@ -85,7 +124,7 @@
         class="ordinance-row"
         class:income={ordinance.type === 'income'}
         class:cost={ordinance.type === 'cost'}
-        class:active={activeOrdinances.includes(ordinance.id)}
+        class:active={isActive(ordinance.id)}
         on:mouseenter={() => (hoveredOrdinance = ordinance.id)}
         on:mouseleave={() => (hoveredOrdinance = null)}
         role="listitem"
@@ -101,11 +140,11 @@
           on:click={() => toggleOrdinance(ordinance.id)}
           disabled={loading}
           title={effectsMap[ordinance.id] || 'No effects'}
-          aria-label={`${activeOrdinances.includes(ordinance.id) ? 'Repeal' : 'Enact'} ${
+          aria-label={`${isActive(ordinance.id) ? 'Repeal' : 'Enact'} ${
             ordinance.name
           }`}
         >
-          {activeOrdinances.includes(ordinance.id) ? 'ACTIVE' : 'OFF'}
+          {isActive(ordinance.id) ? 'ACTIVE' : 'OFF'}
         </button>
 
         {#if hoveredOrdinance === ordinance.id}

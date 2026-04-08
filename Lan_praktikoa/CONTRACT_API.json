@@ -1,0 +1,525 @@
+{
+  "_meta": {
+    "version": "2.0",
+    "title": "SimHiri Frontend API Contract",
+    "description": "Unified JSON schema for all endpoints. Frontend expects EXACTLY these structures.",
+    "lastUpdated": "2026-04-04",
+    "engineVersion": "Turbo 60FPS with Frequency Heatmaps"
+  },
+
+  "endpoints": {
+
+    "GET /api/games/{gameId}": {
+      "description": "Get complete game state for rendering",
+      "httpStatus": 200,
+      "responseBody": {
+        "gameId": "string (UUID)",
+        "playerId": "string (UUID)",
+        "name": "string",
+        "mapWidth": "number (64 default)",
+        "mapHeight": "number (64 default)",
+        "currentDate": {
+          "year": "number",
+          "month": "number (1-12)"
+        },
+        "tiles": {
+          "_description": "2D array [mapHeight][mapWidth]",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "x": "number (0 - mapWidth-1)",
+              "y": "number (0 - mapHeight-1)",
+              "elevation": "number (0-31)",
+              "terrain_type": "enum: grass | water | forest | rock | sand",
+              "zone": {
+                "_ref": "Zone object or null"
+              },
+              "building": {
+                "_ref": "Building object or null"
+              },
+              "infrastructure": "[string enum] | empty array",
+              "tree": "boolean",
+              "powered": "boolean",
+              "watered": "boolean",
+              "road_access": "boolean",
+              "pollution_air": "number (0-255)",
+              "pollution_water": "number (0-255)",
+              "crime": "number (0-255)",
+              "land_value": "number (0-255)"
+            }
+          }
+        },
+        "cityState": {
+          "_ref": "CityState object"
+        },
+        "status": "enum: playing | paused | gameOver"
+      },
+      "notes": [
+        "Tiles must be serialized as 2D array for efficient JSON parsing",
+        "Frontend memory: Tile objects are cached with optional _overlayIntensity field for heatmap memoization",
+        "Large payloads (64x64 = 4096 tiles): Consider gzip compression"
+      ]
+    },
+
+    "GET /api/games/{gameId}/tiles": {
+      "description": "Get just the tile grid (optimized for large maps)",
+      "httpStatus": 200,
+      "responseBody": {
+        "tiles": {
+          "_description": "2D array [mapHeight][mapWidth] with all Tile properties",
+          "type": "array<array<Tile>>"
+        },
+        "mapWidth": "number",
+        "mapHeight": "number"
+      }
+    },
+
+    "GET /api/games/{gameId}/overlay/{overlayType}": {
+      "description": "Get frequency heatmap for a specific overlay",
+      "httpStatus": 200,
+      "parameters": {
+        "overlayType": "enum: crime | pollution_air | pollution_water | land_value | traffic | power | water | fire_coverage | police_coverage | health | education"
+      },
+      "responseBody": {
+        "overlay_type": "string (matches overlayType parameter)",
+        "data": {
+          "_description": "2D array [mapHeight][mapWidth] of intensity values (0-255)",
+          "type": "array<array<number>>"
+        },
+        "min_value": "number (0-255)",
+        "max_value": "number (0-255)"
+      },
+      "notes": [
+        "Intensity = 0 means SKIP rendering that tile (optimization)",
+        "Intensity 1-255 maps to 0-100% opacity in renderer",
+        "Canvas uses alpha = (intensity / 255) * 0.5 for soft heatmap blending",
+        "All overlays use ADDITIVE BLENDING: if tile in 2+ zones, intensities SUM (clamped at 255)"
+      ]
+    },
+
+    "POST /api/games/{gameId}/zones": {
+      "description": "Create or update a zone",
+      "httpStatus": 201,
+      "requestBody": {
+        "type": "enum: residential_light | residential_dense | commercial_light | commercial_dense | industrial_light | industrial_dense",
+        "position": { "x": "number", "y": "number" },
+        "size": { "w": "number (1-6)", "h": "number (1-6)" },
+        "costSimulation": "number (for 'what-if' calculations, optional)"
+      },
+      "responseBody": {
+        "zone": {
+          "id": "string (UUID)",
+          "type": "string",
+          "position": { "x": "number", "y": "number" },
+          "size": { "w": "number", "h": "number" },
+          "development_level": "number (0-3)",
+          "powered": "boolean",
+          "watered": "boolean",
+          "road_access": "boolean",
+          "abandoned": "boolean",
+          "population": "number",
+          "built_year": "number",
+          "built_month": "number"
+        },
+        "updatedTiles": "[{x, y}] - list of affected tiles for optimistic UI",
+        "message": "string"
+      }
+    },
+
+    "POST /api/games/{gameId}/buildings": {
+      "description": "Construct a building (power plant, hospital, school, etc.)",
+      "httpStatus": 201,
+      "requestBody": {
+        "type": "enum: coal_power | hydro_power | oil_power | nuclear_power | wind_power | solar_power | microwave_power | fusion_power | police_station | fire_station | hospital | prison | school | college | library | museum | bus_depot | rail_station | subway_station | airport | seaport | water_pump | water_treatment",
+        "position": { "x": "number", "y": "number" },
+        "costSimulation": "number (optional)"
+      },
+      "responseBody": {
+        "building": {
+          "id": "string (UUID)",
+          "type": "string",
+          "position": { "x": "number", "y": "number" },
+          "size": { "w": "number", "h": "number" },
+          "built_year": "number",
+          "built_month": "number",
+          "age_months": "number",
+          "powered": "boolean",
+          "funding_pct": "number (0-120, services only)",
+          "active": "boolean"
+        },
+        "updatedTiles": "[{x, y}]",
+        "message": "string"
+      }
+    },
+
+    "POST /api/games/{gameId}/infrastructure": {
+      "description": "Build infrastructure (roads, power lines, water pipes, etc.)",
+      "httpStatus": 201,
+      "requestBody": {
+        "type": "enum: road | highway | highway_ramp | power_line | rail | water_pipe | subway_tunnel",
+        "segments": [
+          {
+            "from": { "x": "number", "y": "number" },
+            "to": { "x": "number", "y": "number" }
+          }
+        ]
+      },
+      "responseBody": {
+        "infrastructure": {
+          "type": "string",
+          "segments": [
+            {
+              "from": { "x": "number", "y": "number" },
+              "to": { "x": "number", "y": "number" },
+              "tileCost": "number"
+            }
+          ]
+        },
+        "updatedTiles": "[{x, y}] - all affected tiles",
+        "totalCost": "number",
+        "message": "string"
+      }
+    },
+
+    "DELETE /api/games/{gameId}/tiles/{x}/{y}": {
+      "description": "Demolish building/zone at tile (x, y)",
+      "httpStatus": 200,
+      "responseBody": {
+        "demolished": {
+          "x": "number",
+          "y": "number",
+          "what": "string (zone | building | infrastructure)",
+          "refund": "number"
+        },
+        "updatedTiles": "[{x, y}]",
+        "message": "string"
+      }
+    },
+
+    "GET /api/games/{gameId}/budget": {
+      "description": "Get current budget/finance summary",
+      "httpStatus": 200,
+      "responseBody": {
+        "treasury": "number",
+        "monthlyIncome": "number",
+        "monthlyExpenses": "number",
+        "tax_rates": {
+          "residential": "number (0-20)",
+          "commercial": "number (0-20)",
+          "industrial": "number (0-20)"
+        },
+        "funding": {
+          "transportation": "number (0-120)",
+          "police": "number (0-120)",
+          "fire": "number (0-120)",
+          "health": "number (0-120)",
+          "education": "number (0-120)"
+        },
+        "bonds": [
+          {
+            "id": "string",
+            "amount": "number",
+            "interest_rate": "number (20)",
+            "months_remaining": "number",
+            "monthly_payment": "number"
+          }
+        ],
+        "last_year_income": "number",
+        "last_year_expenses": "number"
+      }
+    },
+
+    "POST /api/games/{gameId}/ordinances": {
+      "description": "Toggle ordinance active/inactive",
+      "httpStatus": 200,
+      "requestBody": {
+        "ordinanceId": "string enum",
+        "active": "boolean"
+      },
+      "responseBody": {
+        "ordinance": {
+          "id": "string",
+          "name": "string",
+          "annual_cost": "number",
+          "active": "boolean",
+          "effects": {
+            "crime_modifier": "number (-1.0 to 1.0)",
+            "pollution_modifier": "number",
+            "health_modifier": "number",
+            "education_modifier": "number",
+            "commercial_demand_modifier": "number",
+            "residential_demand_modifier": "number",
+            "industrial_demand_modifier": "number"
+          }
+        },
+        "message": "string"
+      }
+    },
+
+    "GET /api/games/{gameId}/metrics": {
+      "description": "Get city health metrics & composite score",
+      "httpStatus": 200,
+      "responseBody": {
+        "metrics": {
+          "population": "number",
+          "eq": "number (0-200, education quality)",
+          "hq": "number (0-200, health quality)",
+          "crime_rate": "number (0-100)",
+          "pollution_air": "number (0-100)",
+          "pollution_water": "number (0-100)",
+          "land_value_avg": "number (0-255)",
+          "approval": "number (0-100)",
+          "unemployment": "number (0-100)",
+          "traffic_avg": "number (0-100)",
+          "composite_score": "number"
+        },
+        "rci_demand": {
+          "r": "number (-200 to 200)",
+          "c": "number (-200 to 200)",
+          "i": "number (-200 to 200)"
+        },
+        "power_grid": {
+          "total_capacity_mw": "number",
+          "total_demand_mw": "number",
+          "coverage_pct": "number (0-100)"
+        },
+        "water_system": {
+          "total_capacity": "number",
+          "total_demand": "number",
+          "coverage_pct": "number (0-100)"
+        }
+      }
+    },
+
+    "POST /api/games/{gameId}/disasters/{disasterType}": {
+      "description": "Trigger a disaster (admin/cheat only)",
+      "httpStatus": 201,
+      "parameters": {
+        "disasterType": "enum: fire | flood | tornado | earthquake | riot | nuclear_meltdown | monster"
+      },
+      "requestBody": {
+        "position": { "x": "number", "y": "number" },
+        "severity": "number (0-100, optional)"
+      },
+      "responseBody": {
+        "disaster": {
+          "id": "string (UUID)",
+          "type": "string",
+          "position": { "x": "number", "y": "number" },
+          "radius": "number",
+          "damage_level": "number (0-100)",
+          "game_date": { "year": "number", "month": "number" }
+        },
+        "damageReport": {
+          "buildings_destroyed": "number",
+          "population_displaced": "number",
+          "cost": "number"
+        },
+        "message": "string"
+      }
+    },
+
+    "POST /api/games/{gameId}/time/advance": {
+      "description": "Advance game time by 1 month",
+      "httpStatus": 200,
+      "responseBody": {
+        "currentDate": { "year": "number", "month": "number" },
+        "monthlyReport": {
+          "income": "number",
+          "expenses": "number",
+          "net": "number",
+          "events": "[string]"
+        },
+        "message": "string"
+      }
+    },
+
+    "GET /api/games/{gameId}/save": {
+      "description": "Export savegame as JSON",
+      "httpStatus": 200,
+      "responseBody": {
+        "game": {
+          "_description": "Complete game state for download",
+          "gameId": "string",
+          "name": "string",
+          "playerId": "string",
+          "savedAt": "ISO 8601 timestamp",
+          "mapWidth": "number",
+          "mapHeight": "number",
+          "tiles": "array<array<Tile>>",
+          "cityState": "CityState object",
+          "currentDate": "{ year, month }",
+          "status": "string"
+        }
+      },
+      "notes": [
+        "Large file: typical 64x64 game serializes to ~2-3MB JSON",
+        "Frontend may request gzip compression via Accept-Encoding"
+      ]
+    },
+
+    "POST /api/games/{gameId}/save": {
+      "description": "Load/import a savegame",
+      "httpStatus": 200,
+      "requestBody": {
+        "game": "Complete GameState object (from GET /save)"
+      },
+      "responseBody": {
+        "gameId": "string",
+        "message": "Game loaded successfully"
+      }
+    }
+
+  },
+
+  "dataStructures": {
+
+    "Tile": {
+      "x": "number",
+      "y": "number",
+      "elevation": "number",
+      "terrain_type": "string enum",
+      "zone": "Zone | null",
+      "building": "Building | null",
+      "infrastructure": "string[] (can be empty)",
+      "tree": "boolean",
+      "powered": "boolean",
+      "watered": "boolean",
+      "road_access": "boolean",
+      "pollution_air": "number (0-255)",
+      "pollution_water": "number (0-255)",
+      "crime": "number (0-255)",
+      "land_value": "number (0-255)",
+      "_note": "Frontend may add _overlayIntensity field dynamically"
+    },
+
+    "Zone": {
+      "id": "string (UUID)",
+      "type": "string enum (residential_light | residential_dense | commercial_light | commercial_dense | industrial_light | industrial_dense)",
+      "position": { "x": "number", "y": "number" },
+      "size": { "w": "number (1-6)", "h": "number (1-6)" },
+      "development_level": "number (0-3)",
+      "powered": "boolean",
+      "watered": "boolean",
+      "road_access": "boolean",
+      "abandoned": "boolean",
+      "population": "number",
+      "built_year": "number",
+      "built_month": "number"
+    },
+
+    "Building": {
+      "id": "string (UUID)",
+      "type": "string enum",
+      "position": { "x": "number", "y": "number" },
+      "size": { "w": "number", "h": "number" },
+      "built_year": "number",
+      "built_month": "number",
+      "age_months": "number",
+      "powered": "boolean",
+      "funding_pct": "number (0-120, services only)",
+      "active": "boolean"
+    },
+
+    "CityState": {
+      "name": "string",
+      "owner": "enum: player | ai",
+      "population": "number",
+      "treasury": "number",
+      "months_bankrupt": "number (0-12)",
+      "budget": "Budget object",
+      "ordinances": "string[] (ordinance IDs)",
+      "metrics": {
+        "eq": "number",
+        "hq": "number",
+        "crime_rate": "number",
+        "pollution_air": "number",
+        "pollution_water": "number",
+        "land_value_avg": "number",
+        "approval": "number",
+        "unemployment": "number",
+        "traffic_avg": "number",
+        "rci_demand": { "r": "number", "c": "number", "i": "number" },
+        "composite_score": "number"
+      },
+      "power_grid": {
+        "total_capacity_mw": "number",
+        "total_demand_mw": "number",
+        "coverage_pct": "number"
+      },
+      "water_system": {
+        "total_capacity": "number",
+        "total_demand": "number",
+        "coverage_pct": "number"
+      }
+    },
+
+    "OverlayData": {
+      "overlay_type": "string",
+      "data": "array<array<number>> (0-255 intensity values)",
+      "min_value": "number",
+      "max_value": "number"
+    }
+
+  },
+
+  "errorResponses": {
+    "400": {
+      "message": "Bad Request",
+      "examples": [
+        "Invalid tile coordinates (out of bounds)",
+        "Invalid zone type",
+        "Insufficient funds"
+      ]
+    },
+    "404": {
+      "message": "Not Found",
+      "examples": [
+        "Game not found",
+        "Tile (x,y) is empty"
+      ]
+    },
+    "409": {
+      "message": "Conflict",
+      "examples": [
+        "Building already exists at position",
+        "Zone overlaps with existing zone"
+      ]
+    },
+    "500": {
+      "message": "Server Error",
+      "examples": ["Simulation crash"]
+    }
+  },
+
+  "optimizationNotes": {
+    "tileCaching": "Frontend caches entire tile grid. Update only dirty tiles after mutations.",
+    "heatmapMemoization": "When overlay changes, only affected tiles get _overlayIntensity recalculated. Use dirty set tracking.",
+    "zOrderCaching": "Draw order (depth = x + y) cached per zoom level. Only re-sort when tile added/removed/changed.",
+    "offscreenCanvas": "Terrain layer rendered to OffscreenCanvas once per zoom level. Reuse buffer until zoom changes.",
+    "frustumCulling": "Only tiles within viewport + padding (3 tiles) are rendered. Reduces draw calls by 80%+.",
+    "compression": "POST /save expects gzip for payloads > 1MB. Include Content-Encoding: gzip header.",
+    "batchUpdates": "Multiple tile changes should report updatedTiles array for optimistic UI (particles, floating costs)."
+  },
+
+  "examples": {
+    "crimeOverlay": {
+      "overlay_type": "crime",
+      "data": [
+        [0, 0, 50, 100, 80, 50],
+        [0, 0, 60, 110, 90, 60],
+        [0, 0, 70, 120, 100, 70]
+      ],
+      "min_value": 0,
+      "max_value": 120,
+      "_note": "Intensity decays from police station (0) and industrial zones (100+)"
+    },
+    "zoneRequest": {
+      "type": "commercial_dense",
+      "position": { "x": 32, "y": 32 },
+      "size": { "w": 3, "h": 3 }
+    },
+    "overlayQuery": "GET /api/games/abc123/overlay/pollution_air"
+  }
+}

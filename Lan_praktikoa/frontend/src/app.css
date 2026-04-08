@@ -7,8 +7,25 @@
   --ink: #ecf2fb;
   --muted: #aebbd0;
   --line: rgba(255, 255, 255, 0.14);
-  --font-ui: Inter, Geist, 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-ui: 'SF Pro Display', 'SF Pro Text', 'Segoe UI Variable', 'Inter', 'Helvetica Neue', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'IBM Plex Mono', 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
+  --ease-standard: cubic-bezier(0.2, 0.72, 0.2, 1);
+  --ease-snappy: cubic-bezier(0.28, 0.9, 0.36, 1);
+  --dur-fast: 160ms;
+  --dur-mid: 240ms;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-xl: 28px;
+  --glass-border: 0.5px solid rgba(255, 255, 255, 0.38);
+  --elev-1: 0 12px 24px rgba(2, 9, 20, 0.24);
+  --elev-2: 0 18px 36px rgba(2, 9, 20, 0.3);
+  --elev-3: 0 24px 48px rgba(2, 9, 20, 0.36);
 }
 
 * {

@@ -1,5 +1,66 @@
 export type TerrainType = 'grass' | 'water' | 'forest' | 'rock' | 'sand';
-export type InfrastructureType = 'road' | 'highway' | 'power_line' | 'rail' | 'water_pipe' | 'subway';
+
+/**
+ * Entity relationship map used throughout the frontend simulation flow:
+ *
+ * GameState
+ * -> player_city: CityState
+ * -> ai_city: CityState
+ * -> map.tiles: Tile[][]
+ *
+ * CityState
+ * -> zones: Zone[]
+ * -> buildings: Building[]
+ * -> budget: Budget
+ * -> metrics.rci_demand: { r, c, i }
+ *
+ * Tile
+ * -> zone: Zone | null
+ * -> building: Building | null
+ * -> infrastructure: InfrastructureType[]
+ *
+ * Why: this reference keeps API contracts and UI assumptions aligned when
+ * backend/LLM integration swaps mock sources for real responses.
+ */
+export type InfrastructureType =
+  | 'road'
+  | 'highway'
+  | 'highway_ramp'
+  | 'power_line'
+  | 'rail'
+  | 'water_pipe'
+  | 'subway'
+  | 'subway_tunnel';
+
+/**
+ * Building placements supported by the frontend toolbar.
+ */
+export type BuildingType =
+  | 'coal_power'
+  | 'hydro_power'
+  | 'oil_power'
+  | 'gas_power'
+  | 'nuclear_power'
+  | 'wind_power'
+  | 'solar_power'
+  | 'microwave_power'
+  | 'fusion_power'
+  | 'police_station'
+  | 'fire_station'
+  | 'hospital'
+  | 'prison'
+  | 'school'
+  | 'college'
+  | 'library'
+  | 'museum'
+  | 'university'
+  | 'bus_depot'
+  | 'rail_station'
+  | 'subway_station'
+  | 'airport'
+  | 'seaport'
+  | 'water_pump'
+  | 'water_treatment';
 export type ZoneType =
   | 'residential_light'
   | 'residential_dense'
@@ -35,7 +96,7 @@ export interface Zone {
 
 export interface Building {
   id: string;
-  type: string;
+  type: BuildingType | string;
   position: Position;
   size: Size;
   built_year: number;
@@ -93,6 +154,14 @@ export interface Tile {
   pollution_water: number;
   crime: number;
   land_value: number;
+  surfaceEntity?: {
+    type: 'zone' | 'building' | 'infrastructure';
+    value: string;
+  } | null;
+  undergroundEntity?: {
+    type: 'infrastructure';
+    value: string;
+  } | null;
 }
 
 export interface CityState {
@@ -178,6 +247,37 @@ export interface GameState {
     conversation_history: object[];
     strategy_notes: string;
   };
+}
+
+/**
+ * Canonical AI action envelope returned by endMonth simulation calls.
+ *
+ * Why: strict typing allows us to replay AI actions deterministically and validate
+ * backend payloads before mutating frontend state.
+ */
+export interface AITurnAction {
+  action_type: string;
+  position?: Position;
+  zone_type?: ZoneType;
+  building_type?: BuildingType | string;
+  infrastructure_type?: InfrastructureType;
+  segments?: InfraSegment[];
+  disaster_type?: string;
+  target?: 'player' | 'ai';
+  description?: string;
+}
+
+/**
+ * AI turn payload including raw action list, reasoning trace, and optional replay hint.
+ */
+export interface AITurnPayload {
+  actions: AITurnAction[];
+  reasoning: string;
+  simulation?: {
+    population_change: number;
+    treasury_change: number;
+  };
+  requires_client_replay?: boolean;
 }
 
 export interface StatsResponse {

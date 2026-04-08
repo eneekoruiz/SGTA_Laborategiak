@@ -25,7 +25,8 @@
 
   type Point = { x: number; y: number };
   type GridPoint = { x: number; y: number };
-  type StrokeEvent = { updatedTiles: GridPoint[]; tilesSnapshot: Tile[][] };
+  type InfraTypedTile = GridPoint & { type: InfrastructureType };
+  type StrokeEvent = { updatedTiles: GridPoint[]; tilesSnapshot: Tile[][]; typedUpdates?: InfraTypedTile[] };
   type BulldozeEvent = {
     updatedTiles: GridPoint[];
     tilesSnapshot: Tile[][];
@@ -36,9 +37,12 @@
   type BuildingArchetype =
     | 'residential_house'
     | 'residential_apartment'
+    | 'commercial_kiosk'
     | 'commercial_tower'
+    | 'industrial_warehouse'
     | 'industrial_factory'
-    | 'power_plant'
+    | 'power_plant_coal'
+    | 'power_plant_nuclear'
     | 'utility_water'
     | 'utility_transport'
     | 'service_police'
@@ -71,6 +75,14 @@
     size: number;
   };
 
+  type RenderEntry = {
+    x: number;
+    y: number;
+    depth: number;
+    tile: Tile;
+    c: Point;
+  };
+
   const dispatch = createEventDispatcher<{
     zonePainted: StrokeEvent;
     infrastructureDrawn: StrokeEvent;
@@ -80,6 +92,7 @@
     tileClicked: GridPoint;
     occupiedAttempt: { x: number; y: number; message: string };
     mapClicked: GridPoint | null;
+    toolCancelRequested: null;
   }>();
 
   const MIN_ZOOM = 0.45;
@@ -90,9 +103,9 @@
   const PAN_INERTIA_FRICTION = 0.88;
   const PAN_INERTIA_EPSILON = 0.03;
   const CAMERA_MARGIN = 120;
-  const ROTATION_DURATION_MS = 280;
+  const ROTATION_DURATION_MS = 320;
   const ROTATION_OVERSCAN_PAD_PX = 8;
-  const ROTATION_SCALE_START = 1.05;
+  const ROTATION_SCALE_START = 1;
   const ROTATION_SCALE_END = 1;
   const ROTATION_SNAPSHOT_ALPHA_MIN = 0.9;
   const SPATIAL_CELL = 8;
@@ -102,6 +115,8 @@
   const IMMEDIATE_STROKE_BUDGET_MS = 1.4;
   const IMMEDIATE_STROKE_MAX_TILES = 32;
   const BUILDING_CACHE_DPR = 3;
+  const BUILDING_VISUAL_SCALE = 1.12;
+  const PROXY_SILHOUETTE_SCALE = 1.18;
   const ECONOMY_PARTICLE_TTL_MS = 760;
 
   let wrapEl: HTMLDivElement;
@@ -135,6 +150,24 @@
 
   let staticDirty = true;
   let prevTilesRef: Tile[][] | null = null;
+
+  // Performance: Viewport culling
+  let lastCulledRange: { x0: number; y0: number; x1: number; y1: number } | null = null;
+  let lastCameraPos = { x: 0, y: 0, zoom: 1 };
+  let cullingDirty = true;
+  
+  // Performance: Overlay debouncing (render every 5 frames)
+  let overlayFrameCounter = 0;
+  let cachedOverlayFrame = -1;
+  let cachedOverlayType: string | null = null;
+  let overlayDebounceCanvas: OffscreenCanvas | HTMLCanvasElement | null = null;
+
+  // Dynamic Lighting: Mouse flashlight effect
+  let mouseScreenX = 0;
+  let mouseScreenY = 0;
+  const FLASHLIGHT_INNER_RADIUS = 24;
+  const FLASHLIGHT_OUTER_RADIUS = 200;
+
 
   const camera: Camera = { x: 0, y: 0, zoom: 1 };
   const cameraTarget: Camera = { x: 0, y: 0, zoom: 1 };
@@ -195,6 +228,7 @@
   let strokeAnchor: GridPoint | null = null;
   let bufferedZoneKeys = new Set<string>();
   let bufferedInfraKeys = new Set<string>();
+  let infraStrokeTypeByKey = new Map<string, InfrastructureType>();
   let strokeFrameTicker = 0;
   let smoothedFrameMs = TARGET_FRAME_MS;
   let lastFrameTimestamp = performance.now();
@@ -217,6 +251,23 @@
     commercial_dense: 10,
     industrial_light: 5,
     industrial_dense: 10
+  };
+
+  const ART_PALETTE = {
+    asphaltDark: 'rgba(86, 93, 103, 0.92)',
+    asphaltMid: 'rgba(112, 120, 132, 0.88)',
+    asphaltLight: 'rgba(146, 156, 170, 0.82)',
+    metallicA: 'rgba(174, 188, 204, 0.72)',
+    metallicB: 'rgba(102, 118, 136, 0.76)',
+    railWood: 'rgba(122, 98, 73, 0.86)',
+    warning: 'rgba(245, 214, 112, 0.86)',
+    electricGlow: 'rgba(255, 232, 117, 0.86)',
+    waterGlow: 'rgba(116, 215, 255, 0.88)',
+    neonBlue: 'rgba(140, 222, 255, 0.94)',
+    lineHighlight: 'rgba(236, 242, 250, 0.22)',
+    edgeDark: 'rgba(36, 43, 54, 0.44)',
+    edgeLight: 'rgba(242, 248, 255, 0.20)',
+    contactShadow: 'rgba(8, 12, 20, 0.26)'
   };
 
   const infrastructurePlacementCost: Record<InfrastructureType, number> = {
@@ -397,10 +448,24 @@
     return { x, y };
   }
 
+  // Premium animation easing functions (senior-level smoothness)
+  function easeInOutQuart(t: number): number {
+    return t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
+  }
+
+  function easeInOutExpo(t: number): number {
+    return t === 0 ? 0 : t === 1 ? 1 : t < 0.5 ? Math.pow(2, 20 * t - 10) / 2 : (2 - Math.pow(2, -20 * t + 10)) / 2;
+  }
+
+  function easeOutQuad(t: number): number {
+    return 1 - (1 - t) * (1 - t);
+  }
+
   function rotationProgress(now = performance.now()): number {
     if (rotationFromIndex === rotationToIndex) return 1;
     const raw = Math.max(0, Math.min(1, (now - rotationStartedAt) / ROTATION_DURATION_MS));
-    return 1 - Math.pow(1 - raw, 3);
+    // InOutQuart provides superior smoothness vs InOutCubic; smoother acceleration curve.
+    return easeInOutQuart(raw);
   }
 
   function isRotationAnimating(now = performance.now()): boolean {
@@ -455,8 +520,10 @@
 
     rotationSnapshotCtx.setTransform(1, 0, 0, 1, 0, 0);
     rotationSnapshotCtx.clearRect(0, 0, rotationSnapshotCanvas.width, rotationSnapshotCanvas.height);
-    rotationSnapshotCtx.drawImage(dynamicCanvasEl, rotationSnapshotOffsetX, rotationSnapshotOffsetY, width, height);
-    rotationSnapshotCtx.drawImage(strokeCanvasEl, rotationSnapshotOffsetX, rotationSnapshotOffsetY, width, height);
+    const ox = Math.round(rotationSnapshotOffsetX);
+    const oy = Math.round(rotationSnapshotOffsetY);
+    rotationSnapshotCtx.drawImage(dynamicCanvasEl, ox, oy, Math.round(width), Math.round(height));
+    rotationSnapshotCtx.drawImage(strokeCanvasEl, ox, oy, Math.round(width), Math.round(height));
   }
 
   function clearRotationLayer(): void {
@@ -470,8 +537,8 @@
   function drawRotationTweenFrame(now = performance.now()): void {
     // SNAPSHOT & SPIN ROTATION SYSTEM (Zero-Distortion Cinematic Tween)
     // When rotation is triggered, the grid is captured as a static snapshot.
-    // During the 280ms tween, only this pre-rendered snapshot is displayed, rotated
-    // around the canvas center with Apple-style easing and a subtle zoom pulse.
+    // During the tween, only this pre-rendered snapshot is displayed, rotated
+    // around the canvas center with premium easing and smooth zoom pulse.
     // After the tween completes, the snapshot is discarded and the grid resumes
     // rendering at the new, perfectly-calculated orthogonal rotation angle.
     // This ensures zero visual distortion, preserving the 2:1 rhombus ratio.
@@ -483,14 +550,23 @@
     let quarterTurns = (rotationToIndex - rotationFromIndex + 4) % 4;
     if (quarterTurns === 3) quarterTurns = -1;
 
-    const angle = (quarterTurns * Math.PI * 0.5) * t;
-    const easeInOut = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    // Apply easing to angle rotation for smooth acceleration throughout
+    const angle = (quarterTurns * Math.PI * 0.5) * easeInOutQuart(t);
+    
+    // Smooth fade pulse (stays visible for full duration with subtle breathing effect)
     const fadePulse = Math.sin(Math.PI * t);
     const fade = ROTATION_SNAPSHOT_ALPHA_MIN + (1 - ROTATION_SNAPSHOT_ALPHA_MIN) * fadePulse;
-    const scale = ROTATION_SCALE_START + (ROTATION_SCALE_END - ROTATION_SCALE_START) * easeInOut;
+    
+    // Eased scale interpolation for cinematic zoom effect
+    const easedT = easeInOutQuart(t);
+    const baseScale = ROTATION_SCALE_START + (ROTATION_SCALE_END - ROTATION_SCALE_START) * easedT;
+    // Subtle pulse centered at midpoint, dampened for elegance
+    const pulse = 0.006 * Math.sin(Math.PI * t);
+    const scale = baseScale + pulse;
 
     rotationCtx.setTransform(1, 0, 0, 1, 0, 0);
-    rotationCtx.imageSmoothingEnabled = false;
+    rotationCtx.imageSmoothingEnabled = true;
+    rotationCtx.imageSmoothingQuality = 'high';
     rotationCtx.clearRect(0, 0, width, height);
 
     rotationCtx.save();
@@ -505,9 +581,8 @@
 
   function triggerRotationStep(step = 1): void {
     const now = performance.now();
-    if (isRotationAnimating(now)) {
-      rotationIndex = rotationToIndex;
-    }
+    // Prevent chained rotations while tweening to avoid visual deterioration.
+    if (isRotationAnimating(now)) return;
 
     if (!rotationVisualActive) {
       rotationFrozenCamera = {
@@ -536,6 +611,17 @@
     panVelocity = { x: 0, y: 0 };
   }
 
+  function triggerRotationToIndex(targetIndex: number): void {
+    const normalizedTarget = ((targetIndex % 4) + 4) % 4;
+    const current = ((rotationIndex % 4) + 4) % 4;
+    if (normalizedTarget === current) return;
+
+    const forward = (normalizedTarget - current + 4) % 4;
+    const backward = (current - normalizedTarget + 4) % 4;
+    const step = forward <= backward ? forward : -backward;
+    triggerRotationStep(step);
+  }
+
   function activeRotationDegrees(now = performance.now()): number {
     if (!isRotationAnimating(now)) {
       return ((rotationIndex % 4) + 4) % 4 * 90;
@@ -551,6 +637,12 @@
     event.stopPropagation();
     event.preventDefault();
     triggerRotationStep(1);
+  }
+
+  function onRotatePresetClick(event: MouseEvent, targetIndex: number): void {
+    event.stopPropagation();
+    event.preventDefault();
+    triggerRotationToIndex(targetIndex);
   }
 
   function canvasPoint(event: MouseEvent | WheelEvent | PointerEvent): Point {
@@ -803,7 +895,11 @@
     ctx.clip();
 
     drawDiamond(ctx, cx, cy, w, h);
-    ctx.fillStyle = 'rgba(149,152,161,0.75)';
+    const roadGrad = ctx.createLinearGradient(cx - hw, cy - hh * 0.4, cx + hw, cy + hh * 0.4);
+    roadGrad.addColorStop(0, ART_PALETTE.asphaltLight);
+    roadGrad.addColorStop(0.55, ART_PALETTE.asphaltMid);
+    roadGrad.addColorStop(1, ART_PALETTE.asphaltDark);
+    ctx.fillStyle = roadGrad;
     ctx.fill();
 
     const bevelGrad = ctx.createLinearGradient(cx - hw, cy, cx + hw, cy);
@@ -813,14 +909,14 @@
     ctx.fillStyle = bevelGrad;
     ctx.fill();
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.09)';
+    ctx.strokeStyle = ART_PALETTE.lineHighlight;
     ctx.lineWidth = 0.9;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.stroke();
 
     ctx.setLineDash([5, 5]);
-    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.strokeStyle = 'rgba(238, 244, 250, 0.30)';
     ctx.lineWidth = 1.3;
     ctx.beginPath();
     ctx.moveTo(cx - hw * 0.65, cy - hh * 0.4);
@@ -855,7 +951,11 @@
     ctx.clip();
 
     drawDiamond(ctx, cx, cy, w, h);
-    ctx.fillStyle = 'rgba(120,120,120,0.85)';
+    const highwayGrad = ctx.createLinearGradient(cx - hw, cy - hh * 0.4, cx + hw, cy + hh * 0.4);
+    highwayGrad.addColorStop(0, 'rgba(132, 138, 148, 0.94)');
+    highwayGrad.addColorStop(0.5, 'rgba(102, 110, 121, 0.92)');
+    highwayGrad.addColorStop(1, 'rgba(78, 84, 93, 0.92)');
+    ctx.fillStyle = highwayGrad;
     ctx.fill();
 
     const bevelGrad = ctx.createLinearGradient(cx - hw, cy, cx + hw, cy);
@@ -872,7 +972,7 @@
     ctx.stroke();
 
     ctx.setLineDash([8, 3]);
-    ctx.strokeStyle = 'rgba(255,255,200,0.35)';
+    ctx.strokeStyle = ART_PALETTE.warning;
     ctx.lineWidth = 1.8;
     ctx.beginPath();
     ctx.moveTo(cx - hw * 0.65, cy - hh * 0.4);
@@ -907,14 +1007,14 @@
     ctx.clip();
 
     drawDiamond(ctx, cx, cy, w, h);
-    ctx.fillStyle = 'rgba(100,80,60,0.8)';
+    ctx.fillStyle = ART_PALETTE.railWood;
     ctx.fill();
 
     ctx.strokeStyle = 'rgba(255,255,255,0.08)';
     ctx.lineWidth = 0.8;
     ctx.stroke();
 
-    ctx.strokeStyle = 'rgba(200,200,200,0.6)';
+    ctx.strokeStyle = 'rgba(208, 214, 222, 0.62)';
     ctx.lineWidth = 0.6;
     ctx.setLineDash([4, 6]);
     ctx.beginPath();
@@ -927,7 +1027,7 @@
     ctx.stroke();
     ctx.setLineDash([]);
 
-    ctx.strokeStyle = 'rgba(220,180,100,0.9)';
+    ctx.strokeStyle = ART_PALETTE.metallicA;
     ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.moveTo(cx - hw * 0.52, cy - hh * 0.28);
@@ -961,16 +1061,19 @@
     ctx.clip();
 
     drawDiamond(ctx, cx, cy, w, h);
-    ctx.fillStyle = 'rgba(140,100,50,0.7)';
+    const poleBase = ctx.createLinearGradient(cx - hw, cy - hh * 0.3, cx + hw, cy + hh * 0.3);
+    poleBase.addColorStop(0, 'rgba(127, 104, 74, 0.74)');
+    poleBase.addColorStop(1, 'rgba(96, 78, 56, 0.76)');
+    ctx.fillStyle = poleBase;
     ctx.fill();
 
     ctx.strokeStyle = 'rgba(255,255,255,0.1)';
     ctx.lineWidth = 0.8;
     ctx.stroke();
 
-    ctx.shadowColor = 'rgba(255,230,110,0.4)';
+    ctx.shadowColor = ART_PALETTE.electricGlow;
     ctx.shadowBlur = 8;
-    ctx.strokeStyle = 'rgba(255,230,110,0.8)';
+    ctx.strokeStyle = ART_PALETTE.electricGlow;
     ctx.lineWidth = 1.4;
     ctx.beginPath();
     ctx.moveTo(cx - hw * 0.7, cy - hh * 0.1);
@@ -985,7 +1088,7 @@
     ctx.shadowColor = 'rgba(0,0,0,0)';
     ctx.shadowBlur = 0;
 
-    ctx.fillStyle = 'rgba(200,150,80,0.9)';
+    ctx.fillStyle = 'rgba(206, 168, 106, 0.9)';
     for (let i = -2; i <= 2; i++) {
       const px = cx + (hw * 0.35 * i);
       ctx.beginPath();
@@ -1019,12 +1122,15 @@
     ctx.clip();
 
     drawDiamond(ctx, cx, cy, w, h);
-    ctx.fillStyle = 'rgba(80,100,120,0.75)';
+    const pipeBase = ctx.createLinearGradient(cx - hw, cy - hh * 0.3, cx + hw, cy + hh * 0.3);
+    pipeBase.addColorStop(0, 'rgba(95, 118, 138, 0.78)');
+    pipeBase.addColorStop(1, 'rgba(72, 93, 113, 0.82)');
+    ctx.fillStyle = pipeBase;
     ctx.fill();
 
-    ctx.shadowColor = 'rgba(106,223,255,0.6)';
+    ctx.shadowColor = ART_PALETTE.waterGlow;
     ctx.shadowBlur = 12;
-    ctx.strokeStyle = 'rgba(106,223,255,0.9)';
+    ctx.strokeStyle = ART_PALETTE.waterGlow;
     ctx.lineWidth = 2.2;
     ctx.beginPath();
     ctx.moveTo(cx - hw * 0.5, cy - hh * 0.4);
@@ -1064,16 +1170,16 @@
     ctx.clip();
 
     const grad = ctx.createLinearGradient(cx - hw, cy - hh, cx + hw, cy + hh);
-    grad.addColorStop(0, 'rgba(100, 200, 255, 0.7)');
-    grad.addColorStop(0.5, 'rgba(80, 160, 255, 0.5)');
-    grad.addColorStop(1, 'rgba(60, 140, 255, 0.7)');
+    grad.addColorStop(0, 'rgba(128, 186, 226, 0.72)');
+    grad.addColorStop(0.5, 'rgba(86, 146, 194, 0.62)');
+    grad.addColorStop(1, 'rgba(64, 118, 166, 0.72)');
     ctx.fillStyle = grad;
     drawDiamond(ctx, cx, cy, w, h);
     ctx.fill();
 
-    ctx.shadowColor = 'rgba(100, 200, 255, 0.8)';
+    ctx.shadowColor = ART_PALETTE.neonBlue;
     ctx.shadowBlur = 16;
-    ctx.strokeStyle = 'rgba(150, 220, 255, 0.95)';
+    ctx.strokeStyle = ART_PALETTE.neonBlue;
     ctx.lineWidth = 2;
     ctx.stroke();
 
@@ -1081,6 +1187,214 @@
     ctx.shadowBlur = 0;
 
     ctx.restore();
+  }
+
+  function drawInfrastructureTile(
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+    c: Point,
+    type: InfrastructureType,
+    isUnderground: boolean
+  ): void {
+    const width = tileWidth * (isUnderground ? 0.8 : 0.88);
+    const height = tileHeight * (isUnderground ? 0.76 : 0.84);
+
+    if (isUnderground) {
+      ctx.save();
+      const metallic = ctx.createLinearGradient(c.x - width * 0.5, c.y - height * 0.5, c.x + width * 0.5, c.y + height * 0.5);
+      metallic.addColorStop(0, 'rgba(136, 152, 166, 0.36)');
+      metallic.addColorStop(0.5, 'rgba(88, 101, 114, 0.18)');
+      metallic.addColorStop(1, 'rgba(169, 184, 196, 0.34)');
+      drawDiamond(ctx, c.x, c.y, tileWidth * 0.78, tileHeight * 0.72);
+      ctx.fillStyle = metallic;
+      ctx.fill();
+      ctx.shadowColor = type === 'power_line'
+        ? 'rgba(255, 232, 117, 0.9)'
+        : 'rgba(94, 204, 255, 0.88)';
+      ctx.shadowBlur = 15;
+
+      if (type === 'water_pipe') {
+        drawWaterPipeWithRealism(ctx, c.x, c.y, width, height);
+        ctx.restore();
+        return;
+      }
+      if (type === 'subway' || type === 'subway_tunnel') {
+        drawSubwayTunnelWithRealism(ctx, c.x, c.y, width, height);
+        ctx.restore();
+        return;
+      }
+      if (type === 'power_line') {
+        drawPowerLineWithRealism(ctx, c.x, c.y, width, height);
+        ctx.restore();
+        return;
+      }
+
+      ctx.strokeStyle = 'rgba(210, 226, 241, 0.8)';
+      ctx.lineWidth = 1.6;
+      drawDiamond(ctx, c.x, c.y, tileWidth * 0.7, tileHeight * 0.62);
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
+    if (type === 'road') {
+      drawRoadWithRealismEffects(ctx, c.x, c.y, width, height);
+      return;
+    }
+    if (type === 'highway' || type === 'highway_ramp') {
+      drawHighwayWithRealism(ctx, c.x, c.y, width, height);
+      return;
+    }
+    if (type === 'rail') {
+      drawRailWithRealism(ctx, c.x, c.y, width, height);
+      return;
+    }
+    if (type === 'power_line') {
+      drawPowerLineWithRealism(ctx, c.x, c.y, width, height);
+      return;
+    }
+  }
+
+  function drawUndergroundSchematicBackdrop(ctx: CanvasRenderingContext2D): void {
+    const left = -worldWidth;
+    const top = -worldHeight;
+    const spanW = worldWidth * 3;
+    const spanH = worldHeight * 3;
+
+    // Refined Midnight Charcoal background instead of pure black
+    ctx.fillStyle = '#10121a';
+    ctx.globalAlpha = 0.85;
+    ctx.fillRect(left, top, spanW, spanH);
+    ctx.globalAlpha = 1;
+
+    // Grid pattern for underground schematic aesthetic
+    ctx.strokeStyle = 'rgba(110, 146, 190, 0.14)';
+    ctx.lineWidth = 0.8;
+    const grid = Math.max(16, Math.round(tileHeight * 0.7));
+    for (let gx = left; gx <= left + spanW; gx += grid) {
+      ctx.beginPath();
+      ctx.moveTo(gx, top);
+      ctx.lineTo(gx, top + spanH);
+      ctx.stroke();
+    }
+    for (let gy = top; gy <= top + spanH; gy += grid) {
+      ctx.beginPath();
+      ctx.moveTo(left, gy);
+      ctx.lineTo(left + spanW, gy);
+      ctx.stroke();
+    }
+
+    // Underground hover tile glow - dramatic focused lamp effect
+    const glowCenter = hoverTile
+      ? worldCenter(hoverTile.x, hoverTile.y)
+      : screenToWorld({ x: dynamicCanvasEl.clientWidth * 0.5, y: dynamicCanvasEl.clientHeight * 0.5 });
+    const glow = ctx.createRadialGradient(glowCenter.x, glowCenter.y, tileWidth * 0.8, glowCenter.x, glowCenter.y, tileWidth * 6);
+    glow.addColorStop(0, 'rgba(88, 176, 255, 0.5)');
+    glow.addColorStop(0.4, 'rgba(58, 125, 206, 0.24)');
+    glow.addColorStop(1, 'rgba(18, 18, 18, 0.0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(left, top, spanW, spanH);
+
+    // Subtle dark overlay gradient for depth
+    const darkOverlay = ctx.createLinearGradient(0, 0, worldWidth, worldHeight);
+    darkOverlay.addColorStop(0, 'rgba(8, 11, 15, 0.58)');
+    darkOverlay.addColorStop(1, 'rgba(4, 6, 10, 0.7)');
+    ctx.fillStyle = darkOverlay;
+    ctx.fillRect(-worldWidth, -worldHeight, worldWidth * 3, worldHeight * 3);
+
+    // Tile schematic borders
+    for (let y = 0; y < mapHeight; y += 1) {
+      for (let x = 0; x < mapWidth; x += 1) {
+        const c = worldCenter(x, y);
+        drawDiamond(ctx, c.x, c.y, tileWidth * 0.94, tileHeight * 0.9);
+        ctx.fillStyle = 'rgba(10, 16, 24, 0.86)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(103, 146, 190, 0.24)';
+        ctx.lineWidth = 0.9;
+        ctx.stroke();
+      }
+    }
+  }
+
+  function drawMouseFlashlight(ctx: CanvasRenderingContext2D): void {
+    if (!undergroundMode) return;
+
+    // Dynamic flashlight centered on mouse cursor
+    // Only draw if mouse is within canvas bounds
+    const cw = dynamicCanvasEl?.width ?? 0;
+    const ch = dynamicCanvasEl?.height ?? 0;
+    const centerX = mouseScreenX * dpr;
+    const centerY = mouseScreenY * dpr;
+    
+    if (centerX < 0 || centerX > cw || centerY < 0 || centerY > ch) {
+      return;
+    }
+
+    // Create radial gradient centered at mouse position
+    // Inner radius: bright white, Outer radius: fully transparent
+    const flashlight = ctx.createRadialGradient(
+      centerX, centerY, FLASHLIGHT_INNER_RADIUS * dpr,
+      centerX, centerY, FLASHLIGHT_OUTER_RADIUS * dpr
+    );
+    
+    // Gradient stops: white center fading to transparent
+    flashlight.addColorStop(0, 'rgba(255, 248, 220, 0.18)');    // Inner: warm white glow
+    flashlight.addColorStop(0.3, 'rgba(200, 220, 255, 0.12)');  // Mid: blue-shift
+    flashlight.addColorStop(0.7, 'rgba(100, 150, 200, 0.04)');  // Outer falloff
+    flashlight.addColorStop(1, 'rgba(0, 0, 0, 0)');             // Edge: transparent
+
+    // Save context state
+    ctx.save();
+    
+    // Use 'lighter' composite to add light to the scene
+    // This creates the effect of illuminating the frozen darkness
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = flashlight;
+    
+    // Draw a circle encompassing the flashlight effect
+    ctx.fillRect(
+      Math.round(centerX - FLASHLIGHT_OUTER_RADIUS * dpr),
+      Math.round(centerY - FLASHLIGHT_OUTER_RADIUS * dpr),
+      Math.round(FLASHLIGHT_OUTER_RADIUS * 2 * dpr),
+      Math.round(FLASHLIGHT_OUTER_RADIUS * 2 * dpr)
+    );
+    
+    ctx.restore();
+  }
+
+  function buildDepthSortedEntries(range?: { minX: number; minY: number; maxX: number; maxY: number }): RenderEntry[] {
+    const minX = range?.minX ?? 0;
+    const minY = range?.minY ?? 0;
+    const maxX = range?.maxX ?? (mapWidth - 1);
+    const maxY = range?.maxY ?? (mapHeight - 1);
+    const entries: RenderEntry[] = [];
+
+    for (let y = minY; y <= maxY; y += 1) {
+      for (let x = minX; x <= maxX; x += 1) {
+        const tile = worldTiles[y]?.[x];
+        if (!tile) continue;
+        entries.push({ x, y, depth: x + y, tile, c: worldCenter(x, y) });
+      }
+    }
+
+    entries.sort((a, b) => {
+      if (a.depth !== b.depth) return a.depth - b.depth;
+      if (a.y !== b.y) return a.y - b.y;
+      return a.x - b.x;
+    });
+
+    return entries;
+  }
+
+  function sortTileKeysByDepth(keys: Set<string>): Array<{ x: number; y: number }> {
+    const points = Array.from(keys, (key) => parseTileKey(key));
+    points.sort((a, b) => {
+      const da = a.x + a.y;
+      const db = b.x + b.y;
+      if (da !== db) return da - db;
+      if (a.y !== b.y) return a.y - b.y;
+      return a.x - b.x;
+    });
+    return points;
   }
 
   function createCacheCanvas(width: number, height: number): OffscreenCanvas | HTMLCanvasElement {
@@ -1095,6 +1409,20 @@
 
   function buildingArchetypeFor(tile: Tile): BuildingArchetype {
     const type = String(tile.building?.type ?? '');
+
+    // Zone proxy tiles must always resolve from zone density/type first.
+    // This prevents proxy building types (e.g. school/university placeholders)
+    // from being interpreted as service buildings.
+    const isZoneProxy = Boolean(tile.zone) && (!tile.building || tile.building.id.startsWith('proxy-'));
+    if (isZoneProxy && tile.zone) {
+      if (tile.zone.type.startsWith('residential_dense')) return 'residential_apartment';
+      if (tile.zone.type.startsWith('residential')) return 'residential_house';
+      if (tile.zone.type.startsWith('commercial_dense')) return 'commercial_tower';
+      if (tile.zone.type.startsWith('commercial')) return 'commercial_kiosk';
+      if (tile.zone.type.startsWith('industrial_dense')) return 'industrial_factory';
+      if (tile.zone.type.startsWith('industrial')) return 'industrial_factory';
+    }
+
     if (type === 'ruin') return 'ruin';
     if (type === 'police_station') return 'service_police';
     if (type === 'hospital') return 'service_hospital';
@@ -1103,19 +1431,34 @@
     if (type === 'school' || type === 'college' || type === 'library' || type === 'museum' || type === 'university') return 'service_education';
     if (type === 'water_pump' || type === 'water_treatment') return 'utility_water';
     if (type === 'bus_depot' || type === 'rail_station' || type === 'subway_station' || type === 'airport' || type === 'seaport') return 'utility_transport';
-    if (type.includes('power')) return 'power_plant';
-    if (tile.zone?.type.startsWith('residential_dense')) return 'residential_apartment';
-    if (tile.zone?.type.startsWith('residential')) return 'residential_house';
-    if (tile.zone?.type.startsWith('commercial')) return 'commercial_tower';
-    if (tile.zone?.type.startsWith('industrial')) return 'industrial_factory';
+    if (type === 'coal_power') return 'power_plant_coal';
+    if (type === 'nuclear_power') return 'power_plant_nuclear';
+    if (type.includes('power')) return 'power_plant_coal';
+    
+    // Zone mapping fallback (non-proxy edge cases)
+    if (tile.zone) {
+      if (tile.zone.type.startsWith('residential_dense')) return 'residential_apartment';
+      if (tile.zone.type.startsWith('residential')) return 'residential_house';
+      if (tile.zone.type.startsWith('commercial_dense')) return 'commercial_tower';
+      if (tile.zone.type.startsWith('commercial')) return 'commercial_kiosk';
+      if (tile.zone.type.startsWith('industrial_dense')) return 'industrial_factory';
+      if (tile.zone.type.startsWith('industrial')) return 'industrial_factory';
+    }
+    
     return 'generic';
   }
 
   function buildingBaseColor(tile: Tile): string {
     const type = String(tile.building?.type ?? '');
+    // Handle zone-based colors first
+    if (type === 'residential_apartment' || type === 'residential_house') return '#4caf50';
+    if (type === 'commercial_tower' || type === 'commercial') return '#2196f3';
+    if (type === 'industrial_factory' || type === 'industrial') return '#ffeb3b';
     if (tile.zone?.type.startsWith('residential')) return '#4caf50';
     if (tile.zone?.type.startsWith('commercial')) return '#2196f3';
     if (tile.zone?.type.startsWith('industrial')) return '#ffeb3b';
+    if (type === 'coal_power') return '#c95f5f';
+    if (type === 'nuclear_power') return '#8ed7c5';
     if (type.includes('power')) return '#c95f5f';
     if (type === 'police_station') return '#3f72c8';
     if (type === 'hospital') return '#d84b4b';
@@ -1181,6 +1524,91 @@
     ctx.closePath();
     ctx.fillStyle = right;
     ctx.fill();
+
+    // Unified edge treatment so buildings and infrastructure share the same artistic language.
+    const edgeScale = Math.max(0.75, Math.min(1.3, w / 36));
+    ctx.strokeStyle = ART_PALETTE.edgeDark;
+    ctx.lineWidth = Math.max(1, 0.9 * edgeScale);
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx - hw, topY);
+    ctx.lineTo(cx, topY + hh);
+    ctx.lineTo(cx + hw, topY);
+    ctx.stroke();
+
+    ctx.strokeStyle = ART_PALETTE.edgeLight;
+    ctx.lineWidth = Math.max(0.8, 0.7 * edgeScale);
+    ctx.beginPath();
+    ctx.moveTo(cx, topY - hh);
+    ctx.lineTo(cx + hw, topY);
+    ctx.stroke();
+  }
+
+  function drawContactShadow(
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+    cx: number,
+    cy: number,
+    rx: number,
+    ry: number,
+    alpha = 1
+  ): void {
+    ctx.save();
+    ctx.fillStyle = ART_PALETTE.contactShadow.replace(/0\.[0-9]+\)$/, `${(0.26 * alpha).toFixed(3)})`);
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Construction site for undeveloped zones
+  function drawConstructionSite(
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+    cx: number,
+    cy: number,
+    scale: number
+  ): void {
+    // Draw fenced plot with warning tape
+    ctx.strokeStyle = '#c85a17';
+    ctx.lineWidth = 1.2 * scale;
+    ctx.setLineDash([3 * scale, 2 * scale]);
+    ctx.strokeRect(cx - 18 * scale, cy - 10 * scale, 36 * scale, 20 * scale);
+    ctx.setLineDash([]);
+
+    // Draw construction crane
+    const craneBaseX = cx - 8 * scale;
+    const craneBaseY = cy + 4 * scale;
+
+    // Crane base
+    ctx.fillStyle = '#666666';
+    ctx.fillRect(craneBaseX - 3 * scale, craneBaseY, 6 * scale, 3 * scale);
+
+    // Crane boom
+    ctx.strokeStyle = '#888888';
+    ctx.lineWidth = 2 * scale;
+    ctx.beginPath();
+    ctx.moveTo(craneBaseX, craneBaseY);
+    ctx.lineTo(craneBaseX + 20 * scale, craneBaseY - 12 * scale);
+    ctx.stroke();
+
+    // Crane hook
+    ctx.strokeStyle = '#cccccc';
+    ctx.lineWidth = 1.5 * scale;
+    ctx.beginPath();
+    ctx.moveTo(craneBaseX + 16 * scale, craneBaseY - 10 * scale);
+    ctx.lineTo(craneBaseX + 16 * scale, craneBaseY - 4 * scale);
+    ctx.stroke();
+
+    // Warning tape X pattern
+    ctx.strokeStyle = 'rgba(255, 165, 0, 0.6)';
+    ctx.lineWidth = 1.5 * scale;
+    ctx.beginPath();
+    ctx.moveTo(cx - 12 * scale, cy - 8 * scale);
+    ctx.lineTo(cx + 12 * scale, cy + 6 * scale);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 12 * scale, cy - 8 * scale);
+    ctx.lineTo(cx - 12 * scale, cy + 6 * scale);
+    ctx.stroke();
   }
 
   function drawResidentialHouse(
@@ -1190,35 +1618,61 @@
     base: string,
     scale: number
   ): void {
-    drawIsoPrism(ctx, cx, cy, 38 * scale, 22 * scale, 13 * scale, shadeHex(base, 16), shadeHex(base, -18), shadeHex(base, -30));
+    // Single-story house with pitched roof, window detailing, and chimney
+    drawIsoPrism(ctx, cx, cy, 32 * scale, 18 * scale, 10 * scale, shadeHex(base, 16), shadeHex(base, -18), shadeHex(base, -30));
 
+    // Pitched roof (light residential)
     ctx.beginPath();
-    ctx.moveTo(cx, cy - 22 * scale);
-    ctx.lineTo(cx + 21 * scale, cy - 7 * scale);
-    ctx.lineTo(cx, cy + 4 * scale);
-    ctx.lineTo(cx - 21 * scale, cy - 7 * scale);
+    ctx.moveTo(cx, cy - 18 * scale);
+    ctx.lineTo(cx + 18 * scale, cy - 5 * scale);
+    ctx.lineTo(cx, cy + 3 * scale);
+    ctx.lineTo(cx - 18 * scale, cy - 5 * scale);
     ctx.closePath();
     ctx.fillStyle = shadeHex(base, 34);
     ctx.fill();
 
+    // Roof detail
     ctx.beginPath();
-    ctx.moveTo(cx, cy - 22 * scale);
-    ctx.lineTo(cx + 21 * scale, cy - 7 * scale);
-    ctx.lineTo(cx + 21 * scale, cy - 2 * scale);
-    ctx.lineTo(cx, cy - 16 * scale);
-    ctx.lineTo(cx - 21 * scale, cy - 2 * scale);
-    ctx.lineTo(cx - 21 * scale, cy - 7 * scale);
+    ctx.moveTo(cx, cy - 18 * scale);
+    ctx.lineTo(cx + 18 * scale, cy - 5 * scale);
+    ctx.lineTo(cx + 18 * scale, cy - 2 * scale);
+    ctx.lineTo(cx, cy - 14 * scale);
+    ctx.lineTo(cx - 18 * scale, cy - 2 * scale);
+    ctx.lineTo(cx - 18 * scale, cy - 5 * scale);
     ctx.closePath();
     ctx.fillStyle = shadeHex(base, 48);
     ctx.fill();
 
-    ctx.fillStyle = 'rgba(245, 239, 227, 0.92)';
-    ctx.fillRect(cx - 10 * scale, cy - 1 * scale, 6 * scale, 7 * scale);
-    ctx.fillRect(cx + 3 * scale, cy - 4 * scale, 7 * scale, 4 * scale);
+    // Roof ridge shading
+    ctx.strokeStyle = 'rgba(32, 38, 46, 0.48)';
+    ctx.lineWidth = Math.max(1, 1 * scale);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 18 * scale);
+    ctx.lineTo(cx, cy - 5.5 * scale);
+    ctx.stroke();
+
+    // Windows - small residential
+    ctx.fillStyle = 'rgba(245, 239, 227, 0.85)';
+    ctx.fillRect(cx - 9 * scale, cy + 0.5 * scale, 5 * scale, 5 * scale);
+    ctx.fillRect(cx + 3 * scale, cy - 2 * scale, 5.5 * scale, 4 * scale);
     ctx.fillStyle = 'rgba(40, 52, 64, 0.55)';
-    ctx.fillRect(cx - 7 * scale, cy + 1 * scale, 2.2 * scale, 2.2 * scale);
-    ctx.fillRect(cx + 5 * scale, cy - 1 * scale, 2.4 * scale, 2.4 * scale);
+    ctx.fillRect(cx - 6 * scale, cy + 2.5 * scale, 1.8 * scale, 1.8 * scale);
+    ctx.fillRect(cx + 5 * scale, cy + 0.5 * scale, 2 * scale, 2 * scale);
+
+    // Small chimney
+    drawIsoPrism(
+      ctx,
+      cx + 8 * scale,
+      cy - 9 * scale,
+      4.5 * scale,
+      3.5 * scale,
+      6 * scale,
+      '#c9a694',
+      '#9c7f70',
+      '#82695d'
+    );
   }
+
 
   function drawResidentialApartment(
     ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
@@ -1227,16 +1681,36 @@
     base: string,
     scale: number
   ): void {
-    drawIsoPrism(ctx, cx, cy, 42 * scale, 22 * scale, 24 * scale, shadeHex(base, 18), shadeHex(base, -18), shadeHex(base, -32));
-    drawIsoPrism(ctx, cx - 1 * scale, cy - 6 * scale, 34 * scale, 18 * scale, 14 * scale, shadeHex(base, 30), shadeHex(base, -8), shadeHex(base, -22));
-    drawIsoPrism(ctx, cx + 3 * scale, cy - 12 * scale, 24 * scale, 14 * scale, 10 * scale, shadeHex(base, 38), shadeHex(base, 2), shadeHex(base, -12));
+    // Multi-story apartment building (dense residential) - 3-4 floors with clear window rows
+    drawIsoPrism(ctx, cx, cy, 44 * scale, 22 * scale, 28 * scale, shadeHex(base, 20), shadeHex(base, -16), shadeHex(base, -32));
+    drawIsoPrism(ctx, cx - 1 * scale, cy - 8 * scale, 36 * scale, 18 * scale, 16 * scale, shadeHex(base, 32), shadeHex(base, -6), shadeHex(base, -20));
+    drawIsoPrism(ctx, cx + 3 * scale, cy - 16 * scale, 28 * scale, 14 * scale, 12 * scale, shadeHex(base, 40), shadeHex(base, 4), shadeHex(base, -10));
 
-    ctx.fillStyle = 'rgba(249, 251, 255, 0.62)';
-    for (let row = 0; row < 3; row += 1) {
+    // Window grid - 4 rows x 4 columns showing density
+    ctx.fillStyle = 'rgba(249, 251, 255, 0.70)';
+    for (let row = 0; row < 4; row += 1) {
       for (let col = 0; col < 4; col += 1) {
-        ctx.fillRect(cx - 15 * scale + col * 8 * scale, cy - 14 * scale + row * 8 * scale, 3 * scale, 4 * scale);
+        ctx.fillRect(cx - 16 * scale + col * 8.5 * scale, cy - 18 * scale + row * 7 * scale, 3.5 * scale, 4 * scale);
       }
     }
+
+    // Window shadows for depth
+    ctx.fillStyle = 'rgba(30, 40, 50, 0.3)';
+    for (let row = 0; row < 4; row += 1) {
+      for (let col = 0; col < 4; col += 1) {
+        ctx.fillRect(cx - 14 * scale + col * 8.5 * scale, cy - 16 * scale + row * 7 * scale, 1.5 * scale, 2.5 * scale);
+      }
+    }
+
+    // Balcony banding for clearer dense identity
+    ctx.fillStyle = 'rgba(225, 232, 238, 0.34)';
+    ctx.fillRect(cx - 18 * scale, cy - 12 * scale, 36 * scale, 1.6 * scale);
+    ctx.fillRect(cx - 16 * scale, cy - 5 * scale, 32 * scale, 1.4 * scale);
+
+    // Small rooftop utilities
+    ctx.fillStyle = 'rgba(146, 156, 168, 0.95)';
+    ctx.fillRect(cx - 8 * scale, cy - 29 * scale, 5 * scale, 2.6 * scale);
+    ctx.fillRect(cx + 2 * scale, cy - 30 * scale, 6 * scale, 2.6 * scale);
   }
 
   function drawCommercialTower(
@@ -1246,30 +1720,118 @@
     base: string,
     scale: number
   ): void {
-    const top = '#c4f1ff';
-    const left = '#8cccf2';
-    const right = '#5c8dc2';
-    drawIsoPrism(ctx, cx, cy, 34 * scale, 18 * scale, 36 * scale, top, left, right);
+    // High-rise office tower (dense commercial) - tall with glass facade
+    const top = '#d4f5ff';
+    const left = '#9ce0ff';
+    const right = '#5c9fd5';
+    drawIsoPrism(ctx, cx, cy, 38 * scale, 20 * scale, 44 * scale, top, left, right);
 
-    const facade = ctx.createLinearGradient(cx - 18 * scale, cy - 34 * scale, cx + 18 * scale, cy + 14 * scale);
-    facade.addColorStop(0, 'rgba(255,255,255,0.30)');
-    facade.addColorStop(0.4, 'rgba(106, 195, 248, 0.14)');
-    facade.addColorStop(1, 'rgba(15, 45, 74, 0.22)');
+    // Glass facade gradient
+    const facade = ctx.createLinearGradient(cx - 20 * scale, cy - 42 * scale, cx + 20 * scale, cy + 12 * scale);
+    facade.addColorStop(0, 'rgba(255,255,255,0.35)');
+    facade.addColorStop(0.4, 'rgba(120, 210, 255, 0.18)');
+    facade.addColorStop(1, 'rgba(20, 55, 85, 0.25)');
     ctx.fillStyle = facade;
-    ctx.fillRect(cx - 16 * scale, cy - 33 * scale, 32 * scale, 42 * scale);
+    ctx.fillRect(cx - 18 * scale, cy - 41 * scale, 36 * scale, 50 * scale);
 
-    ctx.fillStyle = 'rgba(255,255,255,0.24)';
-    for (let row = 0; row < 5; row += 1) {
+    // Cyan reflection strip
+    const highlight = ctx.createLinearGradient(cx - 14 * scale, cy - 40 * scale, cx - 2 * scale, cy + 6 * scale);
+    highlight.addColorStop(0, 'rgba(220, 250, 255, 0.45)');
+    highlight.addColorStop(1, 'rgba(120, 210, 255, 0.0)');
+    ctx.fillStyle = highlight;
+    ctx.fillRect(cx - 14 * scale, cy - 40 * scale, 8 * scale, 44 * scale);
+
+    // Dense window grid - 6 rows x 3 columns showing height and density
+    ctx.fillStyle = 'rgba(255,255,255,0.28)';
+    for (let row = 0; row < 6; row += 1) {
       for (let col = 0; col < 3; col += 1) {
-        ctx.fillRect(cx - 11 * scale + col * 8 * scale, cy - 25 * scale + row * 7 * scale, 3.2 * scale, 3.8 * scale);
+        ctx.fillRect(cx - 12 * scale + col * 8.5 * scale, cy - 35 * scale + row * 6.5 * scale, 3.5 * scale, 4 * scale);
       }
     }
 
-    ctx.fillStyle = 'rgba(73, 85, 97, 0.95)';
-    ctx.fillRect(cx + 9 * scale, cy - 39 * scale, 2.2 * scale, 9 * scale);
-    ctx.fillRect(cx + 12 * scale, cy - 35 * scale, 6 * scale, 2.2 * scale);
-    ctx.fillStyle = 'rgba(220, 229, 236, 0.86)';
-    ctx.fillRect(cx + 6 * scale, cy - 3 * scale, 10 * scale, 2.2 * scale);
+    // Antenna spire
+    ctx.strokeStyle = 'rgba(180, 180, 200, 0.8)';
+    ctx.lineWidth = 1.5 * scale;
+    ctx.beginPath();
+    ctx.moveTo(cx + 2 * scale, cy - 45 * scale);
+    ctx.lineTo(cx + 2 * scale, cy - 63 * scale);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255, 100, 100, 0.6)';
+    ctx.beginPath();
+    ctx.arc(cx + 2 * scale, cy - 63 * scale, 1.5 * scale, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rooftop AC units
+    ctx.fillStyle = 'rgba(185, 196, 207, 0.95)';
+    ctx.fillRect(cx - 9 * scale, cy - 44 * scale, 7 * scale, 3.5 * scale);
+    ctx.fillRect(cx + 3 * scale, cy - 44 * scale, 6 * scale, 3.5 * scale);
+    ctx.fillStyle = 'rgba(105, 122, 138, 0.9)';
+    ctx.fillRect(cx - 8 * scale, cy - 43 * scale, 5 * scale, 1.2 * scale);
+    ctx.fillRect(cx + 4 * scale, cy - 43 * scale, 4 * scale, 1.2 * scale);
+  }
+
+  function drawCommercialKiosk(
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+    cx: number,
+    cy: number,
+    base: string,
+    scale: number
+  ): void {
+    drawIsoPrism(ctx, cx, cy, 34 * scale, 18 * scale, 12 * scale, shadeHex(base, 22), shadeHex(base, -12), shadeHex(base, -24));
+    ctx.fillStyle = 'rgba(175, 235, 255, 0.42)';
+    ctx.fillRect(cx - 11 * scale, cy - 12 * scale, 22 * scale, 5.5 * scale);
+    ctx.fillStyle = 'rgba(236, 242, 247, 0.95)';
+    ctx.fillRect(cx - 13 * scale, cy - 16 * scale, 26 * scale, 2.8 * scale);
+    ctx.fillStyle = 'rgba(150, 160, 172, 0.9)';
+    ctx.fillRect(cx - 8 * scale, cy - 17 * scale, 5 * scale, 2.2 * scale);
+    ctx.fillRect(cx + 3 * scale, cy - 17 * scale, 5 * scale, 2.2 * scale);
+
+    // Storefront awning + display front
+    ctx.fillStyle = 'rgba(86, 164, 215, 0.92)';
+    ctx.fillRect(cx - 12 * scale, cy - 9 * scale, 24 * scale, 2.6 * scale);
+    ctx.fillStyle = 'rgba(210, 244, 255, 0.36)';
+    ctx.fillRect(cx - 10 * scale, cy - 6 * scale, 20 * scale, 5 * scale);
+  }
+
+  function drawIndustrialWarehouse(
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+    cx: number,
+    cy: number,
+    base: string,
+    scale: number
+  ): void {
+    // Light industrial: compact factory with soft sawtooth roof and single small chimney
+    drawIsoPrism(ctx, cx, cy, 38 * scale, 20 * scale, 12 * scale, shadeHex(base, 10), shadeHex(base, -16), shadeHex(base, -28));
+
+    // Small sawtooth roof profile
+    ctx.beginPath();
+    ctx.moveTo(cx - 19 * scale, cy - 18 * scale);
+    for (let i = 0; i < 4; i += 1) {
+      const px = cx - 19 * scale + i * 9.5 * scale;
+      ctx.lineTo(px + 4.5 * scale, cy - 14 * scale);
+      ctx.lineTo(px + 9.5 * scale, cy - 18 * scale);
+    }
+    ctx.lineTo(cx + 19 * scale, cy - 14 * scale);
+    ctx.lineTo(cx - 19 * scale, cy - 14 * scale);
+    ctx.closePath();
+    ctx.fillStyle = shadeHex(base, 22);
+    ctx.fill();
+
+    // Single small stack
+    drawIsoPrism(ctx, cx + 8 * scale, cy - 8 * scale, 6 * scale, 5 * scale, 12 * scale, '#8f939b', '#70747b', '#60656e');
+
+    // Doors/windows strip
+    ctx.fillStyle = 'rgba(96, 88, 60, 0.78)';
+    ctx.fillRect(cx + 9 * scale, cy - 7 * scale, 8 * scale, 6 * scale);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+    for (let i = 0; i < 2; i += 1) {
+      ctx.fillRect(cx - 11 * scale + i * 9 * scale, cy - 7 * scale, 4.5 * scale, 2.8 * scale);
+    }
+
+    // Warning stripe accent (light industrial still clearly industrial)
+    ctx.fillStyle = 'rgba(230, 189, 74, 0.58)';
+    ctx.fillRect(cx - 14 * scale, cy - 2.2 * scale, 28 * scale, 1.8 * scale);
   }
 
   function drawIndustrialFactory(
@@ -1279,92 +1841,105 @@
     base: string,
     scale: number
   ): void {
-    drawIsoPrism(ctx, cx, cy, 48 * scale, 24 * scale, 16 * scale, shadeHex(base, 10), shadeHex(base, -24), shadeHex(base, -34));
+    // Large factory building (dense industrial) - warehouse with sawtooth roof and smokestacks
+    drawIsoPrism(ctx, cx, cy, 52 * scale, 26 * scale, 18 * scale, shadeHex(base, 12), shadeHex(base, -22), shadeHex(base, -34));
 
+    // Sawtooth roof pattern for industrial appeal
     ctx.beginPath();
-    ctx.moveTo(cx - 24 * scale, cy - 24 * scale);
-    for (let i = 0; i < 6; i += 1) {
-      const px = cx - 24 * scale + i * 8 * scale;
-      ctx.lineTo(px + 4 * scale, cy - 18 * scale);
-      ctx.lineTo(px + 8 * scale, cy - 24 * scale);
+    ctx.moveTo(cx - 26 * scale, cy - 26 * scale);
+    for (let i = 0; i < 7; i += 1) {
+      const px = cx - 26 * scale + i * 7.5 * scale;
+      ctx.lineTo(px + 3.75 * scale, cy - 20 * scale);
+      ctx.lineTo(px + 7.5 * scale, cy - 26 * scale);
     }
-    ctx.lineTo(cx + 24 * scale, cy - 24 * scale);
-    ctx.lineTo(cx + 24 * scale, cy - 18 * scale);
-    ctx.lineTo(cx - 24 * scale, cy - 18 * scale);
+    ctx.lineTo(cx + 26 * scale, cy - 26 * scale);
+    ctx.lineTo(cx + 26 * scale, cy - 20 * scale);
+    ctx.lineTo(cx - 26 * scale, cy - 20 * scale);
     ctx.closePath();
     ctx.fillStyle = shadeHex(base, 28);
     ctx.fill();
 
-    for (let i = 0; i < 3; i += 1) {
-      const chimneyX = cx - 14 * scale + i * 12 * scale;
-      drawIsoPrism(ctx, chimneyX, cy - 7 * scale, 7 * scale, 5 * scale, 18 * scale + i * 2 * scale, '#767c86', '#5d636d', '#4c535d');
+    // Large smokestacks - multiple for emphasis on density
+    for (let i = 0; i < 4; i += 1) {
+      const stackX = cx - 16 * scale + i * 10 * scale;
+      const stackHeight = 20 * scale + (i % 2) * 4 * scale; // Vary heights
+      drawIsoPrism(ctx, stackX, cy - 8 * scale, 8 * scale, 6 * scale, stackHeight, '#888888', '#696969', '#505050');
+
+      // Smoke effect
+      ctx.fillStyle = 'rgba(140, 140, 140, 0.3)';
+      ctx.beginPath();
+      ctx.arc(stackX, cy - stackHeight - 8 * scale, 2.5 * scale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(stackX + 1 * scale, cy - stackHeight - 12 * scale, 2 * scale, 0, Math.PI * 2);
+      ctx.fill();
     }
 
-    ctx.fillStyle = 'rgba(255,255,255,0.17)';
-    ctx.fillRect(cx - 18 * scale, cy - 6 * scale, 36 * scale, 4 * scale);
+    // Factory wall details
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillRect(cx - 20 * scale, cy - 10 * scale, 40 * scale, 5 * scale);
+
+    // Loading dock door
+    ctx.fillStyle = 'rgba(100, 100, 100, 0.6)';
+    ctx.fillRect(cx + 16 * scale, cy - 8 * scale, 8 * scale, 6 * scale);
+
+    // Dense industrial hazard striping for stronger silhouette identity
+    ctx.fillStyle = 'rgba(250, 214, 95, 0.56)';
+    ctx.fillRect(cx - 22 * scale, cy - 1.8 * scale, 44 * scale, 2 * scale);
   }
 
-  function drawServiceIcon(
+  function drawCivicBlock(
     ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
-    archetype: BuildingArchetype,
     cx: number,
     cy: number,
-    scale: number
+    base: string,
+    scale: number,
+    variant: 'education' | 'police' | 'fire' | 'hospital' | 'prison'
   ): void {
-    ctx.save();
-    ctx.translate(cx, cy - 24 * scale);
-    if (archetype === 'service_hospital') {
-      ctx.beginPath();
-      ctx.rect(-3 * scale, -10 * scale, 6 * scale, 20 * scale);
-      ctx.rect(-10 * scale, -3 * scale, 20 * scale, 6 * scale);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
-      ctx.fillStyle = 'rgba(220, 44, 44, 0.94)';
-      ctx.fillRect(-1.2 * scale, -7 * scale, 2.4 * scale, 14 * scale);
-      ctx.fillRect(-7 * scale, -1.2 * scale, 14 * scale, 2.4 * scale);
-    } else if (archetype === 'service_police') {
-      ctx.beginPath();
-      ctx.moveTo(0, -9 * scale);
-      ctx.lineTo(10 * scale, -1 * scale);
-      ctx.lineTo(7 * scale, 9 * scale);
-      ctx.lineTo(-7 * scale, 9 * scale);
-      ctx.lineTo(-10 * scale, -1 * scale);
-      ctx.closePath();
-      ctx.fillStyle = '#f4f8ff';
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(0, -2 * scale, 6 * scale, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(50, 90, 160, 0.30)';
-      ctx.fill();
-      ctx.fillStyle = '#e6f0ff';
-      ctx.fillRect(-1 * scale, -16 * scale, 2 * scale, 6 * scale);
-    } else if (archetype === 'service_fire') {
-      ctx.fillStyle = '#ffe9d2';
-      ctx.fillRect(-10 * scale, -7 * scale, 20 * scale, 14 * scale);
-      ctx.fillRect(-4 * scale, -12 * scale, 8 * scale, 5 * scale);
-      ctx.fillStyle = '#ff8a3d';
-      ctx.fillRect(-9 * scale, -2 * scale, 7 * scale, 2.4 * scale);
-      ctx.fillRect(2 * scale, -2 * scale, 7 * scale, 2.4 * scale);
-    } else if (archetype === 'service_prison') {
-      ctx.fillStyle = '#c0c8d2';
-      ctx.fillRect(-11 * scale, -8 * scale, 22 * scale, 16 * scale);
-      ctx.fillStyle = 'rgba(67, 79, 92, 0.85)';
-      for (let i = -1; i <= 1; i += 1) ctx.fillRect(i * 5 * scale - 0.8 * scale, -9 * scale, 1.6 * scale, 18 * scale);
-      ctx.fillRect(-11 * scale, -1.2 * scale, 22 * scale, 2.4 * scale);
-    } else if (archetype === 'service_education') {
-      ctx.fillStyle = '#f1ebff';
-      ctx.fillRect(-12 * scale, -8 * scale, 24 * scale, 16 * scale);
-      ctx.beginPath();
-      ctx.moveTo(-14 * scale, -8 * scale);
-      ctx.lineTo(0, -17 * scale);
-      ctx.lineTo(14 * scale, -8 * scale);
-      ctx.closePath();
-      ctx.fillStyle = '#9a87d2';
-      ctx.fill();
-      ctx.fillStyle = 'rgba(48, 54, 68, 0.84)';
-      ctx.fillRect(-3.2 * scale, -5.5 * scale, 6.4 * scale, 11 * scale);
+    drawIsoPrism(ctx, cx, cy, 42 * scale, 22 * scale, 20 * scale, shadeHex(base, 18), shadeHex(base, -16), shadeHex(base, -30));
+
+    ctx.fillStyle = 'rgba(244, 248, 252, 0.22)';
+    for (let row = 0; row < 3; row += 1) {
+      ctx.fillRect(cx - 15 * scale, cy - 18 * scale + row * 6.5 * scale, 30 * scale, 1.3 * scale);
     }
-    ctx.restore();
+
+    ctx.fillStyle = 'rgba(245, 250, 255, 0.65)';
+    for (let col = 0; col < 3; col += 1) {
+      ctx.fillRect(cx - 13 * scale + col * 10 * scale, cy - 11 * scale, 5 * scale, 4.8 * scale);
+    }
+
+    const accent = variant === 'education'
+      ? 'rgba(165, 142, 220, 0.86)'
+      : variant === 'police'
+        ? 'rgba(99, 142, 220, 0.86)'
+        : variant === 'fire'
+          ? 'rgba(234, 124, 72, 0.9)'
+          : variant === 'hospital'
+            ? 'rgba(221, 82, 82, 0.9)'
+            : 'rgba(138, 151, 166, 0.88)';
+
+    ctx.fillStyle = accent;
+    ctx.fillRect(cx - 16 * scale, cy - 2.4 * scale, 32 * scale, 2.4 * scale);
+
+    // Keep civic identity without switching to iconographic/cartoon style.
+    if (variant === 'education') {
+      ctx.beginPath();
+      ctx.moveTo(cx - 14 * scale, cy - 18.5 * scale);
+      ctx.lineTo(cx, cy - 25 * scale);
+      ctx.lineTo(cx + 14 * scale, cy - 18.5 * scale);
+      ctx.closePath();
+      ctx.fillStyle = shadeHex(base, 30);
+      ctx.fill();
+    } else if (variant === 'hospital') {
+      ctx.fillStyle = 'rgba(246, 248, 252, 0.94)';
+      ctx.fillRect(cx - 1.3 * scale, cy - 17 * scale, 2.6 * scale, 10 * scale);
+      ctx.fillRect(cx - 6 * scale, cy - 13 * scale, 12 * scale, 2.6 * scale);
+    } else if (variant === 'prison') {
+      ctx.fillStyle = 'rgba(52, 63, 77, 0.52)';
+      for (let i = 0; i < 4; i += 1) {
+        ctx.fillRect(cx - 14 * scale + i * 7 * scale, cy - 13 * scale, 1.3 * scale, 11 * scale);
+      }
+    }
   }
 
   function drawUtilityWater(
@@ -1433,6 +2008,44 @@
     ctx.fill();
   }
 
+  function drawNuclearPlant(
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+    cx: number,
+    cy: number,
+    base: string,
+    scale: number
+  ): void {
+    drawIsoPrism(ctx, cx, cy, 50 * scale, 24 * scale, 18 * scale, shadeHex(base, 24), shadeHex(base, -16), shadeHex(base, -28));
+
+    ctx.fillStyle = 'rgba(206, 232, 246, 0.9)';
+    ctx.beginPath();
+    ctx.ellipse(cx - 12 * scale, cy - 17 * scale, 7 * scale, 13 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 12 * scale, cy - 17 * scale, 7 * scale, 13 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(74, 102, 118, 0.8)';
+    ctx.lineWidth = 1.2 * scale;
+    ctx.beginPath();
+    ctx.moveTo(cx - 12 * scale, cy - 29 * scale);
+    ctx.lineTo(cx - 12 * scale, cy - 5 * scale);
+    ctx.moveTo(cx + 12 * scale, cy - 29 * scale);
+    ctx.lineTo(cx + 12 * scale, cy - 5 * scale);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255, 243, 181, 0.95)';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 32 * scale);
+    ctx.lineTo(cx + 3 * scale, cy - 26 * scale);
+    ctx.lineTo(cx + 1 * scale, cy - 26 * scale);
+    ctx.lineTo(cx + 4 * scale, cy - 20 * scale);
+    ctx.lineTo(cx - 1 * scale, cy - 25 * scale);
+    ctx.lineTo(cx + 1 * scale, cy - 25 * scale);
+    ctx.closePath();
+    ctx.fill();
+  }
+
   function drawBuildingTemplate(
     ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
     archetype: BuildingArchetype,
@@ -1456,6 +2069,14 @@
       drawCommercialTower(ctx, cx, cy, baseColor, scale);
       return;
     }
+    if (archetype === 'commercial_kiosk') {
+      drawCommercialKiosk(ctx, cx, cy, baseColor, scale);
+      return;
+    }
+    if (archetype === 'industrial_warehouse') {
+      drawIndustrialWarehouse(ctx, cx, cy, baseColor, scale);
+      return;
+    }
     if (archetype === 'industrial_factory') {
       drawIndustrialFactory(ctx, cx, cy, baseColor, scale);
       return;
@@ -1471,28 +2092,43 @@
       return;
     }
 
-    if (archetype === 'power_plant') {
+    if (archetype === 'power_plant_coal') {
       drawPowerPlant(ctx, cx, cy, baseColor, scale);
       return;
     }
 
-    if (archetype === 'service_prison' || archetype === 'service_education') {
-      drawIsoPrism(ctx, cx, cy, 42 * scale, 22 * scale, 20 * scale, shadeHex(baseColor, 20), shadeHex(baseColor, -18), shadeHex(baseColor, -33));
-      if (archetype.startsWith('service_')) {
-        drawServiceIcon(ctx, archetype, cx, cy, scale);
-      }
+    if (archetype === 'power_plant_nuclear') {
+      drawNuclearPlant(ctx, cx, cy, baseColor, scale);
+      return;
+    }
+
+    if (archetype === 'service_education') {
+      drawCivicBlock(ctx, cx, cy, baseColor, scale, 'education');
+      return;
+    }
+    if (archetype === 'service_police') {
+      drawCivicBlock(ctx, cx, cy, baseColor, scale, 'police');
+      return;
+    }
+    if (archetype === 'service_fire') {
+      drawCivicBlock(ctx, cx, cy, baseColor, scale, 'fire');
+      return;
+    }
+    if (archetype === 'service_hospital') {
+      drawCivicBlock(ctx, cx, cy, baseColor, scale, 'hospital');
+      return;
+    }
+    if (archetype === 'service_prison') {
+      drawCivicBlock(ctx, cx, cy, baseColor, scale, 'prison');
       return;
     }
 
     drawIsoPrism(ctx, cx, cy, 42 * scale, 22 * scale, 20 * scale, shadeHex(baseColor, 20), shadeHex(baseColor, -18), shadeHex(baseColor, -33));
-    if (archetype.startsWith('service_')) {
-      drawServiceIcon(ctx, archetype, cx, cy, scale);
-    }
   }
 
-  function getBuildingCacheEntry(tile: Tile): BuildingCacheEntry {
+  function getBuildingCacheEntry(tile: Tile, baseColorOverride?: string): BuildingCacheEntry {
     const archetype = buildingArchetypeFor(tile);
-    const baseColor = buildingBaseColor(tile);
+    const baseColor = baseColorOverride ?? buildingBaseColor(tile);
     const key = `${archetype}:${baseColor}:${BUILDING_CACHE_DPR}`;
     const cached = buildingCache.get(key);
     if (cached) return cached;
@@ -1530,19 +2166,31 @@
     return entry;
   }
 
-  function drawCachedBuilding(ctx: CanvasRenderingContext2D, tile: Tile, cx: number, cy: number): void {
-    const entry = getBuildingCacheEntry(tile);
+  function drawCachedBuilding(
+    ctx: CanvasRenderingContext2D,
+    tile: Tile,
+    cx: number,
+    cy: number,
+    baseColorOverride?: string
+  ): void {
+    const entry = getBuildingCacheEntry(tile, baseColorOverride);
     const scale = 1 / BUILDING_CACHE_DPR;
-    const drawX = cx - entry.anchorX * scale;
-    const drawY = cy - entry.anchorY * scale;
-    const drawW = entry.width * scale;
-    const drawH = entry.height * scale;
+    const drawX = Math.round(cx - entry.anchorX * scale);
+    const drawY = Math.round(cy - entry.anchorY * scale);
+    const drawW = Math.round(entry.width * scale);
+    const drawH = Math.round(entry.height * scale);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(BUILDING_VISUAL_SCALE, BUILDING_VISUAL_SCALE);
+    ctx.translate(-cx, -cy);
     ctx.drawImage(entry.canvas as CanvasImageSource, drawX, drawY, drawW, drawH);
+    ctx.restore();
 
-    if (entry.archetype === 'industrial_factory') {
+    if (entry.archetype === 'industrial_factory' || entry.archetype === 'industrial_warehouse') {
       const phase = performance.now() * 0.002 + (tile.x + tile.y) * 0.15;
-      ctx.fillStyle = 'rgba(189, 194, 200, 0.42)';
-      for (let i = 0; i < 2; i += 1) {
+      const puffCount = entry.archetype === 'industrial_factory' ? 2 : 1;
+      ctx.fillStyle = entry.archetype === 'industrial_factory' ? 'rgba(189, 194, 200, 0.42)' : 'rgba(175, 180, 188, 0.26)';
+      for (let i = 0; i < puffCount; i += 1) {
         const puff = 4 + Math.sin(phase + i) * 1.7;
         ctx.beginPath();
         ctx.arc(cx + 6 + i * 7, cy - 33 - i * 8 - Math.sin(phase + i * 0.7) * 2, puff, 0, Math.PI * 2);
@@ -1705,36 +2353,81 @@
     offscreenCtx.clearRect(0, 0, offscreen.width, offscreen.height);
 
     const grd = offscreenCtx.createLinearGradient(0, 0, 0, offscreen.height);
-    grd.addColorStop(0, '#0e151b');
+    grd.addColorStop(0, '#111922');
     grd.addColorStop(1, '#0b1016');
     offscreenCtx.fillStyle = grd;
     offscreenCtx.fillRect(0, 0, offscreen.width, offscreen.height);
 
-    for (let y = 0; y < mapHeight; y += 1) {
-      for (let x = 0; x < mapWidth; x += 1) {
-        const tile = worldTiles[y]?.[x];
-        if (!tile) continue;
-        const c = worldCenter(x, y);
+    const entries = buildDepthSortedEntries();
+    for (const entry of entries) {
+      const { tile, c, x, y } = entry;
 
-        drawDiamond(offscreenCtx, c.x, c.y);
-        offscreenCtx.fillStyle = terrainColor(tile);
-        offscreenCtx.fill();
+      drawDiamond(offscreenCtx, c.x, c.y);
+      offscreenCtx.fillStyle = terrainColor(tile);
+      offscreenCtx.fill();
 
-        const gloss = offscreenCtx.createLinearGradient(c.x, c.y - tileHeight / 2, c.x, c.y + tileHeight / 2);
-        gloss.addColorStop(0, 'rgba(255,255,255,0.08)');
-        gloss.addColorStop(1, 'rgba(0,0,0,0.18)');
-        offscreenCtx.fillStyle = gloss;
-        offscreenCtx.fill();
+      const gloss = offscreenCtx.createLinearGradient(c.x, c.y - tileHeight / 2, c.x, c.y + tileHeight / 2);
+      gloss.addColorStop(0, 'rgba(245,250,255,0.10)');
+      gloss.addColorStop(1, 'rgba(0,0,0,0.22)');
+      offscreenCtx.fillStyle = gloss;
+      offscreenCtx.fill();
 
-        offscreenCtx.strokeStyle = 'rgba(255,255,255,0.06)';
-        offscreenCtx.lineWidth = 0.9;
-        offscreenCtx.lineCap = 'round';
-        offscreenCtx.lineJoin = 'round';
-        offscreenCtx.stroke();
+      if (tile.terrain_type === 'grass' || tile.terrain_type === 'forest') {
+        offscreenCtx.save();
+        drawDiamond(offscreenCtx, c.x, c.y, tileWidth * 0.96, tileHeight * 0.92);
+        offscreenCtx.clip();
+        offscreenCtx.strokeStyle = tile.terrain_type === 'forest' ? 'rgba(82, 128, 85, 0.24)' : 'rgba(95, 142, 94, 0.2)';
+        offscreenCtx.lineWidth = 0.55;
+        const seed = ((x * 73856093) ^ (y * 19349663)) >>> 0;
+        for (let i = 0; i < 10; i += 1) {
+          const n = (seed + i * 2654435761) >>> 0;
+          const ox = ((n & 255) / 255 - 0.5) * tileWidth * 0.7;
+          const oy = (((n >> 8) & 255) / 255 - 0.5) * tileHeight * 0.58;
+          const len = 1.8 + (((n >> 16) & 31) / 31) * 2.1;
+          offscreenCtx.beginPath();
+          offscreenCtx.moveTo(c.x + ox, c.y + oy + len * 0.2);
+          offscreenCtx.lineTo(c.x + ox + 0.7, c.y + oy - len);
+          offscreenCtx.stroke();
+        }
+        offscreenCtx.restore();
       }
+
+      offscreenCtx.strokeStyle = 'rgba(255,255,255,0.07)';
+      offscreenCtx.lineWidth = 0.95;
+      offscreenCtx.lineCap = 'round';
+      offscreenCtx.lineJoin = 'round';
+      offscreenCtx.stroke();
     }
 
     staticDirty = false;
+  }
+
+  function isViewportDirty(): boolean {
+    const camDelta = Math.abs(camera.x - lastCameraPos.x) + Math.abs(camera.y - lastCameraPos.y) +
+                     Math.abs(camera.zoom - lastCameraPos.zoom);
+    return camDelta > 2;
+  }
+
+  function tileScreenBounds(x: number, y: number): { x0: number; y0: number; x1: number; y1: number } {
+    const c = worldCenter(x, y);
+    // Isometric diamond bounds (approximate)
+    const screenX = camera.x + c.x * camera.zoom;
+    const screenY = camera.y + c.y * camera.zoom;
+    const halfWidth = (tileWidth * camera.zoom) / 2;
+    const halfHeight = (tileHeight * camera.zoom) / 2;
+    return {
+      x0: screenX - halfWidth,
+      y0: screenY - halfHeight,
+      x1: screenX + halfWidth,
+      y1: screenY + halfHeight
+    };
+  }
+
+  function isScreenVisible(bounds: { x0: number; y0: number; x1: number; y1: number }, margin = 64): boolean {
+    const w = dynamicCanvasEl?.clientWidth ?? 512;
+    const h = dynamicCanvasEl?.clientHeight ?? 512;
+    return !(bounds.x1 + margin < 0 || bounds.x0 - margin > w ||
+             bounds.y1 + margin < 0 || bounds.y0 - margin > h);
   }
 
   function visibleRange(): { minX: number; minY: number; maxX: number; maxY: number } {
@@ -1781,120 +2474,233 @@
     dynamicCtx.imageSmoothingEnabled = false;
     dynamicCtx.clearRect(0, 0, dynamicCanvasEl.width, dynamicCanvasEl.height);
 
-    dynamicCtx.setTransform(dpr * camera.zoom, 0, 0, dpr * camera.zoom, dpr * camera.x, dpr * camera.y);
+    // Use integer math for transform (pixel-aligned rendering)
+    const screenZoom = dpr * camera.zoom;
+    const screenX = Math.round(dpr * camera.x);
+    const screenY = Math.round(dpr * camera.y);
+    dynamicCtx.setTransform(screenZoom, 0, 0, screenZoom, screenX, screenY);
 
     if (undergroundMode) {
-      const darkOverlay = dynamicCtx.createLinearGradient(0, 0, worldWidth, worldHeight);
-      darkOverlay.addColorStop(0, 'rgba(10, 11, 14, 0.85)');
-      darkOverlay.addColorStop(1, 'rgba(8, 8, 12, 0.92)');
-      dynamicCtx.fillStyle = darkOverlay;
-      dynamicCtx.fillRect(-worldWidth, -worldHeight, worldWidth * 3, worldHeight * 3);
+      drawUndergroundSchematicBackdrop(dynamicCtx);
+    } else {
+      dynamicCtx.drawImage(offscreen as CanvasImageSource, 0, 0);
     }
 
-    dynamicCtx.drawImage(offscreen as CanvasImageSource, 0, 0);
-
     const range = visibleRange();
+    const entries = buildDepthSortedEntries(range);
+    
+    // Performance: Use viewport culling with margin for off-screen tiles
+    const cullMargin = tileWidth;
 
-    for (let y = range.minY; y <= range.maxY; y += 1) {
-      for (let x = range.minX; x <= range.maxX; x += 1) {
-        const tile = worldTiles[y]?.[x];
-        if (!tile) continue;
-        const c = worldCenter(x, y);
+    for (const entry of entries) {
+      const { tile, c, x, y } = entry;
+      
+      // Viewport culling: Strictly enforce visibility check to skip off-screen tiles
+      // This is critical for maintaining 60 FPS on large maps
+      const bounds = tileScreenBounds(x, y);
+      if (!isScreenVisible(bounds, cullMargin)) {
+        // Skip all rendering operations for invisible tiles
+        continue;
+      }
 
-        if (showZones && tile.zone && !undergroundMode) {
+      if (showZones && tile.zone && !undergroundMode) {
+        const zoneColor = tile.zone.abandoned ? '#8f949d' : zoneTint[tile.zone.type] ?? '#7b8ea8';
+        const isDeveloped = tile.zone.development_level > 0;
+
+        dynamicCtx.fillStyle = isDeveloped ? zoneColor : 'rgba(255,255,255,0.04)';
+        
+        if (!isDeveloped) {
+          // Undeveloped zone: draw outline + blueprint hatch
           drawDiamond(dynamicCtx, c.x, c.y, tileWidth * 0.9, tileHeight * 0.9);
-          const zoneColor = tile.zone.abandoned ? '#8f949d' : zoneTint[tile.zone.type] ?? '#7b8ea8';
-          dynamicCtx.fillStyle = zoneColor;
-          dynamicCtx.globalAlpha = tile.zone.abandoned
-            ? 0.46
-            : 0.26 + tile.zone.development_level * 0.08;
           dynamicCtx.fill();
-
-          drawBlueprintHatch(
-            dynamicCtx,
-            c.x,
-            c.y,
-            tileWidth * 0.85,
-            tileHeight * 0.85,
-            zoneColor
-          );
-
+          
+          // Batch line drawing: set all stroke properties before stroke
+          dynamicCtx.setLineDash([5, 4]);
+          dynamicCtx.strokeStyle = `${zoneColor}d8`;
+          dynamicCtx.lineWidth = 1.3;
+          dynamicCtx.stroke();
+          dynamicCtx.setLineDash([]);
+          
+          // Blueprint hatch pattern
+          drawBlueprintHatch(dynamicCtx, c.x, c.y, tileWidth * 0.84, tileHeight * 0.82, `${zoneColor}55`);
+        } else {
+          // Developed zone: simple color tint underlay
+          drawDiamond(dynamicCtx, c.x, c.y, tileWidth * 0.9, tileHeight * 0.9);
+          const alpha = tile.zone.abandoned ? 0.42 : 0.16;
+          dynamicCtx.globalAlpha = alpha;
+          dynamicCtx.fill();
           dynamicCtx.globalAlpha = 1;
         }
+      }
 
-        if (showInfrastructure && tile.infrastructure.length > 0) {
-          if (!undergroundMode && tile.infrastructure.includes('road')) {
-            drawRoadWithRealismEffects(dynamicCtx, c.x, c.y, tileWidth * 0.88, tileHeight * 0.84);
+      if (showInfrastructure && tile.infrastructure.length > 0) {
+        const hasSurfaceStructure = Boolean(tile.building || (tile.zone && tile.zone.development_level > 0));
+        if (undergroundMode) {
+          const undergroundInfra = getUndergroundInfrastructure(tile);
+          if (undergroundInfra) {
+            drawInfrastructureTile(dynamicCtx, c, undergroundInfra, true);
           }
-
-          if (tile.infrastructure.includes('power_line')) {
-            dynamicCtx.strokeStyle = undergroundMode ? 'rgba(255,230,110,0.95)' : 'rgba(255,230,110,0.7)';
-            dynamicCtx.lineWidth = undergroundMode ? 2.2 : 1.2;
-            if (undergroundMode) {
-              dynamicCtx.shadowColor = 'rgba(255,230,110,0.8)';
-              dynamicCtx.shadowBlur = 12;
+        } else {
+          const surfaceInfra = getSurfaceInfrastructure(tile);
+          if (surfaceInfra) {
+            const isRoadLike = surfaceInfra === 'road' || surfaceInfra === 'highway' || surfaceInfra === 'highway_ramp';
+            // Avoid anti-aesthetic overlap between roads and structures on the same tile.
+            if (!(hasSurfaceStructure && isRoadLike)) {
+              drawContactShadow(dynamicCtx, c.x, c.y + tileHeight * 0.1, tileWidth * 0.22, tileHeight * 0.11, 0.7);
+              drawInfrastructureTile(dynamicCtx, c, surfaceInfra, false);
             }
-            dynamicCtx.beginPath();
-            dynamicCtx.moveTo(c.x - tileWidth * 0.2, c.y);
-            dynamicCtx.lineTo(c.x + tileWidth * 0.2, c.y);
-            dynamicCtx.stroke();
-            dynamicCtx.shadowColor = 'rgba(0,0,0,0)';
-            dynamicCtx.shadowBlur = 0;
-          }
-
-          if (tile.infrastructure.includes('water_pipe')) {
-            dynamicCtx.strokeStyle = undergroundMode ? 'rgba(106,223,255,0.96)' : 'rgba(106,223,255,0.5)';
-            dynamicCtx.lineWidth = undergroundMode ? 2.8 : 1.2;
-            if (undergroundMode) {
-              dynamicCtx.shadowColor = 'rgba(106,223,255,0.8)';
-              dynamicCtx.shadowBlur = 16;
-            }
-            dynamicCtx.beginPath();
-            dynamicCtx.moveTo(c.x, c.y - tileHeight * 0.2);
-            dynamicCtx.lineTo(c.x, c.y + tileHeight * 0.2);
-            dynamicCtx.stroke();
-            dynamicCtx.shadowColor = 'rgba(0,0,0,0)';
-            dynamicCtx.shadowBlur = 0;
-          }
-
-          if (undergroundMode && (tile.infrastructure.includes('subway') || tile.infrastructure.includes('subway_tunnel'))) {
-            const grad = dynamicCtx.createLinearGradient(c.x - tileWidth * 0.3, c.y - tileHeight * 0.3, c.x + tileWidth * 0.3, c.y + tileHeight * 0.3);
-            grad.addColorStop(0, 'rgba(100, 200, 255, 0.8)');
-            grad.addColorStop(0.5, 'rgba(80, 180, 255, 0.6)');
-            grad.addColorStop(1, 'rgba(60, 160, 255, 0.8)');
-            dynamicCtx.strokeStyle = grad;
-            dynamicCtx.lineWidth = 2.4;
-            dynamicCtx.shadowColor = 'rgba(100, 200, 255, 0.9)';
-            dynamicCtx.shadowBlur = 20;
-            drawDiamond(dynamicCtx, c.x, c.y, tileWidth * 0.7, tileHeight * 0.6);
-            dynamicCtx.stroke();
-            dynamicCtx.shadowColor = 'rgba(0,0,0,0)';
-            dynamicCtx.shadowBlur = 0;
           }
         }
+      }
 
-        if (!undergroundMode && tile.building) {
-          drawCachedBuilding(dynamicCtx, tile, c.x, c.y - tileHeight * 0.02);
+      if (!undergroundMode) {
+        if (tile.building) {
+          drawContactShadow(dynamicCtx, c.x, c.y + tileHeight * 0.14, tileWidth * 0.27, tileHeight * 0.12, 1);
+          dynamicCtx.save();
+          if (tile.zone?.abandoned) {
+            dynamicCtx.filter = 'grayscale(100%) brightness(50%)';
+          }
+          drawCachedBuilding(dynamicCtx, tile, c.x | 0, (c.y - tileHeight * 0.02) | 0);
+          dynamicCtx.restore();
+        } else if (tile.zone && tile.zone.development_level > 0) {
+          // TASK 2: Only render building proxies at level > 0. Level 0 remains flat colored diamonds.
+          // TASK 3: Scale hierarchy - TALL (public/dense), SHORT (light)
+          const isDenseZone = tile.zone.type.includes('_dense');
+          
+          // TALL CLASS: dense areas, SHORT CLASS: light zones (still clearly visible)
+          const scaleHeightFactor = isDenseZone ? 1.04 : 0.72;
+          
+          // TASK 3: Industrial unification - both light/dense use factory silhouette, differ only in vertical scale
+          let buildingType: BuildingType;
+          if (tile.zone.type.startsWith('residential_dense')) {
+            buildingType = 'school';
+          } else if (tile.zone.type.startsWith('residential')) {
+            buildingType = 'school';
+          } else if (tile.zone.type.startsWith('commercial_dense')) {
+            buildingType = 'subway_station';
+          } else if (tile.zone.type.startsWith('commercial')) {
+            buildingType = 'bus_depot';
+          } else if (tile.zone.type.startsWith('industrial_dense') || tile.zone.type.startsWith('industrial')) {
+            // Unified industrial silhouette for both light/dense. Scale is the only visual difference.
+            buildingType = 'water_treatment';
+          } else {
+            buildingType = 'school';
+          }
+
+          const developedProxy: Tile = {
+            ...tile,
+            x,
+            y,
+            building: {
+              id: `proxy-${x}-${y}`,
+              type: buildingType,
+              position: { x, y },
+              size: { w: 1, h: 1 },
+              built_year: 0,
+              built_month: 0,
+              age_months: 0,
+              powered: tile.powered,
+              funding_pct: 100,
+              active: true
+            }
+          };
+          
+          // Construction site overlay (early development)
+          if (tile.zone.development_level < 15) {
+            dynamicCtx.globalAlpha = 0.28;
+            drawConstructionSite(dynamicCtx, c.x, c.y, tileWidth * 0.015);
+            dynamicCtx.globalAlpha = 1;
+          }
+          
+          // Density-aware building rendering with vertical scaling for realistic skyline
+          dynamicCtx.save();
+          const developmentFactor = Math.min(1, tile.zone.development_level / 100);
+          // Light zones should still be clearly readable at a glance.
+          dynamicCtx.globalAlpha = isDenseZone
+            ? Math.min(1, 0.5 + developmentFactor * 0.45)
+            : Math.min(1, 0.62 + developmentFactor * 0.3);
+          
+          // TASK 3: Apply scale hierarchy - tall for public/dense, short for light
+          const densityScale = (isDenseZone
+            ? (1.45 + developmentFactor * 0.25) * scaleHeightFactor
+            : (1.02 + developmentFactor * 0.22) * scaleHeightFactor) * PROXY_SILHOUETTE_SCALE;
+          if (isDenseZone) {
+            dynamicCtx.globalAlpha = Math.min(1, dynamicCtx.globalAlpha + 0.15);
+          }
+          
+          // Slight width boost + height boost for more prominent silhouettes without excessive bleed.
+          dynamicCtx.translate(c.x, c.y);
+          dynamicCtx.scale(1.07, densityScale);
+          dynamicCtx.translate(-(c.x), -(c.y));
+
+          drawContactShadow(
+            dynamicCtx,
+            c.x,
+            c.y + tileHeight * 0.14,
+            isDenseZone ? tileWidth * 0.24 : tileWidth * 0.26,
+            isDenseZone ? tileHeight * 0.11 : tileHeight * 0.12,
+            isDenseZone ? 0.9 : 0.98
+          );
+          
+          if (tile.zone.abandoned) {
+            dynamicCtx.filter = 'grayscale(100%) brightness(50%)';
+          }
+          drawCachedBuilding(dynamicCtx, developedProxy, c.x | 0, (c.y - tileHeight * 0.02) | 0);
+          dynamicCtx.restore();
         }
+      }
 
-        if (showStatusIcons && (tile.zone || tile.building) && (!tile.powered || !tile.watered)) {
-          dynamicCtx.fillStyle = !tile.powered ? '#ffd36e' : '#70d6ff';
-          dynamicCtx.beginPath();
-          dynamicCtx.arc(c.x, c.y - tileHeight * 0.95, 6, 0, Math.PI * 2);
-          dynamicCtx.fill();
+      // TASK 4: Status emoticons - only show if tile is developed (level > 0) and has feedback to display
+      if (showStatusIcons && tile.zone && tile.zone.development_level > 0) {
+        dynamicCtx.font = '14px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+        dynamicCtx.textAlign = 'center';
+        dynamicCtx.textBaseline = 'middle';
+
+        // ⚡ Lightning: power status
+        if (!tile.powered) {
+          dynamicCtx.fillText('⚡', c.x | 0, (c.y - tileHeight * 0.95) | 0);
+        }
+        // 💧 Water droplet: water status
+        if (!tile.watered) {
+          dynamicCtx.fillText('💧', (c.x + 12) | 0, (c.y - tileHeight * 0.95) | 0);
+        }
+        // 🚫 No-Road: road access status
+        if (!tile.road_access) {
+          dynamicCtx.fillText('🚫', (c.x - 12) | 0, (c.y - tileHeight * 0.95) | 0);
+        }
+      } else if (showStatusIcons && tile.building && (!tile.powered || !tile.watered)) {
+        dynamicCtx.font = '14px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+        dynamicCtx.textAlign = 'center';
+        dynamicCtx.textBaseline = 'middle';
+
+        // Emoticons for real buildings as well
+        if (!tile.powered) {
+          dynamicCtx.fillText('⚡', c.x | 0, (c.y - tileHeight * 0.95) | 0);
+        }
+        if (!tile.watered) {
+          dynamicCtx.fillText('💧', (c.x + 12) | 0, (c.y - tileHeight * 0.95) | 0);
         }
       }
     }
 
+    // Composite UI layers on top of game world
     drawSelectionAndHover();
     drawGhostPreview();
     drawDemolitionEffects(dynamicCtx);
 
+    // Debounced overlay rendering (every 5 frames)
     if (activeOverlay) {
-      drawOverlayAtmosphere(dynamicCtx, activeOverlay);
+      drawOverlayHeatmap(dynamicCtx, activeOverlay);
     }
 
     drawEconomyParticles(dynamicCtx);
+
+    // Dynamic Lighting: Mouse flashlight effect (underground only)
+    if (undergroundMode) {
+      dynamicCtx.setTransform(1, 0, 0, 1, 0, 0);
+      dynamicCtx.imageSmoothingEnabled = false;
+      drawMouseFlashlight(dynamicCtx);
+    }
   }
 
   function overlayTheme(type: string): { tint: string; line: string; alpha: number } {
@@ -1908,6 +2714,103 @@
     if (type === 'fire_coverage') return { tint: 'rgba(255, 134, 92, 0.19)', line: 'rgba(255, 198, 153, 0.14)', alpha: 0.18 };
     if (type === 'police_coverage') return { tint: 'rgba(101, 165, 255, 0.19)', line: 'rgba(172, 210, 255, 0.14)', alpha: 0.18 };
     return { tint: 'rgba(43, 112, 255, 0.18)', line: 'rgba(148, 188, 255, 0.12)', alpha: 0.18 };
+  }
+
+  function overlaySignal(tile: Tile, type: string): number {
+    const pop = Math.min(1, (tile.zone?.population ?? 0) / 240);
+    const dev = Math.min(1, (tile.zone?.development_level ?? 0) / 3);
+    const infra = Math.min(1, tile.infrastructure.length / 3);
+    const service = tile.building ? 1 : 0;
+
+    if (type === 'crime') return Math.max(0, Math.min(1, 0.65 * pop + 0.25 * dev + 0.1 * (1 - service)));
+    if (type === 'pollution_air') return Math.max(0, Math.min(1, 0.62 * infra + (tile.zone?.type.includes('industrial') ? 0.38 : 0.12)));
+    if (type === 'pollution_water') return Math.max(0, Math.min(1, 0.58 * infra + (tile.terrain_type === 'water' ? 0.2 : 0.05)));
+    if (type === 'land_value') return Math.max(0, Math.min(1, 0.75 - 0.5 * infra + 0.2 * (tile.zone?.type.includes('residential') ? 1 : 0)));
+    if (type === 'traffic') return Math.max(0, Math.min(1, 0.55 * infra + 0.35 * pop));
+    if (type === 'power') return tile.powered ? 0.2 : 0.9;
+    if (type === 'water') return tile.watered ? 0.2 : 0.9;
+    if (type === 'fire_coverage') return Math.max(0, Math.min(1, 0.7 - 0.45 * pop + 0.2 * service));
+    if (type === 'police_coverage') return Math.max(0, Math.min(1, 0.72 - 0.5 * pop + 0.2 * service));
+    return Math.max(0, Math.min(1, 0.3 + 0.4 * pop));
+  }
+
+  function sampleOverlay(x: number, y: number, type: string): number {
+    let total = 0;
+    let weight = 0;
+    for (let oy = -1; oy <= 1; oy += 1) {
+      for (let ox = -1; ox <= 1; ox += 1) {
+        const sx = x + ox;
+        const sy = y + oy;
+        const tile = worldTiles[sy]?.[sx];
+        if (!tile) continue;
+        const w = ox === 0 && oy === 0 ? 0.42 : (Math.abs(ox) + Math.abs(oy) === 2 ? 0.06 : 0.12);
+        total += overlaySignal(tile, type) * w;
+        weight += w;
+      }
+    }
+    return weight > 0 ? total / weight : 0;
+  }
+
+  function heatmapColorRamp(v: number): string {
+    const t = Math.max(0, Math.min(1, v));
+    const r = Math.round(50 + t * 205);
+    const g = Math.round(212 - t * 152);
+    const b = Math.round(78 - t * 42);
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  function drawOverlayHeatmap(ctx: CanvasRenderingContext2D, type: string): void {
+    // Debounce: Only recalculate every 5 frames or when type/position changes
+    const shouldRecalculate = cachedOverlayFrame < 0 || 
+                              (overlayFrameCounter - cachedOverlayFrame) >= 5 || 
+                              cachedOverlayType !== type;
+    
+    if (shouldRecalculate) {
+      // Create or reuse offscreen canvas for overlay
+      if (!overlayDebounceCanvas) {
+        overlayDebounceCanvas = new OffscreenCanvas(dynamicCanvasEl.width, dynamicCanvasEl.height);
+      }
+      
+      const w = overlayDebounceCanvas.width;
+      const h = overlayDebounceCanvas.height;
+      
+      // Only recreate if size changed
+      if (overlayDebounceCanvas.width !== dynamicCanvasEl.width || 
+          overlayDebounceCanvas.height !== dynamicCanvasEl.height) {
+        overlayDebounceCanvas = new OffscreenCanvas(dynamicCanvasEl.width, dynamicCanvasEl.height);
+      }
+      
+      const overlayCtx = overlayDebounceCanvas.getContext('2d') as CanvasRenderingContext2D;
+      if (!overlayCtx) return;
+      
+      overlayCtx.setTransform(1, 0, 0, 1, 0, 0);
+      overlayCtx.clearRect(0, 0, w, h);
+      overlayCtx.setTransform(dpr * camera.zoom, 0, 0, dpr * camera.zoom, Math.round(dpr * camera.x), Math.round(dpr * camera.y));
+      
+      const range = visibleRange();
+      const entries = buildDepthSortedEntries(range);
+      overlayCtx.globalAlpha = 0.4;
+      
+      // Batch path operations - use minimal state changes
+      for (const entry of entries) {
+        const value = sampleOverlay(entry.x, entry.y, type);
+        const center = worldCenter(entry.x, entry.y);
+        drawDiamond(overlayCtx, center.x, center.y);
+        overlayCtx.fillStyle = heatmapColorRamp(value);
+        overlayCtx.fill();
+      }
+      
+      cachedOverlayFrame = overlayFrameCounter;
+      cachedOverlayType = type;
+    }
+    
+    // Draw cached overlay regardless of whether we recalculated
+    if (overlayDebounceCanvas) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(overlayDebounceCanvas as CanvasImageSource, 0, 0);
+      ctx.restore();
+    }
   }
 
   function drawOverlayAtmosphere(ctx: CanvasRenderingContext2D, type: string): void {
@@ -1974,7 +2877,7 @@
 
     if (!isZoneStroke && !isInfraStroke && !isBulldozeStroke) return;
 
-    strokeCtx.setTransform(dpr * camera.zoom, 0, 0, dpr * camera.zoom, dpr * camera.x, dpr * camera.y);
+    strokeCtx.setTransform(dpr * camera.zoom, 0, 0, dpr * camera.zoom, Math.round(dpr * camera.x), Math.round(dpr * camera.y));
     strokeCtx.lineJoin = 'round';
     strokeCtx.lineCap = 'round';
 
@@ -1982,8 +2885,7 @@
       strokeCtx.fillStyle = `${zoneTint[zoneTool ?? 'residential_light'] ?? '#8ea2bf'}77`;
       strokeCtx.strokeStyle = `${zoneTint[zoneTool ?? 'residential_light'] ?? '#8ea2bf'}ee`;
       strokeCtx.lineWidth = 1.8;
-      for (const key of ghostZoneKeys) {
-        const point = parseTileKey(key);
+      for (const point of sortTileKeysByDepth(ghostZoneKeys)) {
         const center = worldCenter(point.x, point.y);
         drawDiamond(strokeCtx, center.x, center.y, tileWidth * 0.95, tileHeight * 0.95);
         strokeCtx.fill();
@@ -1993,8 +2895,7 @@
       strokeCtx.fillStyle = 'rgba(255, 84, 84, 0.34)';
       strokeCtx.strokeStyle = 'rgba(255, 84, 84, 0.9)';
       strokeCtx.lineWidth = 1.8;
-      for (const key of blockedGhostZoneKeys) {
-        const point = parseTileKey(key);
+      for (const point of sortTileKeysByDepth(blockedGhostZoneKeys)) {
         const center = worldCenter(point.x, point.y);
         drawDiamond(strokeCtx, center.x, center.y, tileWidth * 0.95, tileHeight * 0.95);
         strokeCtx.fill();
@@ -2003,8 +2904,7 @@
     }
 
     if (isInfraStroke) {
-      for (const key of ghostInfraKeys) {
-        const point = parseTileKey(key);
+      for (const point of sortTileKeysByDepth(ghostInfraKeys)) {
         const center = worldCenter(point.x, point.y);
 
         if (infrastructureTool === 'road') {
@@ -2029,8 +2929,7 @@
 
       strokeCtx.strokeStyle = 'rgba(255, 84, 84, 0.95)';
       strokeCtx.lineWidth = 2.6;
-      for (const key of blockedGhostInfraKeys) {
-        const point = parseTileKey(key);
+      for (const point of sortTileKeysByDepth(blockedGhostInfraKeys)) {
         const center = worldCenter(point.x, point.y);
         drawDiamond(strokeCtx, center.x, center.y, tileWidth * 0.78, tileHeight * 0.72);
         strokeCtx.stroke();
@@ -2041,8 +2940,7 @@
       strokeCtx.fillStyle = 'rgba(255, 149, 0, 0.26)';
       strokeCtx.strokeStyle = 'rgba(255, 149, 0, 0.96)';
       strokeCtx.lineWidth = 1.9;
-      for (const key of ghostBulldozeKeys) {
-        const point = parseTileKey(key);
+      for (const point of sortTileKeysByDepth(ghostBulldozeKeys)) {
         const center = worldCenter(point.x, point.y);
         drawDiamond(strokeCtx, center.x, center.y, tileWidth * 0.92, tileHeight * 0.92);
         strokeCtx.fill();
@@ -2213,19 +3111,21 @@
         }
       };
       dynamicCtx.save();
-      drawCachedBuilding(dynamicCtx, ghostTile, center.x, center.y - tileHeight * 0.02);
+      dynamicCtx.globalAlpha = buildAllowed ? 0.64 : 0.6;
+      drawCachedBuilding(
+        dynamicCtx,
+        ghostTile,
+        center.x,
+        center.y - tileHeight * 0.02,
+        buildAllowed ? undefined : '#FF3B30'
+      );
 
       if (buildAllowed) {
-        dynamicCtx.globalAlpha = 0.5;
+        dynamicCtx.globalAlpha = 0.45;
         dynamicCtx.fillStyle = 'rgba(183,209,240,0.35)';
         drawDiamond(dynamicCtx, center.x, center.y);
         dynamicCtx.fill();
       } else {
-        dynamicCtx.globalCompositeOperation = 'source-atop';
-        dynamicCtx.globalAlpha = 0.92;
-        dynamicCtx.fillStyle = 'rgba(255, 59, 48, 0.88)';
-        dynamicCtx.fillRect(center.x - tileWidth * 1.2, center.y - tileHeight * 2.0, tileWidth * 2.4, tileHeight * 3.4);
-        dynamicCtx.globalCompositeOperation = 'source-over';
         dynamicCtx.globalAlpha = 1;
         dynamicCtx.strokeStyle = 'rgba(255, 59, 48, 0.95)';
         dynamicCtx.lineWidth = 2.2;
@@ -2386,6 +3286,7 @@
     }
 
     infraStrokeKeys.add(key);
+    infraStrokeTypeByKey.set(key, infrastructureTool);
     return true;
   }
 
@@ -2537,9 +3438,18 @@
     }
 
     if (isInfraStroke && bufferedInfraKeys.size > 0) {
+      const typedUpdates = Array.from(bufferedInfraKeys)
+        .map((key) => {
+          const point = parseTileKey(key);
+          const type = infraStrokeTypeByKey.get(key);
+          return type ? { ...point, type } : null;
+        })
+        .filter((entry): entry is InfraTypedTile => entry !== null);
+
       dispatch('infrastructureBuffered', {
         updatedTiles: Array.from(bufferedInfraKeys).map(parseTileKey),
-        tilesSnapshot: []
+        tilesSnapshot: [],
+        typedUpdates
       });
       bufferedInfraKeys.clear();
     }
@@ -2585,9 +3495,18 @@
     if (isInfraStroke) {
       const updatedTiles = Array.from(infraStrokeKeys).map(parseTileKey);
       if (updatedTiles.length > 0) {
+        const typedUpdates = Array.from(infraStrokeKeys)
+          .map((key) => {
+            const point = parseTileKey(key);
+            const type = infraStrokeTypeByKey.get(key);
+            return type ? { ...point, type } : null;
+          })
+          .filter((entry): entry is InfraTypedTile => entry !== null);
+
         dispatch('infrastructureDrawn', {
           updatedTiles,
-          tilesSnapshot: cloneRowwiseSnapshot(worldTiles)
+          tilesSnapshot: cloneRowwiseSnapshot(worldTiles),
+          typedUpdates
         });
       }
     }
@@ -2646,6 +3565,7 @@
     bulldozeDemolitions = [];
     bufferedZoneKeys = new Set<string>();
     bufferedInfraKeys = new Set<string>();
+    infraStrokeTypeByKey = new Map<string, InfrastructureType>();
     strokeTileCount = 0;
     strokeFrameTicker = 0;
     strokeSpendTotal = 0;
@@ -2655,6 +3575,14 @@
 
   function onPointerDown(event: MouseEvent): void {
     if (inputLocked || isRotationAnimating()) return;
+    if (event.button === 2) {
+      event.preventDefault();
+      endStroke();
+      dispatch('mapClicked', null);
+      dispatch('toolCancelRequested', null);
+      return;
+    }
+
     if (shouldPanByShortcut(event)) {
       event.preventDefault();
       beginPan(canvasPoint(event));
@@ -2713,6 +3641,14 @@
 
   function onPointerMove(event: MouseEvent): void {
     if (inputLocked || isRotationAnimating()) return;
+    
+    // Track mouse position for flashlight effect (in screen coordinates)
+    const rect = dynamicCanvasEl?.getBoundingClientRect();
+    if (rect) {
+      mouseScreenX = event.clientX - rect.left;
+      mouseScreenY = event.clientY - rect.top;
+    }
+    
     const picked = pickTileFromEvent(event);
     const pickedTile = picked ? (worldTiles[picked.y]?.[picked.x] ?? null) : null;
     if (picked) {
@@ -2724,6 +3660,29 @@
 
     if (pickedTile && canSilentlySkipPickedTile(pickedTile)) {
       return;
+    }
+
+    // Update hover preview for zone/infra tools when no stroke is active
+    if (!isZoneStroke && !isInfraStroke && !isBulldozeStroke) {
+      if (zoneTool && picked && pickedTile && canPlaceZoneAt(pickedTile)) {
+        ghostZoneKeys.clear();
+        blockedGhostZoneKeys.clear();
+        const key = tileKey(picked.x, picked.y);
+        ghostZoneKeys.add(key);
+      } else if (zoneTool) {
+        ghostZoneKeys.clear();
+        blockedGhostZoneKeys.clear();
+      }
+
+      if (infrastructureTool && picked && pickedTile && canPlaceInfrastructureAt(pickedTile, infrastructureTool)) {
+        ghostInfraKeys.clear();
+        blockedGhostInfraKeys.clear();
+        const key = tileKey(picked.x, picked.y);
+        ghostInfraKeys.add(key);
+      } else if (infrastructureTool) {
+        ghostInfraKeys.clear();
+        blockedGhostInfraKeys.clear();
+      }
     }
 
     if (isZoneStroke && picked) {
@@ -2752,6 +3711,13 @@
   function onPointerLeave(): void {
     hoverTile = null;
     endStroke();
+  }
+
+  function onContextMenu(event: MouseEvent): void {
+    event.preventDefault();
+    endStroke();
+    dispatch('mapClicked', null);
+    dispatch('toolCancelRequested', null);
   }
 
   function onMapClick(event: MouseEvent): void {
@@ -2928,18 +3894,33 @@
     const now = performance.now();
     const frameDelta = now - lastFrameTimestamp;
     lastFrameTimestamp = now;
-    smoothedFrameMs = smoothedFrameMs * 0.88 + frameDelta * 0.12;
+    // Improved smoothing: more responsive to frame variations but stable against noise
+    smoothedFrameMs = smoothedFrameMs * 0.85 + frameDelta * 0.15;
     compassDegrees = activeRotationDegrees(now);
 
     if (isRotationAnimating(now)) {
       rotationVisualActive = true;
     } else if (rotationFromIndex !== rotationToIndex) {
+      const pivotScreenX = dpr > 0 ? rotationPivotScreenX / dpr : rotationPivotScreenX;
+      const pivotScreenY = dpr > 0 ? rotationPivotScreenY / dpr : rotationPivotScreenY;
+      const settledZoom = rotationFrozenCamera.zoom;
+
       rotationIndex = rotationToIndex;
       rotationFromIndex = rotationToIndex;
       rotationVisualActive = false;
       clearRotationLayer();
       rebuildWorldGeometry();
       ensureOffscreen();
+
+      // Keep the world pivot anchored to the same screen position after rotation.
+      const pivotWorldX = worldWidth * 0.5;
+      const pivotWorldY = worldHeight * 0.5;
+      camera.zoom = settledZoom;
+      cameraTarget.zoom = settledZoom;
+      camera.x = pivotScreenX - pivotWorldX * settledZoom;
+      camera.y = pivotScreenY - pivotWorldY * settledZoom;
+      cameraTarget.x = camera.x;
+      cameraTarget.y = camera.y;
       staticDirty = true;
     }
 
@@ -2972,6 +3953,12 @@
     clampCameraTarget();
     clampCameraCurrent();
 
+    // Check if viewport culling needs update
+    if (isViewportDirty()) {
+      cullingDirty = true;
+      lastCameraPos = { x: camera.x, y: camera.y, zoom: camera.zoom };
+    }
+
     if (staticDirty) {
       renderStaticTerrain();
     }
@@ -2992,6 +3979,9 @@
     if ((isZoneStroke || isInfraStroke) && strokeFrameTicker % 10 === 0) {
       dispatchBufferedStrokeUpdates();
     }
+
+    // Increment overlay frame counter for debouncing
+    overlayFrameCounter += 1;
 
     if (!rotationVisualActive) {
       drawDynamicLayer();
@@ -3026,6 +4016,21 @@
     staticDirty = true;
   }
 
+  // Clear hover previews when tools are deselected
+  $: if (!zoneTool || !hoverTile) {
+    if (!isZoneStroke) {
+      ghostZoneKeys.clear();
+      blockedGhostZoneKeys.clear();
+    }
+  }
+
+  $: if (!infrastructureTool || !hoverTile) {
+    if (!isInfraStroke) {
+      ghostInfraKeys.clear();
+      blockedGhostInfraKeys.clear();
+    }
+  }
+
   onMount(() => {
     dynamicCtx = dynamicCanvasEl.getContext('2d');
     staticCtx = staticCanvasEl.getContext('2d');
@@ -3051,7 +4056,14 @@
       if (event.code === 'Space') isSpacePressed = true;
       if (!event.repeat && event.code === 'KeyR') {
         event.preventDefault();
-        triggerRotationStep(1);
+        if (!isRotationAnimating()) {
+          triggerRotationStep(1);
+        }
+      }
+      if (event.code === 'Escape') {
+        endStroke();
+        dispatch('mapClicked', null);
+        dispatch('toolCancelRequested', null);
       }
     };
     const onKeyUp = (event: KeyboardEvent): void => {
@@ -3087,6 +4099,10 @@
     class="dynamic-layer"
     class:rotation-muted={rotationVisualActive}
     class:locked={inputLocked}
+    class:tool-bulldozer={activeTool === 'bulldozer'}
+    class:tool-zone={zoneTool !== null}
+    class:tool-infrastructure={infrastructureTool !== null}
+    class:tool-building={buildingTool !== null}
     bind:this={dynamicCanvasEl}
     on:mousedown={onPointerDown}
     on:mousemove={onPointerMove}
@@ -3097,20 +4113,50 @@
     on:touchmove={onTouchMove}
     on:touchend={onTouchEnd}
     on:touchcancel={onTouchEnd}
-    on:contextmenu|preventDefault
+    on:contextmenu={onContextMenu}
     on:click={onMapClick}
   ></canvas>
   <canvas class="rotation-layer" class:active={rotationVisualActive} bind:this={rotationCanvasEl}></canvas>
   <canvas class="stroke-layer" class:rotation-muted={rotationVisualActive} bind:this={strokeCanvasEl}></canvas>
 
   <div class="map-orientation-ui">
+    <div class="rotation-presets" role="group" aria-label="Perspektiba azkarrak">
+      <button
+        type="button"
+        class="preset"
+        class:active={((rotationIndex % 4) + 4) % 4 === 0}
+        on:click={(event) => onRotatePresetClick(event, 0)}
+        disabled={inputLocked || rotationVisualActive}
+      >N</button>
+      <button
+        type="button"
+        class="preset"
+        class:active={((rotationIndex % 4) + 4) % 4 === 1}
+        on:click={(event) => onRotatePresetClick(event, 1)}
+        disabled={inputLocked || rotationVisualActive}
+      >E</button>
+      <button
+        type="button"
+        class="preset"
+        class:active={((rotationIndex % 4) + 4) % 4 === 2}
+        on:click={(event) => onRotatePresetClick(event, 2)}
+        disabled={inputLocked || rotationVisualActive}
+      >S</button>
+      <button
+        type="button"
+        class="preset"
+        class:active={((rotationIndex % 4) + 4) % 4 === 3}
+        on:click={(event) => onRotatePresetClick(event, 3)}
+        disabled={inputLocked || rotationVisualActive}
+      >W</button>
+    </div>
     <button
       type="button"
       class="rotate-control"
       aria-label="Mapa 90 gradu biratu"
       title="Mapa biratu (R)"
       on:click={onRotateControlClick}
-      disabled={inputLocked}
+      disabled={inputLocked || rotationVisualActive}
     >
       Biratu
     </button>
@@ -3161,6 +4207,22 @@
     cursor: grab;
     pointer-events: auto;
     transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .dynamic-layer.tool-bulldozer {
+    cursor: crosshair;
+  }
+
+  .dynamic-layer.tool-zone {
+    cursor: crosshair;
+  }
+
+  .dynamic-layer.tool-infrastructure {
+    cursor: crosshair;
+  }
+
+  .dynamic-layer.tool-building {
+    cursor: crosshair;
   }
 
   .dynamic-layer.locked {
@@ -3223,6 +4285,44 @@
     pointer-events: auto;
   }
 
+  .rotation-presets {
+    display: inline-flex;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(12, 17, 24, 0.68);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.32);
+  }
+
+  .preset {
+    border: 0;
+    border-right: 1px solid rgba(255, 255, 255, 0.14);
+    min-width: 30px;
+    height: 32px;
+    padding: 0 9px;
+    background: transparent;
+    color: rgba(239, 248, 255, 0.92);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    cursor: pointer;
+  }
+
+  .preset:last-child {
+    border-right: 0;
+  }
+
+  .preset.active {
+    background: rgba(160, 216, 255, 0.22);
+    color: rgba(255, 255, 255, 0.98);
+  }
+
+  .preset:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
   .rotate-control {
     border: 1px solid rgba(255, 255, 255, 0.28);
     border-radius: 999px;
@@ -3281,7 +4381,6 @@
     width: 2px;
     height: 14px;
     background: linear-gradient(180deg, rgba(255, 120, 120, 0.96), rgba(255, 220, 220, 0.6));
-    transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   .compass-needle span {

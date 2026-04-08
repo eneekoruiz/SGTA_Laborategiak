@@ -1,9 +1,11 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import type { Budget, StatsResponse } from '../types/game';
   import * as apiService from '../services/apiService';
   import * as gameStore from '../store/game';
 
   export let budget: Budget | null = null;
+  export let stats: StatsResponse | null = null;
   export let gameId: string = 'game-001';
 
   const taxLabels = {
@@ -20,8 +22,16 @@
     education: 'Education'
   };
 
+  const statusCards = [
+    { label: 'Monthly Income', value: () => budget?.monthly_income ?? 0, tone: 'positive', icon: '◌' },
+    { label: 'Monthly Expenses', value: () => budget?.monthly_expenses ?? 0, tone: 'negative', icon: '◌' },
+    { label: 'Civic Stability', value: () => Math.round(((stats?.player.approval ?? 0) + (stats?.player.eq ?? 0) + (stats?.player.hq ?? 0)) / 3), tone: 'neutral', icon: '◌' },
+    { label: 'Treasury', value: () => budget?.last_year_income ?? 0, tone: 'accent', icon: '◌' }
+  ] as const;
+
   let loading = false;
   let error = '';
+  let submitTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Work with local copies to avoid multiple updates
   let localTaxRates = budget?.tax_rates || { residential: 7, commercial: 7, industrial: 7 };
@@ -33,14 +43,30 @@
     education: 100
   };
 
+  function scheduleSubmit() {
+    if (submitTimer) {
+      clearTimeout(submitTimer);
+    }
+
+    submitTimer = setTimeout(() => {
+      void submitChanges();
+    }, 280);
+  }
+
   async function handleTaxChange(key: keyof typeof localTaxRates, value: number) {
-    localTaxRates[key] = value;
-    await submitChanges();
+    localTaxRates = {
+      ...localTaxRates,
+      [key]: value
+    };
+    scheduleSubmit();
   }
 
   async function handleFundingChange(key: keyof typeof localFunding, value: number) {
-    localFunding[key] = value;
-    await submitChanges();
+    localFunding = {
+      ...localFunding,
+      [key]: value
+    };
+    scheduleSubmit();
   }
 
   async function submitChanges() {
@@ -83,14 +109,23 @@
   }
 
   $: if (budget) {
-    localTaxRates = budget.tax_rates;
-    localFunding = budget.funding;
+    localTaxRates = { ...budget.tax_rates };
+    localFunding = { ...budget.funding };
   }
 
-  const monthlyBalance = budget
-    ? budget.monthly_income - budget.monthly_expenses
-    : 0;
+  onDestroy(() => {
+    if (submitTimer) {
+      clearTimeout(submitTimer);
+      submitTimer = null;
+    }
+  });
+
+  const monthlyBalance = budget ? budget.monthly_income - budget.monthly_expenses : 0;
   const isNegative = monthlyBalance < 0;
+  const yearlyBalance = budget ? budget.last_year_income - budget.last_year_expenses : 0;
+  const yearlyNegative = yearlyBalance < 0;
+  const cityHealthScore = Math.max(0, Math.min(100, Math.round(((stats?.player.approval ?? 0) + (stats?.player.eq ?? 0) + (stats?.player.hq ?? 0)) / 3)));
+  const healthRing = `conic-gradient(#6fae8b ${cityHealthScore}%, rgba(16, 24, 40, 0.08) 0)`;
 </script>
 
 <div class="budget-panel">
@@ -98,29 +133,34 @@
     <div class="alert error">{error}</div>
   {/if}
 
-  <section class="balance-summary">
-    <div class="balance-row">
-      <span>Monthly Income</span>
-      <span class="mono income">§ {budget?.monthly_income.toLocaleString() || 0}</span>
-    </div>
-    <div class="balance-row">
-      <span>Monthly Expenses</span>
-      <span class="mono expense">§ {budget?.monthly_expenses.toLocaleString() || 0}</span>
-    </div>
-    <div class="balance-row total" class:negative={isNegative}>
-      <span>Monthly Balance</span>
-      <span class="mono" class:negative={isNegative}>
-        § {monthlyBalance.toLocaleString()}
-      </span>
-    </div>
+  <section class="status-grid" aria-label="Budget status cards">
+    {#each statusCards as card}
+      <article class={`status-card ${card.tone}`}>
+        <div class="status-card__icon">{card.icon}</div>
+        <div>
+          <p>{card.label}</p>
+          <strong>§ {card.value().toLocaleString()}</strong>
+        </div>
+      </article>
+    {/each}
+    <article class="status-card health">
+      <div class="ring" style={`--ring:${healthRing}`}>
+        <span>{cityHealthScore}%</span>
+      </div>
+      <div>
+        <p>City Health</p>
+        <strong>{cityHealthScore >= 80 ? 'Stable' : cityHealthScore >= 50 ? 'Watchful' : 'Critical'}</strong>
+      </div>
+    </article>
   </section>
 
   <section class="tax-section">
-    <h3>Tax Rates (%)</h3>
+    <h3>Tax Rates</h3>
     {#each Object.entries(taxLabels) as [key, label]}
       <div class="slider-row">
-        <label>{label}</label>
+        <label for={`tax-${key}`}>{label}</label>
         <input
+          id={`tax-${key}`}
           type="range"
           min="0"
           max="20"
@@ -140,11 +180,12 @@
   </section>
 
   <section class="funding-section">
-    <h3>Funding Allocations (%)</h3>
+    <h3>Funding Allocations</h3>
     {#each Object.entries(fundingLabels) as [key, label]}
       <div class="slider-row">
-        <label>{label}</label>
+        <label for={`funding-${key}`}>{label}</label>
         <input
+          id={`funding-${key}`}
           type="range"
           min="0"
           max="120"
@@ -164,7 +205,12 @@
   </section>
 
   <section class="bonds-section">
-    <h3>Bonds</h3>
+    <div class="section-head">
+      <h3>Bonds</h3>
+      <button class="request-bond" on:click={requestBond} disabled={loading}>
+        {loading ? 'Processing...' : 'Request Bond'}
+      </button>
+    </div>
     {#if budget && budget.bonds.length > 0}
       <div class="bonds-list">
         {#each budget.bonds as bond}
@@ -178,14 +224,6 @@
     {:else}
       <p class="empty">No active bonds.</p>
     {/if}
-
-    <button
-      class="request-bond"
-      on:click={requestBond}
-      disabled={loading}
-    >
-      {loading ? 'Processing...' : 'Request Bond (§5000)'}
-    </button>
   </section>
 </div>
 
@@ -193,11 +231,13 @@
   .budget-panel {
     display: grid;
     gap: 18px;
-    padding: 16px;
-    background: rgba(13, 24, 42, 0.6);
-    border-radius: 12px;
+    padding: 18px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(245, 248, 252, 0.96));
+    border-radius: 20px;
+    border: 1px solid rgba(31, 41, 55, 0.08);
     max-height: 80vh;
     overflow-y: auto;
+    box-shadow: 0 22px 50px rgba(15, 23, 42, 0.14);
   }
 
   .alert {
@@ -207,53 +247,89 @@
   }
 
   .alert.error {
-    background: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
-    border: 1px solid rgba(239, 68, 68, 0.5);
+    background: rgba(239, 68, 68, 0.12);
+    color: #b91c1c;
+    border: 1px solid rgba(239, 68, 68, 0.25);
   }
 
-  .balance-summary {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    padding: 12px;
-    font-size: 0.95rem;
+  .status-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
   }
 
-  .balance-row {
+  .status-card {
     display: flex;
-    justify-content: space-between;
-    padding: 6px 0;
-    color: rgba(234, 240, 250, 0.9);
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(15, 23, 42, 0.08);
   }
 
-  .balance-row.total {
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding-top: 8px;
-    margin-top: 4px;
-    font-weight: 600;
+  .status-card__icon {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    background: rgba(96, 165, 250, 0.12);
+    color: #1d4ed8;
+    font-size: 1.2rem;
   }
 
-  .balance-row.total.negative {
-    color: #ef4444;
+  .status-card p,
+  .status-card strong {
+    margin: 0;
   }
 
-  .mono {
-    font-family: var(--font-mono);
-    font-size: 0.9rem;
-    color: #d4e0f0;
+  .status-card strong {
+    font-size: 1.15rem;
   }
 
-  .mono.negative {
-    color: #ef4444;
+  .status-card.positive .status-card__icon {
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
   }
 
-  .mono.income {
-    color: #86efac;
+  .status-card.negative .status-card__icon {
+    background: rgba(239, 68, 68, 0.12);
+    color: #b91c1c;
   }
 
-  .mono.expense {
-    color: #fca5a5;
+  .status-card.accent .status-card__icon {
+    background: rgba(245, 158, 11, 0.12);
+    color: #b45309;
+  }
+
+  .status-card.health {
+    justify-content: flex-start;
+  }
+
+  .ring {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: var(--ring);
+    position: relative;
+  }
+
+  .ring::after {
+    content: '';
+    position: absolute;
+    inset: 10px;
+    border-radius: 50%;
+    background: white;
+  }
+
+  .ring span {
+    position: relative;
+    z-index: 1;
+    font-family: var(--font-mono, 'Courier New', monospace);
+    font-weight: 700;
   }
 
   section {
@@ -263,9 +339,9 @@
 
   h3 {
     margin: 0;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: rgba(243, 248, 255, 0.95);
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #334155;
     text-transform: uppercase;
     letter-spacing: 0.8px;
   }
@@ -277,12 +353,12 @@
     gap: 12px;
     padding: 8px;
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(15, 23, 42, 0.03);
   }
 
   label {
     font-size: 0.85rem;
-    color: rgba(234, 240, 250, 0.85);
+    color: #475569;
   }
 
   input[type='range'] {
@@ -299,15 +375,22 @@
   .value {
     font-family: var(--font-mono);
     font-size: 0.8rem;
-    color: #b69a63;
+    color: #0f766e;
     justify-self: end;
     min-width: 40px;
     text-align: right;
   }
 
   .bonds-section {
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
     padding-top: 12px;
+  }
+
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
   }
 
   .bonds-list {
@@ -321,21 +404,21 @@
     gap: 12px;
     align-items: center;
     padding: 8px;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.85);
     border-radius: 6px;
     font-size: 0.85rem;
-    color: rgba(234, 240, 250, 0.8);
+    color: #334155;
   }
 
   .bond-item .payment {
     justify-self: end;
     font-family: var(--font-mono);
-    color: #fca5a5;
+    color: #b91c1c;
   }
 
   .empty {
     font-size: 0.85rem;
-    color: rgba(234, 240, 250, 0.6);
+    color: #64748b;
     margin: 0;
     padding: 6px;
   }
@@ -343,17 +426,17 @@
   .request-bond {
     cursor: pointer;
     padding: 10px 14px;
-    background: rgba(182, 154, 99, 0.8);
-    color: #0d182a;
+    background: linear-gradient(135deg, #111827, #334155);
+    color: white;
     border: 0;
-    border-radius: 8px;
-    font-weight: 600;
+    border-radius: 999px;
+    font-weight: 700;
     font-size: 0.9rem;
     transition: background-color 160ms, opacity 160ms;
   }
 
   .request-bond:hover:not(:disabled) {
-    background: rgba(182, 154, 99, 1);
+    filter: brightness(1.08);
   }
 
   .request-bond:disabled {

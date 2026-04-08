@@ -2,121 +2,194 @@
   import { fade } from 'svelte/transition';
 
   export let activeOverlay: string | null = null;
+  export let isActive = false;
   export let onOverlayChange: (type: string | null) => void = () => {};
+  export let onToggle: () => void = () => {};
+
+  let expanded = false;
 
   const overlayTypes = [
-    { id: 'crime', label: '🚨 Crime', color: '#ff4757' },
-    { id: 'pollution_air', label: '💨 Air Pollution', color: '#ffa502' },
-    { id: 'pollution_water', label: '💧 Water Pollution', color: '#8b6914' },
-    { id: 'land_value', label: '💎 Land Value', color: '#2ed573' },
-    { id: 'traffic', label: '🚗 Traffic', color: '#5f27cd' },
-    { id: 'power', label: '⚡ Power', color: '#ffdd00' },
-    { id: 'water', label: '💧 Water', color: '#00d2d3' },
-    { id: 'fire_coverage', label: '🧯 Fire Coverage', color: '#ff4444' },
-    { id: 'police_coverage', label: '👮 Police Coverage', color: '#4488ff' },
-    { id: 'health', label: '⚕️ Health', color: '#00d2d3' },
-    { id: 'education', label: '🎓 Education', color: '#a29bfe' }
+    { id: 'crime', label: 'Crime', color: '#d27f7f' },
+    { id: 'pollution_air', label: 'Air Pollution', color: '#a78f84' },
+    { id: 'pollution_water', label: 'Water Pollution', color: '#8a7e73' },
+    { id: 'land_value', label: 'Land Value', color: '#8cad8f' },
+    { id: 'traffic', label: 'Traffic', color: '#b89470' },
+    { id: 'power', label: 'Power', color: '#b8aa83' },
+    { id: 'water', label: 'Water', color: '#80a8b9' },
+    { id: 'fire_coverage', label: 'Fire Coverage', color: '#c78f80' },
+    { id: 'police_coverage', label: 'Police Coverage', color: '#8ea5bf' },
+    { id: 'health', label: 'Health', color: '#8eb9b2' },
+    { id: 'education', label: 'Education', color: '#9d9fc2' }
   ];
 
   function toggleOverlay(type: string): void {
     if (activeOverlay === type) {
       onOverlayChange(null);
-    } else {
-      onOverlayChange(type);
+      return;
     }
+    onOverlayChange(type);
   }
 
-  function getLegendColor(index: number): string {
-    if (!activeOverlay) return 'rgba(100, 100, 100, 0.5)';
+  function openPanel(): void {
+    expanded = true;
+    if (!isActive) onToggle();
+  }
 
-    const colorMap: Record<string, [[number, number, number], [number, number, number]]> = {
-      crime: [[0, 100, 90], [0, 100, 50]],
-      pollution_air: [[280, 70, 85], [280, 70, 40]],
-      pollution_water: [[40, 90, 85], [40, 90, 45]],
-      land_value: [[120, 100, 90], [120, 100, 50]],
-      traffic: [[30, 100, 85], [30, 100, 50]],
-      power: [[60, 100, 90], [60, 100, 50]],
-      water: [[180, 100, 90], [180, 100, 50]],
-      fire_coverage: [[0, 100, 90], [0, 100, 50]],
-      police_coverage: [[210, 100, 90], [210, 100, 50]],
-      health: [[160, 100, 90], [160, 100, 50]],
-      education: [[260, 100, 90], [260, 100, 50]]
+  function closePanel(): void {
+    expanded = false;
+  }
+
+  function closeEverything(): void {
+    onOverlayChange(null);
+    if (isActive) onToggle();
+    closePanel();
+  }
+
+  function getLegendColor(intensity: number): string {
+    if (!activeOverlay) return 'rgba(100, 100, 100, 0.3)';
+
+    const colorMap: Record<
+      string,
+      { hue: number; satLight: number; satDark: number; lightLight: number; lightDark: number }
+    > = {
+      crime: { hue: 0, satLight: 80, satDark: 100, lightLight: 85, lightDark: 35 },
+      pollution_air: { hue: 280, satLight: 60, satDark: 100, lightLight: 80, lightDark: 30 },
+      pollution_water: { hue: 40, satLight: 80, satDark: 100, lightLight: 80, lightDark: 35 },
+      land_value: { hue: 120, satLight: 70, satDark: 100, lightLight: 80, lightDark: 40 },
+      traffic: { hue: 30, satLight: 75, satDark: 100, lightLight: 80, lightDark: 35 },
+      power: { hue: 60, satLight: 80, satDark: 100, lightLight: 85, lightDark: 30 },
+      water: { hue: 180, satLight: 70, satDark: 100, lightLight: 85, lightDark: 35 },
+      fire_coverage: { hue: 0, satLight: 80, satDark: 100, lightLight: 85, lightDark: 35 },
+      police_coverage: { hue: 210, satLight: 70, satDark: 100, lightLight: 85, lightDark: 35 },
+      health: { hue: 160, satLight: 80, satDark: 100, lightLight: 85, lightDark: 35 },
+      education: { hue: 260, satLight: 75, satDark: 100, lightLight: 80, lightDark: 35 }
     };
 
-    const [lightHSL, darkHSL] = colorMap[activeOverlay] || [[0, 0, 90], [0, 0, 40]];
-    const ratio = index / 255;
+    const config = colorMap[activeOverlay];
+    if (!config) return 'rgba(100, 100, 100, 0.3)';
 
-    const h = Math.round(lightHSL[0] * (1 - ratio) + darkHSL[0] * ratio);
-    const s = Math.round(lightHSL[1] * (1 - ratio) + darkHSL[1] * ratio);
-    const l = Math.round(lightHSL[2] * (1 - ratio) + darkHSL[2] * ratio);
+    const ratio = intensity / 255;
+    const s = config.satLight * (1 - ratio) + config.satDark * ratio;
+    const l = config.lightLight * (1 - ratio) + config.lightDark * ratio;
 
-    return `hsl(${h}, ${s}%, ${l}%)`;
+    return `hsl(${Math.round(config.hue)}, ${Math.round(s)}%, ${Math.round(l)}%)`;
   }
 </script>
 
-<div class="overlay-selector" in:fade={{ duration: 200 }}>
-  <div class="header">
-    <h3>Data Overlays</h3>
-    <button
-      class="close-btn"
-      on:click={() => onOverlayChange(null)}
-      aria-label="Close overlay selector"
-    >
-      ✕
-    </button>
-  </div>
+<aside
+  class="overlay-rail"
+  class:expanded={expanded}
+  on:mouseenter={openPanel}
+  on:mouseleave={closePanel}
+  in:fade={{ duration: 200 }}
+>
+  <button class="rail-trigger" aria-label="Toggle data overlays" on:click={openPanel}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4c4.5 0 8 3.2 9 8-1 4.8-4.5 8-9 8s-8-3.2-9-8c1-4.8 4.5-8 9-8zm0 4.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" /></svg>
+  </button>
 
-  <div class="overlay-list">
-    {#each overlayTypes as overlay (overlay.id)}
-      <button
-        class="overlay-btn"
-        class:active={activeOverlay === overlay.id}
-        on:click={() => toggleOverlay(overlay.id)}
-      >
-        <span class="indicator" style="background-color: {overlay.color}"></span>
-        {overlay.label}
+  <div class="overlay-panel">
+    <div class="header">
+      <h3>Data Overlays</h3>
+      <button class="close-btn" on:click={closeEverything} aria-label="Close overlay selector">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
       </button>
-    {/each}
-  </div>
-
-  {#if activeOverlay}
-    <div class="legend" in:fade={{ duration: 150 }}>
-      <div class="legend-title">
-        {overlayTypes.find((o) => o.id === activeOverlay)?.label || activeOverlay}
-      </div>
-      <div class="legend-bar">
-        {#each Array(32) as _, i}
-          <div
-            class="legend-swatch"
-            style="background-color: {getLegendColor(Math.round((i / 31) * 255))}"
-          ></div>
-        {/each}
-      </div>
-      <div class="legend-scale">
-        <span>Low</span>
-        <span>High</span>
-      </div>
     </div>
-  {/if}
-</div>
+
+    <div class="overlay-list">
+      {#each overlayTypes as overlay (overlay.id)}
+        <button
+          class="overlay-btn"
+          class:active={activeOverlay === overlay.id}
+          on:click={() => toggleOverlay(overlay.id)}
+        >
+          <span class="indicator" style="background-color: {overlay.color}"></span>
+          {overlay.label}
+        </button>
+      {/each}
+    </div>
+
+    {#if activeOverlay}
+      <div class="legend" in:fade={{ duration: 150 }}>
+        <div class="legend-title">
+          {overlayTypes.find((o) => o.id === activeOverlay)?.label || activeOverlay}
+        </div>
+        <div class="legend-bar">
+          {#each Array(32) as _, i}
+            <div
+              class="legend-swatch"
+              style="background-color: {getLegendColor(Math.round((i / 31) * 255))}"
+            ></div>
+          {/each}
+        </div>
+        <div class="legend-scale">
+          <span>Low</span>
+          <span>High</span>
+        </div>
+      </div>
+    {/if}
+  </div>
+</aside>
+
+{#if expanded}
+  <button class="dismiss-overlay" aria-label="Dismiss overlay panel" on:click={closePanel}></button>
+{/if}
 
 <style>
-  .overlay-selector {
+  .overlay-rail {
     position: fixed;
-    bottom: 20px;
-    left: 20px;
-    background: linear-gradient(135deg, rgba(20, 34, 58, 0.92), rgba(15, 28, 48, 0.88));
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 14px;
-    padding: 14px 16px;
-    backdrop-filter: blur(20px) saturate(110%);
-    box-shadow:
-      inset 0 1px 2px rgba(255, 255, 255, 0.1),
-      0 16px 48px rgba(2, 9, 20, 0.4);
-    z-index: 1000;
-    max-width: 320px;
-    color: #f2f6ff;
-    font-family: 'Inter', 'Segoe UI', sans-serif;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 60;
+    display: grid;
+    grid-template-columns: 46px 0;
+    align-items: stretch;
+    border-radius: 26px;
+    background: rgba(27, 29, 33, 0.24);
+    border: 0.5px solid rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(20px) saturate(112%);
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.14), 0 20px 40px rgba(4, 6, 10, 0.28);
+    overflow: hidden;
+    transition: grid-template-columns var(--dur-mid) var(--ease-standard), box-shadow var(--dur-mid) var(--ease-standard), transform var(--dur-mid) var(--ease-standard);
+  }
+
+  .overlay-rail.expanded {
+    grid-template-columns: 46px minmax(260px, 290px);
+  }
+
+  .rail-trigger {
+    border: 0;
+    border-right: 0.5px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(241, 245, 251, 0.9);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+  }
+
+  .rail-trigger svg,
+  .close-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: rgba(245, 248, 252, 0.95);
+    fill: none;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .overlay-panel {
+    width: 100%;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur-mid) var(--ease-standard);
+    padding: 14px;
+    color: rgba(240, 244, 250, 0.95);
+  }
+
+  .overlay-rail.expanded .overlay-panel {
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .header {
@@ -124,7 +197,7 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 12px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.26);
     padding-bottom: 10px;
   }
 
@@ -136,19 +209,16 @@
   }
 
   .close-btn {
-    background: none;
-    border: none;
-    color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.03);
+    border: 0.5px solid rgba(255, 255, 255, 0.28);
     cursor: pointer;
-    font-size: 1rem;
-    padding: 2px 6px;
-    border-radius: 4px;
-    transition: all 150ms ease;
+    padding: 4px;
+    border-radius: 10px;
+    transition: background-color var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
   }
 
   .close-btn:hover {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.09);
   }
 
   .overlay-list {
@@ -164,28 +234,27 @@
     align-items: center;
     gap: 10px;
     background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 0.5px solid rgba(255, 255, 255, 0.26);
     color: rgba(255, 255, 255, 0.85);
     padding: 8px 12px;
-    border-radius: 8px;
+    border-radius: 12px;
     cursor: pointer;
     font-size: 0.9rem;
     font-weight: 500;
-    transition: all 150ms ease;
-    position: relative;
+    transition: transform var(--dur-fast) var(--ease-standard), background-color var(--dur-mid) var(--ease-standard), border-color var(--dur-mid) var(--ease-standard);
   }
 
   .overlay-btn:hover {
+    transform: translateY(-1px);
     background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.32);
     color: #fff;
   }
 
   .overlay-btn.active {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.42);
     color: #fff;
-    box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.1);
   }
 
   .indicator {
@@ -193,13 +262,12 @@
     height: 10px;
     border-radius: 50%;
     flex-shrink: 0;
-    box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
   }
 
   .legend {
     margin-top: 14px;
     padding-top: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 0.5px solid rgba(255, 255, 255, 0.2);
   }
 
   .legend-title {
@@ -217,12 +285,11 @@
     border-radius: 4px;
     overflow: hidden;
     margin-bottom: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 0.5px solid rgba(255, 255, 255, 0.28);
   }
 
   .legend-swatch {
     flex: 1;
-    transition: opacity 150ms ease;
   }
 
   .legend-scale {
@@ -231,5 +298,32 @@
     font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.5);
     font-weight: 500;
+  }
+
+  .dismiss-overlay {
+    position: fixed;
+    inset: 0;
+    border: 0;
+    background: transparent;
+    z-index: 55;
+  }
+
+  @media (max-width: 980px) {
+    .overlay-rail {
+      left: 10px;
+      top: auto;
+      bottom: 86px;
+      transform: none;
+      border-radius: 22px;
+      grid-template-columns: 40px 0;
+    }
+
+    .overlay-rail.expanded {
+      grid-template-columns: 40px minmax(220px, 260px);
+    }
+
+    .overlay-panel {
+      padding: 10px;
+    }
   }
 </style>

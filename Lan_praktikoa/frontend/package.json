@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-check --tsconfig ./tsconfig.json"
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "qa:smoke": "node ./scripts/qa-smoke.mjs",
+    "qa:certify": "node --experimental-strip-types ./scripts/qa-certification.mjs"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^4.0.0",

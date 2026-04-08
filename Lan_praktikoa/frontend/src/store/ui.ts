@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 import type { ZoneType, InfrastructureType } from '../types/game';
 
 /**
@@ -31,6 +31,118 @@ export const cheatHistory = writable<string[]>([]);
 
 // Funding slider (for Education/Health preview)
 export const fundingPct = writable<number>(100);
+
+export type NotificationPriority = 'high' | 'medium' | 'low';
+
+export type UINotification = {
+  id: number;
+  title: string;
+  message: string;
+  priority: NotificationPriority;
+  expanded: boolean;
+  ts: number;
+};
+
+export const notifications = writable<UINotification[]>([]);
+
+const notificationTimers = new Map<number, ReturnType<typeof setTimeout>>();
+const DRAG_ERROR_THROTTLE_MS = 2500;
+const MAX_NOTIFICATIONS_ON_SCREEN = 6;
+let lastDragErrorTs = 0;
+
+function notificationTtl(priority: NotificationPriority): number {
+  if (priority === 'high') return 6000;
+  if (priority === 'medium') return 3800;
+  return 3200;
+}
+
+function clearNotificationTimer(id: number): void {
+  const timer = notificationTimers.get(id);
+  if (timer) {
+    clearTimeout(timer);
+    notificationTimers.delete(id);
+  }
+}
+
+function armNotificationTimer(id: number, priority: NotificationPriority): void {
+  clearNotificationTimer(id);
+  const ttl = notificationTtl(priority);
+  const timer = setTimeout(() => {
+    notifications.update((list) => list.filter((entry) => entry.id !== id));
+    notificationTimers.delete(id);
+  }, ttl);
+  notificationTimers.set(id, timer);
+}
+
+export function pushNotification(
+  payload: {
+    title: string;
+    message: string;
+    priority?: NotificationPriority;
+    expanded?: boolean;
+  },
+  options?: {
+    dragOperation?: boolean;
+    isError?: boolean;
+  }
+): number | null {
+  const priority = payload.priority ?? 'medium';
+  const now = Date.now();
+
+  if (options?.dragOperation && options.isError) {
+    if (now - lastDragErrorTs < DRAG_ERROR_THROTTLE_MS) {
+      return null;
+    }
+    lastDragErrorTs = now;
+  }
+
+  const current = get(notifications);
+  const existing = current.find((entry) => entry.message === payload.message);
+
+  if (existing) {
+    notifications.update((list) =>
+      list.map((entry) =>
+        entry.id === existing.id
+          ? {
+              ...entry,
+              title: payload.title,
+              priority,
+              expanded: payload.expanded ?? entry.expanded,
+              ts: now
+            }
+          : entry
+      )
+    );
+    armNotificationTimer(existing.id, priority);
+    return existing.id;
+  }
+
+  const id = now + Math.floor(Math.random() * 1000);
+  const next: UINotification = {
+    id,
+    title: payload.title,
+    message: payload.message,
+    priority,
+    expanded: payload.expanded ?? false,
+    ts: now
+  };
+
+  notifications.update((list) => [next, ...list].slice(0, MAX_NOTIFICATIONS_ON_SCREEN));
+  armNotificationTimer(id, priority);
+  return id;
+}
+
+export function clearNotification(id: number): void {
+  clearNotificationTimer(id);
+  notifications.update((list) => list.filter((entry) => entry.id !== id));
+}
+
+export function clearAllNotifications(): void {
+  for (const id of notificationTimers.keys()) {
+    clearNotificationTimer(id);
+  }
+  notifications.set([]);
+}
 
 /**
  * ACTION FUNCTIONS
@@ -101,4 +213,5 @@ export function resetUIStores() {
   errorMessage.set('');
   cheatHistory.set([]);
   fundingPct.set(100);
+  clearAllNotifications();
 }

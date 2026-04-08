@@ -28,6 +28,12 @@
   import { cubicOut } from 'svelte/easing';
   import { fade, slide } from 'svelte/transition';
   import IsometricMap from './IsometricMap.Optimized.svelte';
+  import GameHUD from './GameHUD.svelte';
+  import DataOverlaySelector from './DataOverlaySelector.svelte';
+  import DisasterPanel from './DisasterPanel.svelte';
+  import AITurnViewer from './AITurnViewer.svelte';
+  import NewspaperModal from './NewspaperModal.svelte';
+  import EducationHealthPanel from './EducationHealthPanel.svelte';
   import RivalCityView from './RivalCityView.svelte';
   import PerformanceMeter from './PerformanceMeter.svelte';
   import KeyboardLegend from './KeyboardLegend.svelte';
@@ -37,17 +43,19 @@
   import * as gameStore from '../store/game';
   import {
     clearNotification as dismissStoredNotification,
+    cheatConsoleOpen,
     notifications as notificationsStore,
     pushNotification as pushStoredNotification,
     toggleCheatConsole,
     type NotificationPriority,
     type UINotification
   } from '../store/ui';
-  import { formatGameDate } from '../lib/utils/date';
   import type {
     AITurnAction,
     BuildingType,
+    EducationResponse,
     GameState,
+    HealthResponse,
     InfrastructureType,
     StatsResponse,
     Tile,
@@ -56,7 +64,8 @@
 
   type ToolMode = 'zone' | 'infrastructure' | 'building' | null;
   type InfraGroup = 'roads' | 'water' | 'power' | 'transit';
-  type ShelfType = 'zones' | 'roads' | 'buildings' | 'stats' | 'rival' | 'newspaper' | null;
+  type ShelfType = 'zones' | 'roads' | 'buildings' | 'stats' | 'eduhealth' | 'rival' | 'newspaper' | null;
+  type InfraTypedPoint = { x: number; y: number; type: InfrastructureType };
 
   let loading = true;
   let error = '';
@@ -90,6 +99,17 @@
   let notifications: UINotification[] = [];
   let silentAIDotCount = 0;
   let showPerfMeter = false;
+  let aiTurnViewerOpen = false;
+  let aiTurnViewerMode: 'panel' | 'split' | 'fullscreen' = 'split';
+  let aiTurnViewerActions: Array<{ type: string; label: string; detail?: string }> = [];
+  let aiTurnViewerReasoning = '';
+  let newspaperOpen = false;
+  let educationMetrics: EducationResponse | null = null;
+  let healthMetrics: HealthResponse | null = null;
+  let eduHealthFundingPct = 100;
+  let eqSeries: number[] = [];
+  let hqSeries: number[] = [];
+  let eduHealthLabels: string[] = [];
   const buildingPlacementPending = new Set<string>();
   let unsubscribeGameState: (() => void) | null = null;
   let unsubscribeStats: (() => void) | null = null;
@@ -105,6 +125,28 @@
     if (!type) return 0;
     const entry = buildingTools.find((tool) => tool.value === type) ?? serviceBuildingTools.find((tool) => tool.value === type);
     return entry?.cost ?? 1000;
+  }
+
+  function mapAiTurnActions(actions: AITurnAction[]): Array<{ type: string; label: string; detail?: string }> {
+    return actions.map((action) => {
+      const label = action.description
+        ? action.description
+        : action.action_type === 'zone'
+          ? `Zona: ${action.zone_type ?? 'zehaztu gabe'}`
+          : action.action_type === 'build'
+            ? `Eraikina: ${action.building_type ?? 'zehaztu gabe'}`
+            : action.action_type === 'infrastructure'
+              ? `Azpiegitura: ${action.infrastructure_type ?? 'zehaztu gabe'}`
+              : action.action_type === 'attack'
+                ? `Erasoa: ${action.disaster_type ?? 'zehaztu gabe'}`
+                : action.action_type;
+
+      return {
+        type: action.action_type,
+        label,
+        detail: action.position ? `(${action.position.x}, ${action.position.y})` : undefined
+      };
+    });
   }
 
   function isInteractionLocked(): boolean {
@@ -169,6 +211,7 @@
     { id: 'roads', label: 'Azpiegiturak' },
     { id: 'buildings', label: 'Eraikinak' },
     { id: 'stats', label: 'Estatistikak' },
+    { id: 'eduhealth', label: 'Hezk. / Osasuna' },
     { id: 'rival', label: 'AA aurkaria' },
     { id: 'newspaper', label: 'Egunkaria' }
   ];
@@ -454,9 +497,77 @@
 
   function openShelf(shelf: Exclude<ShelfType, null>): void {
     if (isGameOver) return;
+    if (shelf === 'newspaper') {
+      newspaperOpen = true;
+      activeShelf = null;
+      return;
+    }
     activeShelf = activeShelf === shelf ? null : shelf;
     if (shelf === 'roads') {
       activeInfraGroup = 'roads';
+    }
+    if (shelf === 'rival') {
+      silentAIDotCount = 0;
+    }
+    if (shelf === 'eduhealth') {
+      void refreshEducationHealth();
+    }
+  }
+
+  function appendEduHealthHistoryPoint(education: EducationResponse, health: HealthResponse): void {
+    const date = gameState?.current_date;
+    const label = date
+      ? `${String(date.month).padStart(2, '0')}/${date.year}`
+      : `T${eduHealthLabels.length + 1}`;
+
+    if (eduHealthLabels.length > 0 && eduHealthLabels[eduHealthLabels.length - 1] === label) {
+      eqSeries = [...eqSeries.slice(0, -1), education.eq];
+      hqSeries = [...hqSeries.slice(0, -1), health.hq];
+      return;
+    }
+
+    eqSeries = [...eqSeries, education.eq].slice(-12);
+    hqSeries = [...hqSeries, health.hq].slice(-12);
+    eduHealthLabels = [...eduHealthLabels, label].slice(-12);
+  }
+
+  async function refreshEducationHealth(): Promise<void> {
+    try {
+      const [education, health] = await Promise.all([apiService.getEducation(gameId), apiService.getHealth(gameId)]);
+      educationMetrics = education;
+      healthMetrics = health;
+      gameStore.setEducation(education);
+      gameStore.setHealth(health);
+      appendEduHealthHistoryPoint(education, health);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Hezkuntza eta osasun datuak ezin izan dira freskatu';
+      pushNotification('Hezk./Osasun errorea', message, 'medium');
+    }
+  }
+
+  async function handleEduHealthFundingChange(event: CustomEvent<{ value: number }>): Promise<void> {
+    if (!gameState) return;
+    const nextFunding = Math.max(0, Math.min(120, Math.round(event.detail.value)));
+    eduHealthFundingPct = nextFunding;
+
+    const currentFunding = gameState.player_city.budget.funding;
+    try {
+      const result = await apiService.updateBudget(gameId, undefined, {
+        ...currentFunding,
+        education: nextFunding,
+        health: nextFunding
+      });
+
+      if (result.success && result.game_state) {
+        gameState = result.game_state;
+        liveTiles = cloneTiles(result.game_state.map.tiles);
+        gameStore.setGameState(result.game_state);
+      }
+
+      await refreshEducationHealth();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Hezkuntza/Osasun finantzaketa ezin izan da eguneratu';
+      pushNotification('Finantzaketa errorea', message, 'medium');
     }
   }
 
@@ -507,6 +618,7 @@
       if (stats) {
         gameStore.setStats(stats);
       }
+      await refreshEducationHealth();
 
       gameStore.setAiTurn(result.ai_turn ?? null);
 
@@ -534,6 +646,16 @@
 
       const aiActions = Array.isArray(result.ai_turn?.actions) ? result.ai_turn.actions.length : 0;
       const aiReasoning = typeof result.ai_turn?.reasoning === 'string' ? result.ai_turn.reasoning : '';
+      aiTurnViewerActions = Array.isArray(result.ai_turn?.actions)
+        ? mapAiTurnActions(result.ai_turn.actions as AITurnAction[])
+        : [];
+      aiTurnViewerReasoning = aiReasoning;
+      aiTurnViewerOpen = aiTurnViewerActions.length > 0 || aiTurnViewerReasoning.length > 0;
+
+      if (gameState?.current_date.month === 1) {
+        newspaperOpen = true;
+      }
+
       pushNotification(
         'AA txanda osatuta',
         aiActions > 0 ? `${aiActions} AA ekintza exekutatu dira.` : 'AAk txanda osatu du.',
@@ -551,6 +673,8 @@
       if (focusCandidate?.position) {
         aiFocusTile = { x: focusCandidate.position.x, y: focusCandidate.position.y, zoom: 1.3 };
       }
+
+      await refreshEducationHealth();
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Ezin izan da hilabetea amaitu';
       pushNotification('Simulazio errorea', message, 'high', true);
@@ -701,20 +825,10 @@
   ): Promise<void> {
     if (isGameOver) return;
     liveTiles = cloneTiles(event.detail.tilesSnapshot);
-    if (!selectedZone || event.detail.updatedTiles.length === 0) return;
+    if (event.detail.updatedTiles.length === 0) return;
 
-    const requests = event.detail.updatedTiles.map((point) =>
-      apiService.placeZone(gameId, selectedZone as ZoneType, point, { w: 1, h: 1 })
-    );
-
-    const results = await Promise.allSettled(requests);
-    const latest = [...results].reverse().find((result) => result.status === 'fulfilled');
-
-    if (latest && latest.status === 'fulfilled' && latest.value?.game_state) {
-      gameState = latest.value.game_state;
-      liveTiles = cloneTiles(latest.value.game_state.map.tiles);
-      stats = await apiService.getStats(gameId);
-    }
+    // Final paint event keeps optimistic snapshot local; authoritative sync is handled in buffered flow.
+    markDirtyTiles(event.detail.updatedTiles);
   }
 
   async function handleZoneBuffered(
@@ -749,50 +863,100 @@
         );
         const fresh = await apiService.getGame(gameId);
         gameState = fresh.game_state;
+        gameStore.setGameState(fresh.game_state);
+        releaseDirtyTiles(event.detail.updatedTiles);
+        return;
       }
-    } finally {
+
+      const fresh = await apiService.getGame(gameId);
+      gameState = fresh.game_state;
+      gameStore.setGameState(fresh.game_state);
+      liveTiles = mergeTilesPreservingDirty(fresh.game_state.map.tiles);
+
+      try {
+        const freshStats = await apiService.getStats(gameId);
+        stats = freshStats;
+        gameStore.setStats(freshStats);
+      } catch {
+        pushNotification('Estatistikak atzeratuta', 'Zonak baieztatu dira, baina estatistikak ezin izan dira une honetan freskatu.', 'low');
+      }
+
       releaseDirtyTiles(event.detail.updatedTiles);
+    } finally {
+      // Dirty tiles are released only after confirmation/fallback above.
     }
   }
 
   async function handleInfraDraw(
-    event: CustomEvent<{ updatedTiles: Array<{ x: number; y: number }>; tilesSnapshot: Tile[][] }>
+    event: CustomEvent<{
+      updatedTiles: Array<{ x: number; y: number }>;
+      tilesSnapshot: Tile[][];
+      typedUpdates?: InfraTypedPoint[];
+    }>
   ): Promise<void> {
     if (isGameOver) return;
     liveTiles = cloneTiles(event.detail.tilesSnapshot);
-    if (!selectedInfra || event.detail.updatedTiles.length === 0) return;
+    if (event.detail.updatedTiles.length === 0) return;
 
-    try {
-      const segments = event.detail.updatedTiles.map((point) => ({ from: point, to: point }));
-      const result = await apiService.placeInfrastructure(gameId, selectedInfra, segments);
-      if (result.success && result.game_state) {
-        gameState = result.game_state;
-        liveTiles = cloneTiles(result.game_state.map.tiles);
-        stats = await apiService.getStats(gameId);
-      }
-    } catch (e) {
-      const message = e instanceof Error ? e.message : 'Ezin izan da azpiegitura kokatu';
-      pushNotification('Azpiegitura errorea', message, 'high', true);
-    }
+    // Final draw event keeps optimistic snapshot local; authoritative sync is handled in buffered flow.
+    markDirtyTiles(event.detail.updatedTiles);
   }
 
   async function handleInfraBuffered(
-    event: CustomEvent<{ updatedTiles: Array<{ x: number; y: number }>; tilesSnapshot: Tile[][] }>
+    event: CustomEvent<{
+      updatedTiles: Array<{ x: number; y: number }>;
+      tilesSnapshot: Tile[][];
+      typedUpdates?: InfraTypedPoint[];
+    }>
   ): Promise<void> {
     if (isGameOver) return;
-    if (!selectedInfra || event.detail.updatedTiles.length === 0) return;
+    if (event.detail.updatedTiles.length === 0) return;
 
     markDirtyTiles(event.detail.updatedTiles);
 
     try {
-      const segments = event.detail.updatedTiles.map((point) => ({ from: point, to: point }));
-      await apiService.placeInfrastructure(gameId, selectedInfra, segments);
+      const grouped = groupInfraByType(event.detail.updatedTiles, event.detail.typedUpdates, selectedInfra);
+      if (grouped.size === 0) return;
+
+      const chunkSize = 20;
+      let hadFailure = false;
+
+      for (const [infraType, points] of grouped.entries()) {
+        for (let start = 0; start < points.length; start += chunkSize) {
+          const chunk = points.slice(start, start + chunkSize);
+          const segments = chunk.map((point) => ({ from: point, to: point }));
+          try {
+            await apiService.placeInfrastructure(gameId, infraType, segments);
+          } catch {
+            hadFailure = true;
+          }
+        }
+      }
+
+      if (hadFailure) {
+        throw new Error('Azpiegitura trazuaren segmentu batzuk ezin izan dira baieztatu.');
+      }
+
+      const fresh = await apiService.getGame(gameId);
+      gameState = fresh.game_state;
+      gameStore.setGameState(fresh.game_state);
+      liveTiles = mergeTilesPreservingDirty(fresh.game_state.map.tiles);
+
+      try {
+        const freshStats = await apiService.getStats(gameId);
+        stats = freshStats;
+        gameStore.setStats(freshStats);
+      } catch {
+        pushNotification('Estatistikak atzeratuta', 'Azpiegiturak baieztatu dira, baina estatistikak ezin izan dira une honetan freskatu.', 'low');
+      }
+
+      releaseDirtyTiles(event.detail.updatedTiles);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Azpiegitura trazua ezin izan da baieztatu.';
       pushNotification('Azpiegitura atzeratuta', message, 'high', false, { dragOperation: true, isError: true });
       const fresh = await apiService.getGame(gameId);
       gameState = fresh.game_state;
-    } finally {
+      gameStore.setGameState(fresh.game_state);
       releaseDirtyTiles(event.detail.updatedTiles);
     }
   }
@@ -803,6 +967,8 @@
 
   function onKeyDown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
+      newspaperOpen = false;
+      aiTurnViewerOpen = false;
       activeShelf = null;
       bulldozerActive = false;
       clearToolSelection();
@@ -831,7 +997,37 @@
 
   function closeShelfOnMapInteraction(): void {
     if (isGameOver) return;
-    if (activeShelf === 'newspaper') activeShelf = null;
+    newspaperOpen = false;
+  }
+
+  function handleToolCancelRequest(): void {
+    if (isGameOver) return;
+    activeShelf = null;
+    bulldozerActive = false;
+    clearToolSelection();
+  }
+
+  function groupInfraByType(
+    updatedTiles: Array<{ x: number; y: number }>,
+    typedUpdates: InfraTypedPoint[] | undefined,
+    fallbackType: InfrastructureType | null
+  ): Map<InfrastructureType, Array<{ x: number; y: number }>> {
+    const grouped = new Map<InfrastructureType, Array<{ x: number; y: number }>>();
+
+    if (typedUpdates && typedUpdates.length > 0) {
+      for (const point of typedUpdates) {
+        const bucket = grouped.get(point.type) ?? [];
+        bucket.push({ x: point.x, y: point.y });
+        grouped.set(point.type, bucket);
+      }
+      return grouped;
+    }
+
+    if (fallbackType && updatedTiles.length > 0) {
+      grouped.set(fallbackType, updatedTiles);
+    }
+
+    return grouped;
   }
 
   $: populationHistory = metricHistory.map((entry) => entry.population);
@@ -865,6 +1061,7 @@
       gameStore.setGameState(gameRes.game_state);
       gameStore.setStats(statsRes);
       gameStore.setAiTurn(null);
+      await refreshEducationHealth();
 
       unsubscribeGameState = gameStore.gameState.subscribe((value) => {
         if (!value) return;
@@ -934,6 +1131,20 @@
         on:tileClicked={handleBuildingPlacement}
         on:occupiedAttempt={handleOccupiedAttempt}
         on:mapClicked={closeShelfOnMapInteraction}
+        on:toolCancelRequested={handleToolCancelRequest}
+      />
+
+      <DataOverlaySelector
+        activeOverlay={activeOverlay}
+        isActive={activeOverlay !== null}
+        onOverlayChange={(type) => {
+          activeOverlay = type;
+        }}
+        onToggle={() => {
+          if (activeShelf !== 'stats') {
+            openShelf('stats');
+          }
+        }}
       />
 
       {#if activeShelf === 'newspaper'}
@@ -952,90 +1163,35 @@
         ></div>
       {/if}
 
-      <header class="topbar" in:fade={{ duration: 220 }}>
-        <button class="chip back" on:click={backToGames}>Atzera</button>
-
-        <div class="hud-group">
-          <div class="hud-item">
-            <span class="hud-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M7 3v3M17 3v3M4 10h16M6 6h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>
-            </span>
-            <div class="hud-meta">
-              <span class="label">Data</span>
-              <strong>{gameState.current_date.year}/{String(gameState.current_date.month).padStart(2, '0')}</strong>
-            </div>
-          </div>
-          <div class="hud-item">
-            <span class="hud-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M4 20v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/></svg>
-            </span>
-            <div class="hud-meta">
-              <span class="label">Biztanleria</span>
-              <strong>{stats.player.population.toLocaleString()}</strong>
-            </div>
-          </div>
-          <div class="hud-item">
-            <span class="hud-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M4 12h16M12 4v16M6.5 6.5c1.4-1.4 3.4-2.3 5.5-2.3s4.1.9 5.5 2.3M6.5 17.5c1.4 1.4 3.4 2.3 5.5 2.3s4.1-.9 5.5-2.3"/></svg>
-            </span>
-            <div class="hud-meta">
-              <span class="label">Altxorra</span>
-              <strong>§{Math.round(stats.player.treasury).toLocaleString()}</strong>
-            </div>
-          </div>
-          <div class="hud-item compact">
-            <span class="hud-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M5 19V9M12 19V5M19 19v-8"/></svg>
-            </span>
-            <div class="hud-meta">
-              <span class="label">RCI</span>
-              <strong>
-                R {stats.player.rci_demand.r} / C {stats.player.rci_demand.c} / I {stats.player.rci_demand.i}
-              </strong>
-            </div>
-          </div>
-        </div>
-
-        <div class="top-actions">
-          <button class="chip" class:active-chip={bulldozerActive} on:click={toggleBulldozer} disabled={isGameOver}>
-            {bulldozerActive ? 'Bulldozer aktibo' : 'Bulldozer itzalita'}
-          </button>
-          <button class="chip" disabled={savePending || isGameOver} on:click={() => void saveGame()}>
-            {savePending ? 'Gordetzen...' : 'Gorde'}
-          </button>
-          <div class="button-group">
-            <button class="chip accent" disabled={endMonthPending || isGameOver} on:click={() => void endMonth()}>
-              {endMonthPending ? 'Simulatzen...' : 'Hilabetea amaitu'}
-            </button>
-            <button 
-              class="chip auto-toggle" 
-              class:active={autoAdvance}
-              disabled={isGameOver}
-              on:click={() => {
-                autoAdvance = !autoAdvance;
-                syncAutoAdvanceTimer();
-              }}
-              title="Auto-aurrerapena hilero (10s)"
-            >
-              {autoAdvance ? 'Auto: Piztuta' : 'Auto: Itzalita'}
-            </button>
-          </div>
-          <button
-            class="chip ai-chip"
-            on:click={() => {
-              activeShelf = 'rival';
-              silentAIDotCount = 0;
-            }}
-            aria-label="AA jakinarazpenak"
-            disabled={isGameOver}
-          >
-            AI
-            {#if silentAIDotCount > 0}
-              <span class="dot"></span>
-            {/if}
-          </button>
-        </div>
-      </header>
+      <div class="spec-hud-layer">
+        <GameHUD
+          date={gameState.current_date}
+          population={stats.player.population}
+          treasury={Math.round(stats.player.treasury)}
+          score={Math.round(stats.player.composite_score)}
+          rci={stats.player.rci_demand}
+          autoTickEnabled={autoAdvance}
+          savePending={savePending}
+          isGameOver={isGameOver}
+          bulldozerActive={bulldozerActive}
+          showEmoticons={showStatusIcons}
+          aiTurnViewerMode={aiTurnViewerMode}
+          onBack={backToGames}
+          onToggleBulldozer={toggleBulldozer}
+          onToggleAutoTick={() => {
+            autoAdvance = !autoAdvance;
+            syncAutoAdvanceTimer();
+          }}
+          onToggleEmoticons={() => {
+            showStatusIcons = !showStatusIcons;
+          }}
+          onAIModeChange={(mode: typeof aiTurnViewerMode) => {
+            aiTurnViewerMode = mode;
+          }}
+          onNextMonth={() => void endMonth()}
+          onSave={() => void saveGame()}
+        />
+      </div>
 
       {#if activeToolText()}
         <div class="active-tool-indicator" in:fade={{ duration: 180 }}>
@@ -1123,63 +1279,66 @@
 
           {#if activeShelf === 'stats'}
             <div class="shelf-head"><h3>Estatistikak</h3></div>
-            <section class="stats-dashboard">
-              <article class="data-card wide">
-                <header>
-                  <span>Biztanleriaren joera</span>
-                  <strong>{stats.player.population.toLocaleString()}</strong>
-                </header>
-                <svg viewBox="0 0 164 34" preserveAspectRatio="none" aria-label="Biztanleriaren mini grafikoa">
-                  <polyline points={sparklinePoints(populationHistory)} />
-                </svg>
-              </article>
+            {#if educationMetrics && healthMetrics}
+              <section class="stats-unique-grid">
+                <article class="data-card wide compact-card">
+                  <header>
+                    <span>Module 8</span>
+                    <strong>EQ / HQ joera</strong>
+                  </header>
+                  <div class="compact-metrics">
+                    <div>
+                      <span>EQ</span>
+                      <strong>{educationMetrics.eq} ({educationMetrics.eq_trend >= 0 ? '+' : ''}{educationMetrics.eq_trend})</strong>
+                    </div>
+                    <div>
+                      <span>HQ</span>
+                      <strong>{healthMetrics.hq} ({healthMetrics.hq_trend >= 0 ? '+' : ''}{healthMetrics.hq_trend})</strong>
+                    </div>
+                    <div>
+                      <span>Bizi-itxaropena</span>
+                      <strong>{healthMetrics.average_lifespan.toFixed(1)} urte</strong>
+                    </div>
+                    <div>
+                      <span>High-tech</span>
+                      <strong>{(educationMetrics.effects.high_tech_industry_pct * 100).toFixed(0)}%</strong>
+                    </div>
+                  </div>
+                </article>
 
-              <article class="data-card wide">
-                <header>
-                  <span>Altxorraren joera</span>
-                  <strong>§{Math.round(stats.player.treasury).toLocaleString()}</strong>
-                </header>
-                <svg viewBox="0 0 164 34" preserveAspectRatio="none" aria-label="Altxorraren mini grafikoa">
-                  <polyline class="treasury" points={sparklinePoints(treasuryHistory)} />
-                </svg>
-              </article>
+                <article class="data-card wide compact-card">
+                  <header>
+                    <span>EQ / HQ</span>
+                    <strong>Azken 12 hilabeteak</strong>
+                  </header>
+                  <svg viewBox="0 0 164 34" preserveAspectRatio="none" aria-label="EQ HQ mini grafikoa">
+                    <polyline points={sparklinePoints(eqSeries)} />
+                    <polyline class="hq-line" points={sparklinePoints(hqSeries)} />
+                  </svg>
+                </article>
 
-              <article class="data-card">
-                <header>
-                  <span>Onarpena</span>
-                  <strong>{Math.round(stats.player.approval)}%</strong>
-                </header>
-                <div class="meter"><span style={`width:${metricPct(stats.player.approval, 0, 100)}%`}></span></div>
-              </article>
-
-              <article class="data-card">
-                <header>
-                  <span>Krimen presioa</span>
-                  <strong>{Math.round(stats.player.crime_rate)}</strong>
-                </header>
-                <div class="meter danger"><span style={`width:${metricPct(stats.player.crime_rate, 0, 100)}%`}></span></div>
-              </article>
-
-              <article class="data-card">
-                <header>
-                  <span>Kutsadura</span>
-                  <strong>{Math.round(stats.player.pollution)}</strong>
-                </header>
-                <div class="meter warning"><span style={`width:${metricPct(stats.player.pollution, 0, 100)}%`}></span></div>
-              </article>
-
-              <article class="data-card wide">
-                <header>
-                  <span>RCI momentua</span>
-                  <strong>R {stats.player.rci_demand.r} · C {stats.player.rci_demand.c} · I {stats.player.rci_demand.i}</strong>
-                </header>
-                <svg viewBox="0 0 164 34" preserveAspectRatio="none" aria-label="RCI mini grafikoa">
-                  <polyline class="r" points={sparklinePoints(rciHistory.map((entry) => entry.r))} />
-                  <polyline class="c" points={sparklinePoints(rciHistory.map((entry) => entry.c))} />
-                  <polyline class="i" points={sparklinePoints(rciHistory.map((entry) => entry.i))} />
-                </svg>
-              </article>
-            </section>
+                <article class="data-card wide compact-card">
+                  <header>
+                    <span>RCI hazkundea</span>
+                    <strong>Eskariaren joera</strong>
+                  </header>
+                  <svg viewBox="0 0 164 34" preserveAspectRatio="none" aria-label="RCI growth mini grafikoa">
+                    <polyline class="r" points={sparklinePoints(rciHistory.map((entry) => entry.r))} />
+                    <polyline class="c" points={sparklinePoints(rciHistory.map((entry) => entry.c))} />
+                    <polyline class="i" points={sparklinePoints(rciHistory.map((entry) => entry.i))} />
+                  </svg>
+                </article>
+              </section>
+            {:else}
+              <section class="stats-unique-grid">
+                <article class="data-card wide compact-card">
+                  <header>
+                    <span>Module 8</span>
+                    <strong>Datuak kargatzen...</strong>
+                  </header>
+                </article>
+              </section>
+            {/if}
             <div class="chips-wrap overlay-chips">
               {#each overlayTools as overlay, idx}
                 <button class="chip mini stagger-item" style={`--stagger:${idx};`} class:active={activeOverlay === overlay} on:click={() => (activeOverlay = activeOverlay === overlay ? null : overlay)} disabled={isGameOver}>{overlay}</button>
@@ -1190,17 +1349,31 @@
           {#if activeShelf === 'rival'}
             <div class="shelf-head"><h3>AA aurkaria</h3></div>
             <RivalCityView gameState={gameState} stats={stats} aiTiles={gameState.map.tiles} />
+            <section class="spec-disaster-wrap">
+              <DisasterPanel {gameState} {gameId} />
+            </section>
           {/if}
 
-          {#if activeShelf === 'newspaper'}
-            <div class="shelf-head"><h3>Egunkaria</h3></div>
-            <div class="newspaper-card">
-              <strong>SimHiri Times</strong>
-              <p>{formatGameDate(gameState.current_date)} alea</p>
-              <p>Hiriaren biztanleria: {stats.player.population.toLocaleString()}</p>
-              <p>Aurkariaren laburpena: {stats.ai.population.toLocaleString()} biztanle</p>
-            </div>
+          {#if activeShelf === 'eduhealth'}
+            <div class="shelf-head"><h3>Hezkuntza &amp; Osasuna</h3></div>
+            {#if educationMetrics && healthMetrics}
+              <EducationHealthPanel
+                education={educationMetrics}
+                health={healthMetrics}
+                eqSeries={eqSeries}
+                hqSeries={hqSeries}
+                labels={eduHealthLabels}
+                fundingPct={eduHealthFundingPct}
+                on:fundingChange={handleEduHealthFundingChange}
+              />
+            {:else}
+              <div class="newspaper-card">
+                <strong>Hezkuntza &amp; Osasuna</strong>
+                <p>Datuak kargatzen...</p>
+              </div>
+            {/if}
           {/if}
+
         </section>
       {/if}
 
@@ -1216,6 +1389,8 @@
                 <svg viewBox="0 0 24 24"><path vector-effect="non-scaling-stroke" d="M4 21V9l8-5 8 5v12M9 21v-6h6v6"/></svg>
               {:else if item.id === 'stats'}
                 <svg viewBox="0 0 24 24"><path vector-effect="non-scaling-stroke" d="M5 19V9M12 19V5M19 19v-7"/></svg>
+              {:else if item.id === 'eduhealth'}
+                <svg viewBox="0 0 24 24"><path vector-effect="non-scaling-stroke" d="M8 3v18M16 3v18M4 9h16M4 15h16"/></svg>
               {:else if item.id === 'rival'}
                 <svg viewBox="0 0 24 24"><path vector-effect="non-scaling-stroke" d="M5 19V5M5 19h14M10 16v-4M14 16V8M18 16v-6"/></svg>
               {:else}
@@ -1260,6 +1435,27 @@
 
       <PerformanceMeter visible={showPerfMeter} />
       <KeyboardLegend />
+
+      <AITurnViewer
+        open={aiTurnViewerOpen}
+        mode={aiTurnViewerMode}
+        actions={aiTurnViewerActions}
+        reasoning={aiTurnViewerReasoning}
+        {gameState}
+        {stats}
+        on:close={() => {
+          aiTurnViewerOpen = false;
+        }}
+      />
+
+      <NewspaperModal
+        open={newspaperOpen}
+        {gameState}
+        {stats}
+        on:close={() => {
+          newspaperOpen = false;
+        }}
+      />
 
       {#if notifications.length > 0}
         <aside class="notifications-layer" aria-live="polite" aria-label="Jakinarazpenak">
@@ -1327,17 +1523,19 @@
     color: #ffd79c;
   }
 
-  .topbar {
+  .spec-hud-layer {
     position: absolute;
-    z-index: 40;
-    left: 14px;
-    right: 14px;
-    top: 12px;
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    gap: 8px;
-    align-items: center;
-    contain: layout size;
+    z-index: 39;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+    width: min(1120px, calc(100vw - 420px));
+    min-width: 760px;
+  }
+
+  .spec-hud-layer :global(.hud-shell) {
+    pointer-events: auto;
   }
 
   .hud-group {
@@ -1540,10 +1738,10 @@
     max-height: min(68vh, 620px);
     overflow-y: auto;
     overflow-x: hidden;
-    border: 1px solid var(--glass-panel-border);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 24px;
     background: var(--glass-panel-bg);
-    backdrop-filter: blur(24px) saturate(178%);
+    backdrop-filter: blur(12px) saturate(150%);
     box-shadow: 0 22px 52px rgba(0, 0, 0, 0.36), var(--glass-panel-shadow);
     padding: 14px 14px 12px;
     contain: layout size;
@@ -1925,11 +2123,22 @@
     background: rgba(58, 156, 255, 0.2);
   }
 
-  .stats-dashboard {
+  .stats-unique-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
     margin-bottom: 10px;
+  }
+
+  .spec-panels-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .spec-disaster-wrap {
+    margin-top: 10px;
   }
 
   .data-card {
@@ -1944,6 +2153,41 @@
 
   .data-card.wide {
     grid-column: span 2;
+  }
+
+  .compact-card {
+    min-height: 0;
+  }
+
+  .compact-card header strong {
+    font-size: 0.8rem;
+  }
+
+  .compact-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .compact-metrics div {
+    display: grid;
+    gap: 2px;
+    padding: 8px 9px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .compact-metrics span {
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--txt-dim);
+  }
+
+  .compact-metrics strong {
+    font-size: 0.8rem;
+    color: #edf6ff;
   }
 
   .data-card header {
@@ -1978,10 +2222,6 @@
     stroke-linejoin: round;
   }
 
-  .data-card polyline.treasury {
-    stroke: rgba(255, 212, 112, 0.95);
-  }
-
   .data-card polyline.r {
     stroke: rgba(102, 204, 126, 0.94);
   }
@@ -1992,6 +2232,10 @@
 
   .data-card polyline.i {
     stroke: rgba(243, 221, 94, 0.95);
+  }
+
+  .data-card polyline.hq-line {
+    stroke: rgba(207, 224, 255, 0.94);
   }
 
   .meter {
@@ -2069,18 +2313,15 @@
     animation-delay: calc(var(--stagger, 0) * 10ms);
   }
 
-  .stats-dashboard .data-card {
+  .stats-unique-grid .data-card {
     opacity: 0;
     transform: translateY(6px) scale(0.985);
     animation: item-in 260ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   }
 
-  .stats-dashboard .data-card:nth-child(1) { animation-delay: 0ms; }
-  .stats-dashboard .data-card:nth-child(2) { animation-delay: 50ms; }
-  .stats-dashboard .data-card:nth-child(3) { animation-delay: 100ms; }
-  .stats-dashboard .data-card:nth-child(4) { animation-delay: 150ms; }
-  .stats-dashboard .data-card:nth-child(5) { animation-delay: 200ms; }
-  .stats-dashboard .data-card:nth-child(6) { animation-delay: 250ms; }
+  .stats-unique-grid .data-card:nth-child(1) { animation-delay: 0ms; }
+  .stats-unique-grid .data-card:nth-child(2) { animation-delay: 50ms; }
+  .stats-unique-grid .data-card:nth-child(3) { animation-delay: 100ms; }
 
   @keyframes shelf-fade {
     from {
@@ -2174,15 +2415,6 @@
   }
 
   @media (max-width: 1180px) {
-    .topbar {
-      grid-template-columns: 1fr;
-      gap: 8px;
-    }
-
-    .hud-group {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
     .bottom-dock {
       width: min(94vw, 620px);
       gap: 4px;
@@ -2196,12 +2428,16 @@
       max-height: 66vh;
     }
 
-    .stats-dashboard {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+    .spec-panels-grid {
+      grid-template-columns: 1fr;
     }
 
-    .data-card.wide {
-      grid-column: span 2;
+    .stats-unique-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .compact-metrics {
+      grid-template-columns: 1fr;
     }
 
   }
