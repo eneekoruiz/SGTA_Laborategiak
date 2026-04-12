@@ -36,7 +36,10 @@ services:
       - "3000:5173"  # <--- FUERA: 3000 (Specs), DENTRO: 5173 (Tu Vite)
     depends_on:
       - backend
-env_file: ./fronted/.env
+    env_file: ./frontend/.env
+
+
+
 
 volumes:
   mongo_data:
