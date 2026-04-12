@@ -1,0 +1,128 @@
+{% extends 'filmak/oinarrizkoa.html' %}
+
+{% block title %}Nire Gogoko Filmak{% endblock %}
+
+{% block edukiak %}
+<style>
+    .apple-title {
+        color: #1d1d1f;
+        font-weight: 700;
+        font-size: 2.5rem;
+        margin-top: 0;
+        margin-bottom: 24px;
+        letter-spacing: -0.015em;
+    }
+
+    .apple-table-container {
+        border-radius: 12px;
+        border: 1px solid #d2d2d7;
+        overflow: hidden;
+        width: 100%;
+        background-color: #ffffff;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+    }
+
+    .apple-table {
+        border-collapse: collapse;
+        width: 100%;
+        text-align: left;
+    }
+
+    .apple-table th {
+        background-color: #f5f5f7;
+        color: #86868b;
+        font-weight: 600;
+        padding: 14px 20px;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid #d2d2d7;
+    }
+
+    .apple-table td {
+        padding: 16px 20px;
+        border-bottom: 1px solid #d2d2d7;
+        color: #1d1d1f;
+        font-size: 0.95rem;
+        vertical-align: middle;
+    }
+
+    .apple-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .fw-bold {
+        font-weight: 600;
+    }
+
+    .apple-button-destructive {
+        background-color: #ff3b30;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.9rem;
+        font-family: inherit;
+        transition: background-color 0.2s ease, transform 0.1s ease;
+    }
+
+    .apple-button-destructive:hover {
+        background-color: #d70015;
+    }
+
+    .apple-button-destructive:active {
+        transform: scale(0.96);
+    }
+
+    .empty-state {
+        text-align: center;
+        color: #86868b;
+        padding: 50px 20px;
+        font-size: 1.05rem;
+    }
+</style>
+
+<h1 class="apple-title">Nire Gogoko Filmak</h1>
+
+<div class="apple-table-container">
+    <table class="apple-table">
+        <thead>
+            <tr>
+                <th>Izenburua</th>
+                <th>Zuzendaria</th>
+                <th>Urtea</th>
+                <th>Generoa</th>
+                <th>Bozkak</th>
+                <th style="text-align: center;">Ekintza</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for filma in bozkak %}
+            <tr>
+                <td class="fw-bold">{{ filma.izenburua }}</td>
+                <td>{{ filma.zuzendaria }}</td>
+                <td>{{ filma.urtea }}</td>
+                <td>{{ filma.generoa }}</td>
+                <td>{{ filma.bozkak }}</td>
+                <td style="text-align: center;">
+                    <form action="" method="POST" style="margin: 0;">
+                        {% csrf_token %}
+                        <input type="hidden" name="pelikula_id" value="{{ filma.id }}">
+                        <button type="submit" class="apple-button-destructive">
+                            &#10005; Botoa kendu
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="empty-state">Ez duzu pelikularik bozkatu oraindik.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}
