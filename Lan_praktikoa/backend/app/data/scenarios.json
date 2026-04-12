@@ -1,0 +1,120 @@
+{
+  "scenarios": [
+    {
+      "id": "city_new",
+      "name": "City New",
+      "description": "Start with a flat, easy-to-build terrain. Perfect for beginners.",
+      "difficulty_options": ["easy", "medium", "hard"],
+      "starting_year": 1900,
+      "starting_funds": {
+        "easy": 20000,
+        "medium": 10000,
+        "hard": 5000
+      },
+      "map_size": {
+        "width": 100,
+        "height": 100
+      },
+      "terrain_preset": {
+        "type": "flat",
+        "description": "Mostly grassland with gentle slopes"
+      },
+      "special_features": []
+    },
+    {
+      "id": "river_valley",
+      "name": "River Valley",
+      "description": "Build around a large river system. River provides water and natural beauty but limits space.",
+      "difficulty_options": ["easy", "medium", "hard"],
+      "starting_year": 1900,
+      "starting_funds": {
+        "easy": 20000,
+        "medium": 10000,
+        "hard": 5000
+      },
+      "map_size": {
+        "width": 100,
+        "height": 100
+      },
+      "terrain_preset": {
+        "type": "river",
+        "description": "Major river running through center of map"
+      },
+      "special_features": [
+        "hydro_power_available",
+        "water_access"
+      ]
+    },
+    {
+      "id": "island_cluster",
+      "name": "Island Cluster",
+      "description": "Manage multiple islands with water crossings. Challenging planning required.",
+      "difficulty_options": ["medium", "hard"],
+      "starting_year": 1900,
+      "starting_funds": {
+        "medium": 10000,
+        "hard": 5000
+      },
+      "map_size": {
+        "width": 120,
+        "height": 120
+      },
+      "terrain_preset": {
+        "type": "islands",
+        "description": "Multiple landmasses separated by water"
+      },
+      "special_features": [
+        "island_bridges_required",
+        "water_crossings",
+        "multiple_islands"
+      ]
+    },
+    {
+      "id": "urban_sprawl",
+      "name": "Urban Sprawl",
+      "description": "Existing city with population already present. Manage and expand.",
+      "difficulty_options": ["medium", "hard"],
+      "starting_year": 1950,
+      "starting_funds": {
+        "medium": 15000,
+        "hard": 8000
+      },
+      "map_size": {
+        "width": 100,
+        "height": 100
+      },
+      "terrain_preset": {
+        "type": "developed",
+        "description": "Partially developed city with existing infrastructure"
+      },
+      "special_features": [
+        "existing_population",
+        "existing_infrastructure",
+        "existing_buildings"
+      ]
+    },
+    {
+      "id": "mountain_valley",
+      "name": "Mountain Valley",
+      "description": "Build in challenging terrains between mountains. Creative planning required.",
+      "difficulty_options": ["hard"],
+      "starting_year": 1900,
+      "starting_funds": {
+        "hard": 8000
+      },
+      "map_size": {
+        "width": 100,
+        "height": 100
+      },
+      "terrain_preset": {
+        "type": "mountains",
+        "description": "Mountainous terrain with valleys for settlement"
+      },
+      "special_features": [
+        "elevation_changes",
+        "limited_space",
+        "tunnel_construction"
+      ]
+    }
+  ]
+}

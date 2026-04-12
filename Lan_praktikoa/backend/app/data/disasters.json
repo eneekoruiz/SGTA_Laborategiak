@@ -1,0 +1,103 @@
+{
+  "disasters": [
+    {
+      "id": "fire",
+      "name": "Fire",
+      "radius_range": [3, 8],
+      "damage_range": [30, 60],
+      "attack_cost": 5000,
+      "description": "Spreads from tile to tile",
+      "mitigation": "fire_coverage"
+    },
+    {
+      "id": "flood",
+      "name": "Flood",
+      "radius_range": [5, 15],
+      "damage_range": [20, 50],
+      "attack_cost": 10000,
+      "description": "Damages low elevation areas",
+      "requires": "water",
+      "mitigation": "none"
+    },
+    {
+      "id": "tornado",
+      "name": "Tornado",
+      "radius_range": [2, 20],
+      "shape": "line",
+      "damage_range": [70, 90],
+      "attack_cost": 20000,
+      "description": "Destroys everything in its path",
+      "mitigation": "none"
+    },
+    {
+      "id": "earthquake",
+      "name": "Earthquake",
+      "radius_range": [10, 30],
+      "damage_range": [40, 80],
+      "attack_cost": 50000,
+      "description": "Damages wide area uniformly",
+      "magnitude": "1-10",
+      "mitigation": "none"
+    },
+    {
+      "id": "riot",
+      "name": "Riot",
+      "radius_range": [5, 10],
+      "damage_range": [20, 40],
+      "attack_cost": 0,
+      "description": "Occurs when crime is very high",
+      "triggers": "crime > 80",
+      "mitigation": "police_coverage"
+    },
+    {
+      "id": "nuclear_meltdown",
+      "name": "Nuclear Meltdown",
+      "radius_range": [8, 15],
+      "damage_range": [90, 100],
+      "attack_cost": 0,
+      "description": "Nuclear plant aging/failure",
+      "triggers": "nuclear_plant_age > 600",
+      "mitigation": "none"
+    },
+    {
+      "id": "monster",
+      "name": "Giant Monster",
+      "radius_range": "variable",
+      "damage_range": [60, 80],
+      "attack_cost": 0,
+      "description": "Moves through city",
+      "movement": "path",
+      "mitigation": "none"
+    },
+    {
+      "id": "ufo",
+      "name": "UFO Invasion",
+      "radius_range": [3, 8],
+      "damage_range": [50, 70],
+      "attack_cost": 0,
+      "description": "Unexpected visitor",
+      "movement": "random",
+      "mitigation": "none"
+    },
+    {
+      "id": "volcano",
+      "name": "Volcanic Eruption",
+      "radius_range": [15, 25],
+      "damage_range": [80, 100],
+      "attack_cost": 0,
+      "description": "Massive lava flow",
+      "requires": "volcano_tile",
+      "mitigation": "none"
+    },
+    {
+      "id": "meteor",
+      "name": "Meteor Strike",
+      "radius_range": [5, 12],
+      "damage_range": [70, 95],
+      "attack_cost": 0,
+      "description": "Space rock impact",
+      "movement": "single",
+      "mitigation": "none"
+    }
+  ]
+}
