@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="64" viewBox="0 0 128 64">
-  <defs>
-    <radialGradient id="sh" cx="50%" cy="55%" r="55%">
-      <stop offset="0%" stop-color="#0f172a" stop-opacity="0.45"/>
-      <stop offset="100%" stop-color="#0f172a" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-  <ellipse cx="64" cy="36" rx="42" ry="16" fill="url(#sh)"/>
-</svg>
