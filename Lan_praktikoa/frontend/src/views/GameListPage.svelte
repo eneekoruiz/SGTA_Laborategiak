@@ -16,14 +16,14 @@
       const result = await listGames();
       games = result.games ?? [];
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to load games';
+      error = err instanceof Error ? err.message : 'Partidak kargatzeak huts egin du';
     } finally {
       loading = false;
     }
   }
 
   async function removeGame(gameId: string): Promise<void> {
-    if (!window.confirm('Delete this game?')) {
+    if (!window.confirm('Partida hau ezabatu?')) {
       return;
     }
 
@@ -34,7 +34,7 @@
       await deleteGame(gameId);
       await loadGames();
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to delete game';
+      error = err instanceof Error ? err.message : 'Partida ezabatzeak huts egin du';
     } finally {
       deletingId = '';
     }
@@ -51,21 +51,21 @@
 </script>
 
 <svelte:head>
-  <title>SimHiri - Game List</title>
+  <title>SimHiri - Partida-zerrenda</title>
 </svelte:head>
 
 <section class="page">
   <header class="hero">
     <div>
-      <p class="eyebrow">Saved cities</p>
-      <h1>Your game list</h1>
-      <p class="lede">Resume a city, start a new scenario, or remove old saves.</p>
+      <p class="eyebrow">Gordetako hiriak</p>
+      <h1>Zure partida-zerrenda</h1>
+      <p class="lede">Berriro hartu hiri bat, hasi eszenatoki berri bat edo kendu gordetze zaharrak.</p>
     </div>
 
     <div class="hero-actions">
       <button class="primary" on:click={() => navigate('/games/new')}>Partida Berria</button>
-      <button class="secondary" on:click={() => navigate('/')}>Landing</button>
-      <button class="secondary" on:click={loadGames}>Refresh</button>
+      <button class="secondary" on:click={() => navigate('/')}>Hasiera</button>
+      <button class="secondary" on:click={loadGames}>Berritu</button>
     </div>
   </header>
 
@@ -74,9 +74,9 @@
   {/if}
 
   {#if loading}
-    <div class="empty-state">Loading saves...</div>
+    <div class="empty-state">Gordetzeak kargatzen...</div>
   {:else if games.length === 0}
-    <div class="empty-state">No saved games yet. Start a new one.</div>
+    <div class="empty-state">Oraindik ez dago gordetako partidarik. Hasi berri bat.</div>
   {:else}
     <div class="grid">
       {#each games as game}
@@ -91,27 +91,27 @@
 
           <dl>
             <div>
-              <dt>Date</dt>
+              <dt>Data</dt>
               <dd>{formatDate(game.current_date)}</dd>
             </div>
             <div>
-              <dt>Population</dt>
+              <dt>Biztanleria</dt>
               <dd>{game.player_population.toLocaleString()}</dd>
             </div>
             <div>
-              <dt>Last saved</dt>
+              <dt>Azken gordetzea</dt>
               <dd>{new Date(game.last_saved).toLocaleString()}</dd>
             </div>
             <div>
-              <dt>Autosave</dt>
-              <dd>{game.is_autosave ? 'Yes' : 'No'}</dd>
+              <dt>Gordetze automatikoa</dt>
+              <dd>{game.is_autosave ? 'Bai' : 'Ez'}</dd>
             </div>
           </dl>
 
           <div class="actions">
-            <button class="primary" on:click={() => navigate(`/game/${game.id}`)}>Load</button>
+            <button class="primary" on:click={() => navigate(`/game/${game.id}`)}>Kargatu</button>
             <button class="secondary" on:click={() => removeGame(game.id)} disabled={deletingId === game.id}>
-              {deletingId === game.id ? 'Deleting...' : 'Delete'}
+              {deletingId === game.id ? 'Ezabatzen...' : 'Ezabatu'}
             </button>
           </div>
         </article>

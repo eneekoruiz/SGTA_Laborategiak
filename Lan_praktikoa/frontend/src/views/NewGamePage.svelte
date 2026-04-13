@@ -32,7 +32,7 @@
       scenarios = result.scenarios ?? [];
       scenarioId = scenarios[0]?.id ?? '';
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to load scenarios';
+      error = err instanceof Error ? err.message : 'Eszenatokiak kargatzeak huts egin du';
     } finally {
       loading = false;
     }
@@ -40,7 +40,7 @@
 
   async function submitNewGame(): Promise<void> {
     if (!scenarioId) {
-      error = 'Select a scenario first.';
+      error = 'Lehenik eszenatoki bat aukeratu.';
       return;
     }
 
@@ -64,7 +64,7 @@
         navigate('/games', true);
       }
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to create game';
+      error = err instanceof Error ? err.message : 'Partida sortzeak huts egin du';
     } finally {
       creating = false;
     }
@@ -76,19 +76,19 @@
 </script>
 
 <svelte:head>
-  <title>SimHiri - New Game</title>
+  <title>SimHiri - Partida berria</title>
 </svelte:head>
 
 <section class="page">
   <header class="hero">
     <div>
-      <p class="eyebrow">New campaign</p>
-      <h1>Start a new city</h1>
-      <p class="lede">Choose a scenario, difficulty, and AI personality before launching a fresh save.</p>
+      <p class="eyebrow">Kanpaina berria</p>
+      <h1>Hasi hiri berri bat</h1>
+      <p class="lede">Aukeratu eszenatokia, zailtasuna eta AA nortasuna gordetze berri bat abiarazi aurretik.</p>
     </div>
     <div class="hero-actions">
-      <button class="secondary" on:click={() => navigate('/games')}>Back to saves</button>
-      <button class="secondary" on:click={() => navigate('/')}>Landing</button>
+      <button class="secondary" on:click={() => navigate('/games')}>Itzuli gordetzetara</button>
+      <button class="secondary" on:click={() => navigate('/')}>Hasiera</button>
     </div>
   </header>
 
@@ -97,17 +97,17 @@
   {/if}
 
   {#if loading}
-    <div class="empty-state">Loading scenarios...</div>
+    <div class="empty-state">Eszenatokiak kargatzen...</div>
   {:else}
     <div class="layout">
       <form class="form card" on:submit|preventDefault={submitNewGame}>
         <label>
-          <span>City name</span>
+          <span>Hiriaren izena</span>
           <input bind:value={name} maxlength="48" required />
         </label>
 
         <label>
-          <span>Scenario</span>
+          <span>Eszenatokia</span>
           <select bind:value={scenarioId} required>
             {#each scenarios as scenario}
               <option value={scenario.id}>{scenario.name} ({scenario.map_size.width}x{scenario.map_size.height})</option>
@@ -116,7 +116,7 @@
         </label>
 
         <label>
-          <span>Difficulty</span>
+          <span>Zailtasuna</span>
           <div class="segmented">
             {#each ['easy', 'medium', 'hard'] as level}
               <button
@@ -124,44 +124,44 @@
                 class:active={difficulty === level}
                 on:click={() => (difficulty = level as 'easy' | 'medium' | 'hard')}
               >
-                {level}
+                {level === 'easy' ? 'Erraza' : level === 'medium' ? 'Normala' : 'Zaila'}
               </button>
             {/each}
           </div>
         </label>
 
         <label>
-          <span>AI personality</span>
+          <span>AA nortasuna</span>
           <select bind:value={aiPersonality}>
-            <option value="expansionist">Expansionist</option>
-            <option value="ecologist">Ecologist</option>
-            <option value="industrialist">Industrialist</option>
-            <option value="balanced">Balanced</option>
-            <option value="tax_collector">Tax collector</option>
+            <option value="expansionist">Hedatzailea</option>
+            <option value="ecologist">Ekologista</option>
+            <option value="industrialist">Industrialista</option>
+            <option value="balanced">Orekatua</option>
+            <option value="tax_collector">Zerga-biltzailea</option>
           </select>
         </label>
 
         <label class="toggle-row">
           <input type="checkbox" bind:checked={disastersEnabled} />
-          <span>Enable disasters</span>
+          <span>Hondamendiak aktibatu</span>
         </label>
 
         <button class="primary" type="submit" disabled={creating}>
-          {creating ? 'Creating...' : 'Jokoa Hasi'}
+          {creating ? 'Sortzen...' : 'Jokoa Hasi'}
         </button>
       </form>
 
       <aside class="card">
-        <h2>Scenario preview</h2>
+        <h2>Eszenatokiaren aurrebista</h2>
         {#if selectedScenario}
           <p>{selectedScenario.description}</p>
           <dl>
             <div>
-              <dt>Map size</dt>
+              <dt>Mapa tamaina</dt>
               <dd>{selectedScenario.map_size.width} x {selectedScenario.map_size.height}</dd>
             </div>
             <div>
-              <dt>Difficulty options</dt>
+              <dt>Zailtasun-aukerak</dt>
               <dd>{selectedScenario.difficulty_options.join(', ')}</dd>
             </div>
           </dl>

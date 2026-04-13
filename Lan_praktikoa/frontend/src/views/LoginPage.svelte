@@ -22,7 +22,7 @@
       await login(username.trim(), password);
       navigate('/games', true);
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Login failed';
+      error = err instanceof Error ? err.message : 'Saio-hasiera huts egin du';
     } finally {
       loading = false;
     }
@@ -30,14 +30,14 @@
 </script>
 
 <svelte:head>
-  <title>SimHiri - Login</title>
+  <title>SimHiri - Saio-hasiera</title>
 </svelte:head>
 
 <section class="auth-shell">
   <div class="card">
-    <p class="eyebrow">Account access</p>
-    <h1>Log in to your city portfolio</h1>
-    <p class="lede">Use your SimHiri account to access saved games, scenarios, and your live city shell.</p>
+    <p class="eyebrow">Kontura sarbidea</p>
+    <h1>Sartu zure hiri-zorroan</h1>
+    <p class="lede">Erabili zure SimHiri kontua gordetako partidak, eszenatokiak eta hiri-shell bizia irekitzeko.</p>
 
     {#if error}
       <div class="alert">{error}</div>
@@ -45,31 +45,31 @@
 
     <form on:submit|preventDefault={submitLogin} class="form">
       <label>
-        <span>Username</span>
+        <span>Erabiltzaile-izena</span>
         <input bind:value={username} name="username" autocomplete="username" required minlength="3" />
       </label>
 
       <label>
-        <span>Password</span>
+        <span>Pasahitza</span>
         <input bind:value={password} name="password" type="password" autocomplete="current-password" required minlength="8" />
       </label>
 
-      <button class="primary" type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Log in'}</button>
+      <button class="primary" type="submit" disabled={loading}>{loading ? 'Saioa irekitzen...' : 'Sartu'}</button>
     </form>
 
     <div class="links">
-      <button class="link" type="button" on:click={() => navigate('/')}>Back to landing</button>
-      <button class="link" type="button" on:click={() => navigate('/register')}>Create account</button>
+      <button class="link" type="button" on:click={() => navigate('/')}>Itzuli hasierara</button>
+      <button class="link" type="button" on:click={() => navigate('/register')}>Kontua sortu</button>
     </div>
   </div>
 
   <aside class="aside">
-    <h2>Ready state</h2>
-    <p>Authentication stores the JWT in localStorage and reuses it for every backend request.</p>
+    <h2>Prest dagoen egoera</h2>
+    <p>Autentikazioak JWT localStorage-n gordetzen du eta backend eskaera guztietan berrerabiltzen du.</p>
     <ul>
       <li>POST /api/auth/login</li>
       <li>GET /api/auth/profile</li>
-      <li>Automatic route transition to the game list</li>
+      <li>Partida-zerrendara automatikoki igarotzea</li>
     </ul>
   </aside>
 </section>

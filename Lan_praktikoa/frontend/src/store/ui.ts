@@ -19,6 +19,9 @@ export const cheatConsoleOpen = writable<boolean>(false);
 // View modes
 export const undergroundMode = writable<boolean>(false);
 
+// Overlay intensity
+export const overlayStrength = writable<number>(72);
+
 // Game loop settings
 export const gameSpeed = writable<'normal' | 'fast' | 'instant'>('normal');
 
@@ -184,6 +187,10 @@ export function setGameSpeed(speed: 'normal' | 'fast' | 'instant') {
   gameSpeed.set(speed);
 }
 
+export function setOverlayStrength(value: number) {
+  overlayStrength.set(Math.max(0, Math.min(100, value)));
+}
+
 export function addCheatToHistory(cheat: string) {
   cheatHistory.update((history) => [cheat, ...history].slice(0, 10)); // Keep last 10
 }
@@ -208,6 +215,7 @@ export function resetUIStores() {
   educationDrawerOpen.set(false);
   cheatConsoleOpen.set(false);
   undergroundMode.set(false);
+  overlayStrength.set(72);
   gameSpeed.set('normal');
   isLoading.set(false);
   errorMessage.set('');

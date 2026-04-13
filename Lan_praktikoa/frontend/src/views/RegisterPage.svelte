@@ -11,19 +11,19 @@
 
   function validate(): string {
     if (!/^[A-Za-z0-9_]{3,30}$/.test(username.trim())) {
-      return 'Username must be 3-30 characters and contain only letters, numbers, or underscores.';
+      return 'Erabiltzaile-izenak 3-30 karaktere izan behar ditu eta letrak, zenbakiak edo azpimarrak soilik eduki.';
     }
 
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
-      return 'Enter a valid email address.';
+      return 'Sartu baliozko posta elektroniko bat.';
     }
 
     if (password.length < 8) {
-      return 'Password must be at least 8 characters long.';
+      return 'Pasahitzak gutxienez 8 karaktere izan behar ditu.';
     }
 
     if (password !== confirmPassword) {
-      return 'Passwords do not match.';
+      return 'Pasahitzak ez datoz bat.';
     }
 
     return '';
@@ -39,7 +39,7 @@
       await register(username.trim(), email.trim(), password);
       navigate('/games', true);
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Registration failed';
+      error = err instanceof Error ? err.message : 'Erregistroak huts egin du';
     } finally {
       loading = false;
     }
@@ -47,14 +47,14 @@
 </script>
 
 <svelte:head>
-  <title>SimHiri - Register</title>
+  <title>SimHiri - Erregistroa</title>
 </svelte:head>
 
 <section class="auth-shell">
   <div class="card">
-    <p class="eyebrow">New account</p>
-    <h1>Create your SimHiri profile</h1>
-    <p class="lede">Register once, then start or resume your city simulations from the game list.</p>
+    <p class="eyebrow">Kontu berria</p>
+    <h1>Sortu zure SimHiri profila</h1>
+    <p class="lede">Erregistratu behin, eta gero hasi edo berrabiarazi zure hiri-simulazioak partida-zerrendatik.</p>
 
     {#if error}
       <div class="alert">{error}</div>
@@ -62,7 +62,7 @@
 
     <form on:submit|preventDefault={submitRegister} class="form">
       <label>
-        <span>Username</span>
+        <span>Erabiltzaile-izena</span>
         <input bind:value={username} name="username" autocomplete="username" required minlength="3" maxlength="30" />
       </label>
 
@@ -77,25 +77,25 @@
       </label>
 
       <label>
-        <span>Confirm password</span>
+        <span>Berretsi pasahitza</span>
         <input bind:value={confirmPassword} name="confirmPassword" type="password" autocomplete="new-password" required minlength="8" />
       </label>
 
-      <button class="primary" type="submit" disabled={loading}>{loading ? 'Creating account...' : 'Register'}</button>
+      <button class="primary" type="submit" disabled={loading}>{loading ? 'Kontua sortzen...' : 'Erregistratu'}</button>
     </form>
 
     <div class="links">
-      <button class="link" type="button" on:click={() => navigate('/')}>Back to landing</button>
-      <button class="link" type="button" on:click={() => navigate('/login')}>I already have an account</button>
+      <button class="link" type="button" on:click={() => navigate('/')}>Itzuli hasierara</button>
+      <button class="link" type="button" on:click={() => navigate('/login')}>Dagoeneko kontu bat daukat</button>
     </div>
   </div>
 
   <aside class="aside">
-    <h2>Validation rules</h2>
+    <h2>Balidazio-arauak</h2>
     <ul>
-      <li>Username must be unique and fit the spec format.</li>
-      <li>Email is checked client-side before request submission.</li>
-      <li>Password and confirmation must match before the API call runs.</li>
+      <li>Erabiltzaile-izena bakarra izan behar da eta espezifikazioko formatua bete.</li>
+      <li>Posta elektronikoa bezeroaren aldean egiaztatzen da eskaera bidali aurretik.</li>
+      <li>Pasahitzak eta berrespenak bat etorri behar dute API deia egin aurretik.</li>
     </ul>
   </aside>
 </section>

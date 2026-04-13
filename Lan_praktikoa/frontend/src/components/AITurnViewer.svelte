@@ -212,28 +212,36 @@
     box-shadow: 0 24px 48px rgba(2, 9, 20, 0.28);
   }
 
+  
   .replay.panel {
     right: 16px;
-    bottom: 16px;
+    bottom: 110px; /* Above new dock */
     width: min(440px, calc(100vw - 32px));
     max-height: min(72vh, 760px);
   }
 
   .replay.split {
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
+    bottom: auto;
     right: auto;
-    bottom: 16px;
     width: min(980px, calc(100vw - 32px));
     max-height: min(80vh, 860px);
   }
 
   .replay.fullscreen {
-    inset: 10px;
-    width: auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    bottom: auto;
+    right: auto;
+    width: 90vw;
+    height: 90vh;
     max-height: none;
     border-radius: 24px;
   }
+
 
   .topbar,
   .panel {
@@ -519,10 +527,13 @@
     .replay.panel,
     .replay.split,
     .replay.fullscreen {
-      inset: auto 12px 12px 12px;
-      width: auto;
-      max-height: 60vh;
-      transform: none;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      bottom: auto;
+      right: auto;
+      width: calc(100vw - 24px);
+      max-height: 80vh;
     }
 
     .layout {

@@ -9,24 +9,24 @@
   export let gameId: string = 'game-001';
 
   const taxLabels = {
-    residential: 'Residential Tax',
-    commercial: 'Commercial Tax',
-    industrial: 'Industrial Tax'
+    residential: 'Zerga erresidentziala',
+    commercial: 'Zerga komertziala',
+    industrial: 'Zerga industriala'
   };
 
   const fundingLabels = {
-    transportation: 'Transportation',
-    police: 'Police',
-    fire: 'Fire Services',
-    health: 'Health',
-    education: 'Education'
+    transportation: 'Garraioa',
+    police: 'Polizia',
+    fire: 'Suhiltzaileak',
+    health: 'Osasuna',
+    education: 'Hezkuntza'
   };
 
   const statusCards = [
-    { label: 'Monthly Income', value: () => budget?.monthly_income ?? 0, tone: 'positive', icon: '◌' },
-    { label: 'Monthly Expenses', value: () => budget?.monthly_expenses ?? 0, tone: 'negative', icon: '◌' },
-    { label: 'Civic Stability', value: () => Math.round(((stats?.player.approval ?? 0) + (stats?.player.eq ?? 0) + (stats?.player.hq ?? 0)) / 3), tone: 'neutral', icon: '◌' },
-    { label: 'Treasury', value: () => budget?.last_year_income ?? 0, tone: 'accent', icon: '◌' }
+    { label: 'Hileko diru-sarrerak', value: () => budget?.monthly_income ?? 0, tone: 'positive', icon: '◌' },
+    { label: 'Hileko gastuak', value: () => budget?.monthly_expenses ?? 0, tone: 'negative', icon: '◌' },
+    { label: 'Egonkortasun zibikoa', value: () => Math.round(((stats?.player.approval ?? 0) + (stats?.player.eq ?? 0) + (stats?.player.hq ?? 0)) / 3), tone: 'neutral', icon: '◌' },
+    { label: 'Altxorra', value: () => budget?.last_year_income ?? 0, tone: 'accent', icon: '◌' }
   ] as const;
 
   let loading = false;
@@ -85,7 +85,7 @@
         gameStore.setGameState(result.game_state);
       }
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to update budget';
+      error = err instanceof Error ? err.message : 'Aurrekontua eguneratzeak huts egin du';
     } finally {
       loading = false;
     }
@@ -102,7 +102,7 @@
         gameStore.setGameState(result.game_state);
       }
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to issue bond';
+      error = err instanceof Error ? err.message : 'Bonua eskatzeak huts egin du';
     } finally {
       loading = false;
     }
@@ -133,7 +133,7 @@
     <div class="alert error">{error}</div>
   {/if}
 
-  <section class="status-grid" aria-label="Budget status cards">
+  <section class="status-grid" aria-label="Aurrekontu-egoeraren txartelak">
     {#each statusCards as card}
       <article class={`status-card ${card.tone}`}>
         <div class="status-card__icon">{card.icon}</div>
@@ -148,14 +148,14 @@
         <span>{cityHealthScore}%</span>
       </div>
       <div>
-        <p>City Health</p>
-        <strong>{cityHealthScore >= 80 ? 'Stable' : cityHealthScore >= 50 ? 'Watchful' : 'Critical'}</strong>
+        <p>Hiriaren osasuna</p>
+        <strong>{cityHealthScore >= 80 ? 'Egonkorra' : cityHealthScore >= 50 ? 'Adi' : 'Kritikoa'}</strong>
       </div>
     </article>
   </section>
 
   <section class="tax-section">
-    <h3>Tax Rates</h3>
+    <h3>Zerga-tasak</h3>
     {#each Object.entries(taxLabels) as [key, label]}
       <div class="slider-row">
         <label for={`tax-${key}`}>{label}</label>
@@ -180,7 +180,7 @@
   </section>
 
   <section class="funding-section">
-    <h3>Funding Allocations</h3>
+    <h3>Finantzaketa-esleipenak</h3>
     {#each Object.entries(fundingLabels) as [key, label]}
       <div class="slider-row">
         <label for={`funding-${key}`}>{label}</label>
@@ -206,9 +206,9 @@
 
   <section class="bonds-section">
     <div class="section-head">
-      <h3>Bonds</h3>
+      <h3>Bonuak</h3>
       <button class="request-bond" on:click={requestBond} disabled={loading}>
-        {loading ? 'Processing...' : 'Request Bond'}
+        {loading ? 'Prozesatzen...' : 'Eskatu bonua'}
       </button>
     </div>
     {#if budget && budget.bonds.length > 0}
@@ -216,13 +216,13 @@
         {#each budget.bonds as bond}
           <div class="bond-item">
             <span>§ {bond.amount.toLocaleString()}</span>
-            <span>{bond.months_remaining} months remaining</span>
+            <span>{bond.months_remaining} hilabete geratzen dira</span>
             <span class="payment">§ {bond.monthly_payment.toFixed(0)}/mo</span>
           </div>
         {/each}
       </div>
     {:else}
-      <p class="empty">No active bonds.</p>
+      <p class="empty">Ez dago bonu aktiborik.</p>
     {/if}
   </section>
 </div>

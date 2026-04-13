@@ -29,6 +29,7 @@
   import { fade, slide } from 'svelte/transition';
   import IsometricMap from './IsometricMap.Optimized.svelte';
   import GameHUD from './GameHUD.svelte';
+  import BudgetPanel from './BudgetPanel.svelte';
   import DataOverlaySelector from './DataOverlaySelector.svelte';
   import DisasterPanel from './DisasterPanel.svelte';
   import AITurnViewer from './AITurnViewer.svelte';
@@ -41,6 +42,7 @@
   import { SimHiriAPI as apiService } from '../services/apiService';
   import { navigate } from '../services/router';
   import * as gameStore from '../store/game';
+  import { gameSpeed, setGameSpeed, setOverlayStrength } from '../store/ui';
   import {
     clearNotification as dismissStoredNotification,
     cheatConsoleOpen,
@@ -64,7 +66,7 @@
 
   type ToolMode = 'zone' | 'infrastructure' | 'building' | null;
   type InfraGroup = 'roads' | 'water' | 'power' | 'transit';
-  type ShelfType = 'zones' | 'roads' | 'buildings' | 'stats' | 'eduhealth' | 'rival' | 'newspaper' | null;
+  type ShelfType = 'zones' | 'roads' | 'buildings' | 'budget' | 'stats' | 'eduhealth' | 'rival' | 'newspaper' | null;
   type InfraTypedPoint = { x: number; y: number; type: InfrastructureType };
 
   let loading = true;
@@ -84,6 +86,7 @@
   let undergroundMode = false;
   let showStatusIcons = false;
   let activeOverlay: string | null = null;
+  let overlayStrength = 72;
   let aiFocusTile: { x: number; y: number; zoom?: number } | null = null;
 
   let activeShelf: ShelfType = null;
@@ -192,25 +195,28 @@
   ];
 
   const overlayTools = [
-    'crime',
-    'pollution_air',
-    'pollution_water',
-    'land_value',
-    'traffic',
-    'power',
-    'water',
-    'fire_coverage',
-    'police_coverage'
+    { id: 'crime', label: 'Krimena' },
+    { id: 'pollution_air', label: 'Aire-kutsadura' },
+    { id: 'pollution_water', label: 'Ur-kutsadura' },
+    { id: 'land_value', label: 'Lurraren balioa' },
+    { id: 'traffic', label: 'Trafikoa' },
+    { id: 'power', label: 'Energia' },
+    { id: 'water', label: 'Ura' },
+    { id: 'fire_coverage', label: 'Sute-estaldura' },
+    { id: 'police_coverage', label: 'Polizia-estaldura' }
   ];
 
   const SURFACE_INFRA_TYPES = new Set<InfrastructureType>(['road', 'highway', 'highway_ramp', 'power_line', 'rail']);
   const UNDERGROUND_INFRA_TYPES = new Set<InfrastructureType>(['water_pipe', 'subway', 'subway_tunnel']);
 
-  const bottomDockItems: Array<{ id: Exclude<ShelfType, null>; label: string }> = [
+  const bottomDockLeftItems: Array<{ id: Exclude<ShelfType, null>; label: string }> = [
     { id: 'zones', label: 'Zonak' },
     { id: 'roads', label: 'Azpiegiturak' },
-    { id: 'buildings', label: 'Eraikinak' },
-    { id: 'stats', label: 'Estatistikak' },
+    { id: 'buildings', label: 'Eraikinak' }
+  ];
+
+  const bottomDockRightItems: Array<{ id: Exclude<ShelfType, null>; label: string }> = [
+    { id: 'budget', label: 'Aurrekontua' },
     { id: 'eduhealth', label: 'Hezk. / Osasuna' },
     { id: 'rival', label: 'AA aurkaria' },
     { id: 'newspaper', label: 'Egunkaria' }
@@ -342,9 +348,27 @@
 
     if (!autoAdvance || isGameOver) return;
 
+    const speedIntervals: Record<'normal' | 'fast' | 'instant', number> = {
+      normal: 10000,
+      fast: 5000,
+      instant: 1500
+    };
+
     autoAdvanceTimer = window.setInterval(() => {
       void endMonth();
-    }, 10000);
+    }, speedIntervals[$gameSpeed]);
+  }
+
+  function setHudSpeedMode(mode: 'manual' | 'normal' | 'fast'): void {
+    if (mode === 'manual') {
+      autoAdvance = false;
+      syncAutoAdvanceTimer();
+      return;
+    }
+
+    autoAdvance = true;
+    setGameSpeed(mode === 'normal' ? 'normal' : 'fast');
+    syncAutoAdvanceTimer();
   }
 
   function tileAt(point: { x: number; y: number }): Tile | null {
@@ -423,6 +447,18 @@
   function metricPct(value: number, min: number, max: number): number {
     if (max <= min) return 0;
     return Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
+  }
+
+  function cityMoodEmoji(): string {
+    const approval = stats?.player.approval ?? gameState?.player_city.metrics.approval ?? 50;
+    const crime = stats?.player.crime_rate ?? gameState?.player_city.metrics.crime_rate ?? 0;
+    const pollution = stats?.player.pollution ?? gameState?.player_city.metrics.pollution ?? 0;
+
+    if (approval >= 75 && crime < 28 && pollution < 35) return '😁';
+    if (approval >= 60 && crime < 40 && pollution < 50) return '😊';
+    if (approval >= 45) return '😐';
+    if (approval >= 30 || crime > 55 || pollution > 62) return '😟';
+    return '😡';
   }
 
   function sparklinePoints(values: number[], width = 164, height = 34): string {
@@ -1137,8 +1173,13 @@
       <DataOverlaySelector
         activeOverlay={activeOverlay}
         isActive={activeOverlay !== null}
+        overlayStrength={overlayStrength}
         onOverlayChange={(type) => {
           activeOverlay = type;
+        }}
+        onStrengthChange={(value) => {
+          overlayStrength = value;
+          setOverlayStrength(value);
         }}
         onToggle={() => {
           if (activeShelf !== 'stats') {
@@ -1164,34 +1205,40 @@
       {/if}
 
       <div class="spec-hud-layer">
-        <GameHUD
-          date={gameState.current_date}
-          population={stats.player.population}
-          treasury={Math.round(stats.player.treasury)}
-          score={Math.round(stats.player.composite_score)}
-          rci={stats.player.rci_demand}
-          autoTickEnabled={autoAdvance}
-          savePending={savePending}
-          isGameOver={isGameOver}
-          bulldozerActive={bulldozerActive}
-          showEmoticons={showStatusIcons}
-          aiTurnViewerMode={aiTurnViewerMode}
-          onBack={backToGames}
-          onToggleBulldozer={toggleBulldozer}
-          onToggleAutoTick={() => {
-            autoAdvance = !autoAdvance;
-            syncAutoAdvanceTimer();
-          }}
-          onToggleEmoticons={() => {
-            showStatusIcons = !showStatusIcons;
-          }}
-          onAIModeChange={(mode: typeof aiTurnViewerMode) => {
-            aiTurnViewerMode = mode;
-          }}
-          onNextMonth={() => void endMonth()}
-          onSave={() => void saveGame()}
-        />
-      </div>
+          <GameHUD
+            isGameOver={isGameOver}
+            savePending={savePending}
+            onBack={backToGames}
+            onSave={() => void saveGame()}
+          />
+
+          <section class="top-status-bar" aria-label="Goiko HUD kontrolak">
+            <div class="rci-cluster" aria-label="RCI eskaria">
+              <div class="rci-item r">
+                <span class="rci-label">R</span>
+                <div class="rci-track"><div class="rci-fill" style={`width: ${metricPct(stats?.player.rci_demand?.r ?? 0, -100, 100)}%`}></div></div>
+                <strong>{Math.round(stats?.player.rci_demand?.r ?? 0)}</strong>
+              </div>
+              <div class="rci-item c">
+                <span class="rci-label">C</span>
+                <div class="rci-track"><div class="rci-fill" style={`width: ${metricPct(stats?.player.rci_demand?.c ?? 0, -100, 100)}%`}></div></div>
+                <strong>{Math.round(stats?.player.rci_demand?.c ?? 0)}</strong>
+              </div>
+              <div class="rci-item i">
+                <span class="rci-label">I</span>
+                <div class="rci-track"><div class="rci-fill" style={`width: ${metricPct(stats?.player.rci_demand?.i ?? 0, -100, 100)}%`}></div></div>
+                <strong>{Math.round(stats?.player.rci_demand?.i ?? 0)}</strong>
+              </div>
+            </div>
+
+            <div class="speed-cluster" aria-label="Abiadura hautatzailea">
+              <button class="chip speed-chip" class:active-chip={activeShelf === 'stats'} on:click={() => openShelf('stats')} disabled={isGameOver}>Estat.</button>
+              <button class="chip speed-chip" class:active-chip={!autoAdvance} on:click={() => setHudSpeedMode('manual')} disabled={isGameOver}>Manual</button>
+              <button class="chip speed-chip" class:active-chip={autoAdvance && $gameSpeed === 'normal'} on:click={() => setHudSpeedMode('normal')} disabled={isGameOver}>Normal</button>
+              <button class="chip speed-chip" class:active-chip={autoAdvance && ($gameSpeed === 'fast' || $gameSpeed === 'instant')} on:click={() => setHudSpeedMode('fast')} disabled={isGameOver}>Azkarra</button>
+            </div>
+          </section>
+        </div>
 
       {#if activeToolText()}
         <div class="active-tool-indicator" in:fade={{ duration: 180 }}>
@@ -1277,6 +1324,11 @@
             </div>
           {/if}
 
+          {#if activeShelf === 'budget'}
+            <div class="shelf-head"><h3>Aurrekontua</h3></div>
+            <BudgetPanel budget={gameState.player_city.budget} stats={stats} {gameId} />
+          {/if}
+
           {#if activeShelf === 'stats'}
             <div class="shelf-head"><h3>Estatistikak</h3></div>
             {#if educationMetrics && healthMetrics}
@@ -1341,7 +1393,7 @@
             {/if}
             <div class="chips-wrap overlay-chips">
               {#each overlayTools as overlay, idx}
-                <button class="chip mini stagger-item" style={`--stagger:${idx};`} class:active={activeOverlay === overlay} on:click={() => (activeOverlay = activeOverlay === overlay ? null : overlay)} disabled={isGameOver}>{overlay}</button>
+                <button class="chip mini stagger-item" style={`--stagger:${idx};`} class:active={activeOverlay === overlay.id} on:click={() => (activeOverlay = activeOverlay === overlay.id ? null : overlay.id)} disabled={isGameOver}>{overlay.label}</button>
               {/each}
             </div>
           {/if}
@@ -1378,30 +1430,100 @@
       {/if}
 
       <footer class="bottom-dock" class:tool-focused={hasPersistentTool()} in:fade={{ duration: 180 }}>
-        {#each bottomDockItems as item}
-          <button class="dock-item" class:active={isDockItemActive(item.id)} on:click|stopPropagation={() => openShelf(item.id)} disabled={isGameOver}>
-            <span class="icon" aria-hidden="true">
-              {#if item.id === 'roads'}
-                <svg viewBox="0 0 24 24"><path vector-effect="non-scaling-stroke" d="M8 2v20M16 2v20M8 7h8M8 17h8"/></svg>
-              {:else if item.id === 'zones'}
-                <svg viewBox="0 0 24 24"><path vector-effect="non-scaling-stroke" d="M12 2 21 12 12 22 3 12 12 2zm0 5v10M7 12h10"/></svg>
-              {:else if item.id === 'buildings'}
-                <svg viewBox="0 0 24 24"><path vector-effect="non-scaling-stroke" d="M4 21V9l8-5 8 5v12M9 21v-6h6v6"/></svg>
-              {:else if item.id === 'stats'}
-                <svg viewBox="0 0 24 24"><path vector-effect="non-scaling-stroke" d="M5 19V9M12 19V5M19 19v-7"/></svg>
-              {:else if item.id === 'eduhealth'}
-                <svg viewBox="0 0 24 24"><path vector-effect="non-scaling-stroke" d="M8 3v18M16 3v18M4 9h16M4 15h16"/></svg>
-              {:else if item.id === 'rival'}
-                <svg viewBox="0 0 24 24"><path vector-effect="non-scaling-stroke" d="M5 19V5M5 19h14M10 16v-4M14 16V8M18 16v-6"/></svg>
-              {:else}
-                <svg viewBox="0 0 24 24"><path vector-effect="non-scaling-stroke" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0-5v3m0 12v3M4.9 4.9l2.1 2.1m10 10 2.1 2.1M3 12h3m12 0h3M4.9 19.1 7 17m10-10 2.1-2.1"/></svg>
-              {/if}
-            </span>
-            <span class="label">{item.label}</span>
-            <span class="active-pill" aria-hidden="true"></span>
-          </button>
-        {/each}
-      </footer>
+          <!-- BLOQUE 1: INFORMACIÓN DEL JUGADOR -->
+          <div class="dock-block dock-player-info">
+            <div class="info-metric readonly" title="Onarpena">
+              <span class="emoji">{cityMoodEmoji()}</span>
+            </div>
+            <div class="info-metric readonly" title="Data">
+              <small>Data</small>
+              <strong>{gameState?.current_date.year ?? 2050}/{String(gameState?.current_date.month ?? 1).padStart(2, '0')}</strong>
+            </div>
+            <div class="info-metric readonly" title="Biztanleria">
+              <small>Bizt.</small>
+              <strong>{stats?.player.population?.toLocaleString('eu-ES') ?? 0}</strong>
+            </div>
+            <div class="info-metric readonly" title="Osasuna / Hezkuntza">
+              <small>HQ</small>
+              <strong>{Math.round(stats?.player.hq ?? 0)}</strong>
+            </div>
+            <div class="info-metric readonly" title="Altxorra">
+              <small>Altxorra</small>
+              <strong>§{Math.round(stats?.player.treasury ?? 0).toLocaleString('eu-ES')}</strong>
+            </div>
+          </div>
+
+          <div class="dock-divider" aria-hidden="true"></div>
+
+          <!-- BLOQUE 2: HERRAMIENTAS -->
+          <div class="dock-block dock-tools">
+            {#each bottomDockLeftItems as item}
+              <button class="dock-item" class:active={isDockItemActive(item.id)} on:click|stopPropagation={() => openShelf(item.id)} disabled={isGameOver}>
+                <span class="icon" aria-hidden="true">
+                  {#if item.id === 'roads'}
+                    <svg viewBox="0 0 24 24"><path vector-effect="non-scaling-stroke" d="M8 2v20M16 2v20M8 7h8M8 17h8"/></svg>
+                  {:else if item.id === 'zones'}
+                    <svg viewBox="0 0 24 24"><path vector-effect="non-scaling-stroke" d="M12 2 21 12 12 22 3 12 12 2zm0 5v10M7 12h10"/></svg>
+                  {:else if item.id === 'buildings'}
+                    <svg viewBox="0 0 24 24"><path vector-effect="non-scaling-stroke" d="M4 21V9l8-5 8 5v12M9 21v-6h6v6"/></svg>
+                  {/if}
+                </span>
+                <span class="label">{item.label}</span>
+                <span class="active-pill" aria-hidden="true"></span>
+              </button>
+            {/each}
+            <button class="dock-item" class:active={bulldozerActive} on:click|stopPropagation={toggleBulldozer} disabled={isGameOver}>
+              <span class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path vector-effect="non-scaling-stroke" d="M3 15h6v4H3zM9 16l4-4h8v6H9zM14 12V8h4M5 15l2-5h5"/></svg>
+              </span>
+              <span class="label">Eraitsi</span>
+              <span class="active-pill" aria-hidden="true"></span>
+            </button>
+          </div>
+
+          <div class="dock-divider" aria-hidden="true"></div>
+
+          <!-- BLOQUE 3: GESTIÓN EXPLÍCITA -->
+          <div class="dock-block dock-management">
+            {#each bottomDockRightItems as item}
+              <button class="dock-item action-btn" class:active={isDockItemActive(item.id)} on:click|stopPropagation={() => openShelf(item.id)} disabled={isGameOver}>
+                <span class="icon" aria-hidden="true">
+                  {#if item.id === 'budget'}
+                    💰
+                  {:else if item.id === 'stats'}
+                    📈
+                  {:else if item.id === 'eduhealth'}
+                    🏥
+                  {:else if item.id === 'newspaper'}
+                    📰
+                  {:else if item.id === 'rival'}
+                    🏙️
+                  {/if}
+                </span>
+                <span class="label">{item.label}</span>
+                <span class="active-pill" aria-hidden="true"></span>
+              </button>
+            {/each}
+          </div>
+
+          <div class="dock-divider" aria-hidden="true"></div>
+
+          <!-- BLOQUE 4: TIEMPO Y CONTROLES IA -->
+          <div class="dock-block dock-time-state">
+            <button class="dock-item action-btn highlight" on:click|stopPropagation={() => endMonth()} disabled={endMonthPending || isGameOver}>
+              <span class="icon">⏭️</span>
+              <span class="label">Hilabetea</span>
+            </button>
+            <button class="dock-item action-btn" class:active={aiTurnViewerOpen} on:click|stopPropagation={() => { aiTurnViewerOpen = !aiTurnViewerOpen; }}>
+              <span class="icon">🤖</span>
+              <span class="label">AA Txanda</span>
+              <span class="active-pill" aria-hidden="true"></span>
+            </button>
+            {#if aiTurnViewerOpen}
+              <span class="replay-chip" title="Erreprodukzio kontrolak AA txandan soilik agertzen dira">⏮️ ⏯️ ⏭️</span>
+            {/if}
+          </div>
+        </footer>
 
       {#if hasPersistentTool()}
         <aside class="tool-options-panel" in:fade={{ duration: 160 }}>
@@ -1536,6 +1658,95 @@
 
   .spec-hud-layer :global(.hud-shell) {
     pointer-events: auto;
+  }
+
+  .top-status-bar {
+    margin: 10px auto 0;
+    width: fit-content;
+    max-width: min(760px, calc(100vw - 40px));
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    padding: 8px 10px;
+    border-radius: 16px;
+    border: 1px solid var(--glass-panel-border);
+    background: linear-gradient(155deg, rgba(14, 20, 30, 0.82), rgba(16, 24, 36, 0.62));
+    backdrop-filter: blur(12px) saturate(140%);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28), var(--glass-panel-shadow);
+  }
+
+  .rci-cluster {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .rci-item {
+    display: grid;
+    grid-template-columns: auto 68px auto;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    min-width: 116px;
+  }
+
+  .rci-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+
+  .rci-track {
+    height: 8px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  .rci-fill {
+    height: 100%;
+    border-radius: 999px;
+    width: 0;
+    transition: width 220ms ease;
+  }
+
+  .rci-item strong {
+    font-size: 0.72rem;
+    font-family: var(--font-mono, monospace);
+    color: rgba(235, 245, 255, 0.96);
+    min-width: 28px;
+    text-align: right;
+  }
+
+  .rci-item.r .rci-fill {
+    background: linear-gradient(90deg, rgba(92, 221, 132, 0.7), rgba(78, 204, 115, 1));
+  }
+
+  .rci-item.c .rci-fill {
+    background: linear-gradient(90deg, rgba(88, 177, 255, 0.72), rgba(52, 141, 230, 1));
+  }
+
+  .rci-item.i .rci-fill {
+    background: linear-gradient(90deg, rgba(242, 216, 108, 0.72), rgba(224, 193, 70, 1));
+  }
+
+  .speed-cluster {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 4px;
+  }
+
+  .speed-chip {
+    min-width: 82px;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 
   .hud-group {
@@ -1895,17 +2106,17 @@
 
   .bottom-dock {
     position: fixed;
-    z-index: 65;
+    z-index: 40;
     left: 50%;
     transform: translateX(-50%);
     bottom: calc(24px + env(safe-area-inset-bottom));
-    width: min(620px, calc(100vw - 24px));
-    height: 74px;
-    display: flex;
-    justify-content: space-between;
+    width: min(1360px, calc(100vw - 24px));
+    min-height: 90px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) auto minmax(0, 1.2fr) auto minmax(0, 1.3fr) auto minmax(0, 1fr);
     align-items: center;
-    gap: 6px;
-    padding: 0 18px;
+    gap: 12px;
+    padding: 12px 16px;
     border: 1px solid var(--glass-panel-border);
     border-radius: 36px;
     background: var(--glass-panel-bg);
@@ -1922,7 +2133,95 @@
     transform: translateX(-50%);
   }
 
-  .notifications-layer {
+  .dock-divider {
+    width: 1px;
+    align-self: stretch;
+    background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.16), transparent);
+    opacity: 0.8;
+  }
+
+  
+    .dock-block {
+      display: flex;
+      align-items: stretch;
+      gap: 6px;
+      min-width: 0;
+    }
+    
+    .dock-player-info {
+      flex: 1;
+      justify-content: flex-start;
+    }
+    
+    .dock-tools {
+      flex: 2;
+      justify-content: center;
+    }
+    
+    .dock-time-state {
+      flex: 1;
+      justify-content: flex-end;
+    }
+
+    .dock-management {
+      flex: 1;
+      justify-content: center;
+    }
+    
+    .info-metric {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 4px 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: var(--txt);
+      transition: background 0.2s ease;
+    }
+    
+    .info-metric.readonly {
+      cursor: default;
+      pointer-events: none;
+    }
+    
+    .info-metric small {
+      font-size: 0.65rem;
+      color: var(--txt-dim);
+      text-transform: uppercase;
+    }
+    
+    .info-metric strong {
+      font-size: 0.85rem;
+      font-family: var(--font-mono, monospace);
+    }
+    
+    .info-metric .emoji {
+      font-size: 1.5rem;
+    }
+    
+    /* Make buttons align */
+    .action-btn {
+      padding: 6px 12px;
+    }
+
+    .replay-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 14px;
+      min-height: 38px;
+      padding: 0 10px;
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      color: var(--txt-dim);
+      background: rgba(0, 0, 0, 0.16);
+      white-space: nowrap;
+    }
+
+    .notifications-layer {
     position: absolute;
     z-index: 90;
     right: 14px;
@@ -2416,10 +2715,21 @@
 
   @media (max-width: 1180px) {
     .bottom-dock {
-      width: min(94vw, 620px);
-      gap: 4px;
-      bottom: 8px;
-      border-radius: 20px;
+      width: min(100vw - 16px, 1000px);
+      height: auto;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      padding: 10px;
+      border-radius: 24px;
+    }
+
+    .dock-divider {
+      display: none;
+    }
+
+    .dock-side {
+      flex-wrap: wrap;
+      justify-content: center;
     }
 
     .context-shelf {
@@ -2455,6 +2765,7 @@
       height: 58px;
       border-radius: 14px;
       padding: 2px 3px;
+
     }
 
     .dock-item .icon {

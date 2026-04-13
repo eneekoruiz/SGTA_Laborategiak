@@ -10,41 +10,44 @@
 
   $: dateLabel = gameState ? `${gameState.current_date.month}/${gameState.current_date.year}` : '---';
   $: opinionBars = [
-    { label: 'Public Trust', value: Math.min(100, Math.max(0, stats?.player.approval ?? 0)), tone: 'positive' },
-    { label: 'Budget Pressure', value: Math.min(100, Math.max(0, (stats?.player.treasury ?? 0) / 1000)), tone: 'warn' },
-    { label: 'City Buzz', value: Math.min(100, Math.max(0, stats?.comparison.score_diff ?? 0)), tone: 'neutral' }
+    { label: 'Herritarren konfiantza', value: Math.min(100, Math.max(0, stats?.player.approval ?? 0)), tone: 'positive' },
+    { label: 'Aurrekontu-presioa', value: Math.min(100, Math.max(0, (stats?.player.treasury ?? 0) / 1000)), tone: 'warn' },
+    { label: 'Hiriaren zurrumurrua', value: Math.min(100, Math.max(0, stats?.comparison.score_diff ?? 0)), tone: 'neutral' }
   ];
 </script>
 
 {#if open}
   <div class="layer" role="presentation">
-    <button class="scrim" type="button" aria-label="Close newspaper" on:click={() => dispatch('close')}></button>
-    <div class="paper" role="dialog" aria-modal="true" aria-label="SimHiri Times">
-      <header>
+    <button class="scrim" type="button" aria-label="Egunkaria itxi" on:click={() => dispatch('close')}></button>
+    <div class="paper" role="dialog" aria-modal="true" aria-label="SimHiri Egunkaria">
+      <header class="masthead">
         <div>
-          <p class="eyebrow">Classic Daily</p>
-          <h2>SimHiri Times</h2>
+          <p class="eyebrow">Eguneroko klasikoa</p>
+          <h2>SimHiri Egunkaria</h2>
         </div>
         <div class="masthead-meta">
           <span>{dateLabel}</span>
-          <span>Front Page Edition</span>
+          <span>Azaleko edizioa</span>
         </div>
       </header>
-      <div class="columns">
-        <article class="lead-story">
-          <h3>City Pulse: Population at {stats?.player.population ?? 0}</h3>
+
+      <section class="layout">
+        <article class="lead-story spread">
+          <p class="section-label">Azaleko albistea</p>
+          <h3>Hiriaren taupada: biztanleria {stats?.player.population ?? 0}</h3>
           <p>
-            The treasury stands at § {stats?.player.treasury ?? 0}, while planners weigh a more
-            aggressive civic agenda against the rival city’s current momentum.
+            Altxorra § {stats?.player.treasury ?? 0} da une honetan, eta planifikatzaileek agenda
+            ausartagoa baloratzen dute aurkariaren uneko erritmoaren aurrean.
           </p>
           <p class="dropcap">
-            Transit demand remains the loudest public signal, but the mood on the street still
-            hinges on whether services can keep pace with growth.
+            Garraioaren eskaria da oraindik seinale ozenena, baina kaleko giroa zerbitzuek
+            hazkundearekin erritmoa eutsiko ote diotenaren menpe dago.
           </p>
         </article>
 
-        <article class="news-column">
-          <h4>Public Opinion</h4>
+        <article class="news-column tall">
+          <p class="section-label">Iritzi publikoa</p>
+          <h4>Hiriaren termometroa</h4>
           <div class="gauges">
             {#each opinionBars as bar}
               <div class="gauge-row">
@@ -56,37 +59,52 @@
         </article>
 
         <article class="news-column side-note">
-          <h4>Editorial Brief</h4>
+          <p class="section-label">Erredakzio-oharra</p>
+          <h4>Gomendio azkarrak</h4>
           <ul>
-            <li>More public services</li>
-            <li>Lower taxes</li>
-            <li>Transport upgrades</li>
+            <li>Zerbitzu publiko gehiago</li>
+            <li>Zerga txikiagoak</li>
+            <li>Garraio hobekuntzak</li>
           </ul>
         </article>
-      </div>
-      <footer>
-        <button on:click={() => dispatch('close')}>Close Edition</button>
+
+        <article class="news-column footer-note">
+          <p class="section-label">Azken oharra</p>
+          <h4>Aurrekontu-presioa</h4>
+          <p>
+            Hiriaren osasuna eta aurrekontuaren oreka ez daude oraindik erabat bermatuta; garaiz
+            mugituz gero, joera hobetu daiteke.
+          </p>
+        </article>
+      </section>
+
+      <footer class="paper-footer">
+        <button on:click={() => dispatch('close')}>Edizioa itxi</button>
       </footer>
     </div>
   </div>
 {/if}
 
 <style>
-  .layer { position: fixed; inset: 0; display: grid; place-items: center; z-index: 80; }
+  .layer { position: fixed; inset: 0; display: grid; place-items: stretch; z-index: 80; }
   .scrim { position: absolute; inset: 0; border: 0; background: rgba(13, 17, 28, 0.42); }
   .paper {
     position: relative;
     z-index: 1;
-    width: min(980px, 94vw);
+    width: 100vw;
+    height: 100vh;
     background: #f8f1dd;
     color: #2b2117;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 28px 72px rgba(0, 0, 0, 0.38);
-    border: 1px solid rgba(87, 65, 39, 0.18);
+    border-radius: 0;
+    padding: clamp(18px, 3vw, 34px);
+    box-shadow: none;
+    border: 0;
     font-family: Georgia, 'Times New Roman', serif;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    overflow: auto;
   }
-  header {
+  .masthead {
     display: flex;
     justify-content: space-between;
     gap: 16px;
@@ -102,6 +120,13 @@
     color: #7d694b;
   }
   h2, h3, h4 { margin: 0 0 8px; }
+  .section-label {
+    margin: 0 0 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 0.68rem;
+    color: #8a6f48;
+  }
   .masthead-meta {
     display: grid;
     justify-items: end;
@@ -109,10 +134,11 @@
     font-size: 0.82rem;
     color: #6c5b43;
   }
-  .columns {
+  .layout {
     display: grid;
-    grid-template-columns: 1.4fr 1fr 0.9fr;
+    grid-template-columns: 1.5fr 1fr 0.9fr;
     gap: 18px;
+    align-content: start;
   }
   .lead-story,
   .news-column {
@@ -145,7 +171,7 @@
   .warn { background: linear-gradient(90deg, #c98a3a, #e0bc72); }
   .neutral { background: linear-gradient(90deg, #6e86a9, #a7bedf); }
   .side-note ul { margin: 0; padding-left: 18px; }
-  footer {
+  .paper-footer {
     display: flex;
     justify-content: flex-end;
     margin-top: 16px;
@@ -160,9 +186,20 @@
   }
   p { margin: 0 0 10px; line-height: 1.55; }
   ul { margin: 0 0 12px 18px; }
+  .spread {
+    grid-column: 1 / span 2;
+  }
+  .tall {
+    min-height: 100%;
+  }
+  .footer-note {
+    grid-column: 1 / -1;
+  }
   @media (max-width: 880px) {
-    .columns { grid-template-columns: 1fr; }
-    header { flex-direction: column; }
+    .layout { grid-template-columns: 1fr; }
+    .spread,
+    .footer-note { grid-column: auto; }
+    .masthead { flex-direction: column; }
     .masthead-meta { justify-items: start; }
   }
 </style>

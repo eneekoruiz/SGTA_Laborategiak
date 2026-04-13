@@ -84,14 +84,14 @@
 
 {#if $cheatConsoleOpen}
   <div class="cheat-console-overlay" transition:fade={{ duration: 200 }} on:click={close} role="button" tabindex="0" on:keydown={(e) => e.key === 'Escape' && close()}>
-    <div class="cheat-console" on:click|stopPropagation on:keydown|stopPropagation transition:slide={{ duration: 250, axis: 'y' }} role="dialog" aria-label="Cheat Console" tabindex="-1">
+    <div class="cheat-console" on:click|stopPropagation on:keydown|stopPropagation transition:slide={{ duration: 250, axis: 'y' }} role="dialog" aria-label="Trikimailu kontsola" tabindex="-1">
       <div class="cheat-header">
-        <h3>🎮 Cheat Console</h3>
+        <h3>🎮 Trikimailu kontsola</h3>
         <div class="cheat-controls">
-          <button class="cheat-btn-small" on:click={clearLogs} title="Clear logs">
+          <button class="cheat-btn-small" on:click={clearLogs} title="Erregistroak garbitu">
             📋
           </button>
-          <button class="cheat-btn-small" on:click={close} title="Close (Ctrl+Tab)">
+          <button class="cheat-btn-small" on:click={close} title="Itxi (Ctrl+Tab)">
             ✕
           </button>
         </div>
@@ -111,12 +111,12 @@
         <input
           type="text"
           class="cheat-input"
-          placeholder="Enter cheat code... (↑↓ for history, Ctrl+Tab to close)"
+          placeholder="Sartu trikimailu-kodea... (↑↓ historiarako, Ctrl+Tab ixteko)"
           bind:value={inputValue}
           on:keydown={onKeyDown}
         />
         <button class="cheat-submit" on:click={submitCheat} disabled={!inputValue.trim()}>
-          Send
+          Bidali
         </button>
       </div>
     </div>

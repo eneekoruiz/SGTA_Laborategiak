@@ -42,13 +42,13 @@
       case 'info':
         return 'Info';
       case 'warning':
-        return 'Warn';
+        return 'Abisua';
       case 'error':
-        return 'Error';
+        return 'Errorea';
       case 'critical':
-        return 'Critical';
+        return 'Kritikoa';
       default:
-        return 'Notice';
+        return 'Oharra';
     }
   }
 </script>
@@ -57,9 +57,9 @@
 {#if backendOffline}
   <div class="fixed top-0 left-0 right-0 border-b border-rose-300/70 bg-rose-100/80 backdrop-blur-md px-4 py-3 z-50 shadow-sm">
     <div class="flex items-center gap-3 text-rose-950 text-sm">
-      <span class="text-xs uppercase tracking-[0.18em] font-semibold">Offline</span>
+      <span class="text-xs uppercase tracking-[0.18em] font-semibold">Konektatu gabe</span>
       <span>
-        <strong>Backend Server Offline</strong> — Some features may be limited. Using local mock data.
+        <strong>Backend zerbitzaria ez dago erabilgarri</strong> — Ezaugarri batzuk mugatuta egon daitezke. Tokiko mock datuak erabiltzen dira.
       </span>
     </div>
   </div>
@@ -87,7 +87,7 @@
           <button
             on:click={() => removeErrorNotification(error.id)}
             class="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity rounded-xl bg-white/50 hover:bg-white/80 p-1"
-            aria-label="Close notification"
+            aria-label="Jakinarazpena itxi"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" class="w-3.5 h-3.5">
               <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" />
@@ -103,7 +103,7 @@
             }}
             class="mt-2 text-xs px-2 py-1 rounded-lg opacity-80 hover:opacity-100 bg-white/60 transition-opacity"
           >
-            Retry
+            Saiatu berriro
           </button>
         {/if}
       </div>

@@ -3,16 +3,16 @@
 
   const highlights = [
     {
-      title: 'Isometric city engine',
-      text: 'Zoomable map, overlay heatmaps, and layered infrastructure rendering.'
+      title: 'Hiri-motor isometrikoa',
+      text: 'Zoom daitekeen mapa, gainjartze-bero-mapak eta geruzazko azpiegitura errendatzea.'
     },
     {
-      title: 'Scenario-driven starts',
-      text: 'Choose a scenario, set a difficulty, and launch a new city in one flow.'
+      title: 'Eszenatoki gidatutako hasierak',
+      text: 'Aukeratu eszenatokia, ezarri zailtasuna eta abiarazi hiri berri bat fluxo bakarrean.'
     },
     {
-      title: 'Live management HUD',
-      text: 'Budget, ordinances, rival city metrics, and monthly simulation controls.'
+      title: 'Kudeaketa HUD bizia',
+      text: 'Aurrekontua, ordenantzak, aurkari-hiriaren metrikak eta hileko simulazio kontrolak.'
     }
   ];
 </script>
@@ -27,23 +27,22 @@
   <div class="orb orb-b"></div>
 
   <div class="hero">
-    <p class="eyebrow">SimHiri / City Strategy Engine</p>
-    <h1>Build a living city with a serious simulation core.</h1>
+    <p class="eyebrow">SimHiri / Hiri-estrategia motorra</p>
+    <h1>Eraiki hiri bizi bat simulazio-muin sendoarekin.</h1>
     <p class="lede">
-      Manage zones, infrastructure, budgets, rival cities, and monthly AI turns in a single
-      polished Svelte frontend.
+      Kudeatu zonak, azpiegiturak, aurrekontuak, aurkari-hiriak eta AAren hileko txandak Svelte frontend dotore bakar batean.
     </p>
 
     <div class="actions">
-      <button class="primary" on:click={() => navigate('/login')}>Log in</button>
-      <button class="secondary" on:click={() => navigate('/register')}>Create account</button>
-      <button class="ghost" on:click={() => navigate('/games')}>Open game list</button>
+      <button class="primary" on:click={() => navigate('/login')}>Sartu</button>
+      <button class="secondary" on:click={() => navigate('/register')}>Kontua sortu</button>
+      <button class="ghost" on:click={() => navigate('/games')}>Ireki partida-zerrenda</button>
     </div>
   </div>
 
   <aside class="panel">
     <header>
-      <span>Current stack</span>
+      <span>Uneko pila</span>
       <strong>Frontend / Svelte / TypeScript</strong>
     </header>
 
@@ -57,9 +56,9 @@
     </div>
 
     <div class="footer-strip">
-      <span>Isometric renderer</span>
-      <span>Heatmap overlays</span>
-      <span>Auth + game shell</span>
+      <span>Errendatzaile isometrikoa</span>
+      <span>Bero-mapen gainjartzeak</span>
+      <span>Autentikazioa + joko-shella</span>
     </div>
   </aside>
 </section>

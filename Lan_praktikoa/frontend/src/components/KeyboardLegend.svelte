@@ -4,11 +4,11 @@
   let isExpanded = false;
 
   const shortcuts = [
-    { key: 'R', action: 'Rotate Map' },
-    { key: 'U', action: 'Underground View' },
-    { key: 'Space', action: 'Pan & Navigate' },
-    { key: 'Esc', action: 'Clear Selection' },
-    { key: 'Ctrl + Tab', action: 'Trikimailu Kontsola' }
+    { key: 'R', action: 'Mapa biratu' },
+    { key: 'U', action: 'Lurpeko bista' },
+    { key: 'Space', action: 'Mugitu eta nabigatu' },
+    { key: 'Esc', action: 'Hautapena garbitu' },
+    { key: 'Ctrl + Tab', action: 'Trikimailu kontsola' }
   ];
 
   function toggleExpand(): void {
@@ -20,17 +20,17 @@
   }
 </script>
 
-<div class="keyboard-legend" role="region" aria-label="Keyboard shortcuts" on:mouseenter={() => (isExpanded = true)} on:mouseleave={handleMouseLeave}>
-  <button class="legend-pill" on:click={toggleExpand} aria-label="Keyboard shortcuts">
+<div class="keyboard-legend" role="region" aria-label="Teklatu-lasterbideak" on:mouseenter={() => (isExpanded = true)} on:mouseleave={handleMouseLeave}>
+  <button class="legend-pill" on:click={toggleExpand} aria-label="Teklatu-lasterbideak">
     <span class="icon">⌨</span>
     {#if isExpanded}
-      <span class="label">Shortcuts</span>
+      <span class="label">Lasterbideak</span>
     {/if}
   </button>
 
   {#if isExpanded}
     <div class="legend-panel" in:fade={{ duration: 180 }}>
-      <div class="legend-title">Keyboard Shortcuts</div>
+      <div class="legend-title">Teklatu-lasterbideak</div>
       <div class="legend-grid">
         {#each shortcuts as shortcut, idx}
           <div class="shortcut-item">
@@ -48,7 +48,7 @@
     position: fixed;
     bottom: 28px;
     left: 20px;
-    z-index: 50;
+    z-index: 20;
     font-family: inherit;
   }
 

@@ -3,23 +3,25 @@
 
   export let activeOverlay: string | null = null;
   export let isActive = false;
+  export let overlayStrength = 72;
   export let onOverlayChange: (type: string | null) => void = () => {};
+  export let onStrengthChange: (value: number) => void = () => {};
   export let onToggle: () => void = () => {};
 
   let expanded = false;
 
   const overlayTypes = [
-    { id: 'crime', label: 'Crime', color: '#d27f7f' },
-    { id: 'pollution_air', label: 'Air Pollution', color: '#a78f84' },
-    { id: 'pollution_water', label: 'Water Pollution', color: '#8a7e73' },
-    { id: 'land_value', label: 'Land Value', color: '#8cad8f' },
-    { id: 'traffic', label: 'Traffic', color: '#b89470' },
-    { id: 'power', label: 'Power', color: '#b8aa83' },
-    { id: 'water', label: 'Water', color: '#80a8b9' },
-    { id: 'fire_coverage', label: 'Fire Coverage', color: '#c78f80' },
-    { id: 'police_coverage', label: 'Police Coverage', color: '#8ea5bf' },
-    { id: 'health', label: 'Health', color: '#8eb9b2' },
-    { id: 'education', label: 'Education', color: '#9d9fc2' }
+    { id: 'crime', label: 'Krimena', color: '#d27f7f' },
+    { id: 'pollution_air', label: 'Aire-kutsadura', color: '#a78f84' },
+    { id: 'pollution_water', label: 'Ur-kutsadura', color: '#8a7e73' },
+    { id: 'land_value', label: 'Lurraren balioa', color: '#8cad8f' },
+    { id: 'traffic', label: 'Trafikoa', color: '#b89470' },
+    { id: 'power', label: 'Energia', color: '#b8aa83' },
+    { id: 'water', label: 'Ura', color: '#80a8b9' },
+    { id: 'fire_coverage', label: 'Sute-estaldura', color: '#c78f80' },
+    { id: 'police_coverage', label: 'Polizia-estaldura', color: '#8ea5bf' },
+    { id: 'health', label: 'Osasuna', color: '#8eb9b2' },
+    { id: 'education', label: 'Hezkuntza', color: '#9d9fc2' }
   ];
 
   function toggleOverlay(type: string): void {
@@ -74,6 +76,11 @@
 
     return `hsl(${Math.round(config.hue)}, ${Math.round(s)}%, ${Math.round(l)}%)`;
   }
+
+  function handleStrengthInput(event: Event): void {
+    const target = event.currentTarget as HTMLInputElement;
+    onStrengthChange(Number(target.value));
+  }
 </script>
 
 <aside
@@ -83,14 +90,14 @@
   on:mouseleave={closePanel}
   in:fade={{ duration: 200 }}
 >
-  <button class="rail-trigger" aria-label="Toggle data overlays" on:click={openPanel}>
+  <button class="rail-trigger" aria-label="Datu-geruzak ireki edo itxi" on:click={openPanel}>
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4c4.5 0 8 3.2 9 8-1 4.8-4.5 8-9 8s-8-3.2-9-8c1-4.8 4.5-8 9-8zm0 4.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" /></svg>
   </button>
 
   <div class="overlay-panel">
     <div class="header">
-      <h3>Data Overlays</h3>
-      <button class="close-btn" on:click={closeEverything} aria-label="Close overlay selector">
+      <h3>Datu-geruzak</h3>
+      <button class="close-btn" on:click={closeEverything} aria-label="Datu-geruza itxi">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
       </button>
     </div>
@@ -122,16 +129,33 @@
           {/each}
         </div>
         <div class="legend-scale">
-          <span>Low</span>
-          <span>High</span>
+          <span>Baxua</span>
+          <span>Altua</span>
         </div>
       </div>
     {/if}
+
+    <div class="strength-box">
+      <label for="overlay-strength">Intentsitatea</label>
+      <div class="strength-row">
+        <input
+          id="overlay-strength"
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+          value={overlayStrength}
+          on:input={handleStrengthInput}
+          aria-label="Datu-geruzen intentsitatea"
+        />
+        <strong>{overlayStrength}%</strong>
+      </div>
+    </div>
   </div>
 </aside>
 
 {#if expanded}
-  <button class="dismiss-overlay" aria-label="Dismiss overlay panel" on:click={closePanel}></button>
+  <button class="dismiss-overlay" aria-label="Datu-geruzen panela itxi" on:click={closePanel}></button>
 {/if}
 
 <style>

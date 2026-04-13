@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import type { BuildingType, InfrastructureType, Tile, ZoneType } from '../types/game';
   import { performanceMetrics } from '../services/performanceMetrics';
+  import { overlayStrength as overlayStrengthStore } from '../store/ui';
 
   export let tiles: Tile[][] = [];
   export let mapWidth = 64;
@@ -22,6 +23,11 @@
   export let showStatusIcons = false;
   export let activeOverlay: string | null = null;
   export let focusTile: { x: number; y: number; zoom?: number } | null = null;
+  export let replayBudgetPing: { id: number; x: number; y: number; amount: number } | null = null;
+  export let replayDisasterPulse = 0;
+
+  $: void replayBudgetPing;
+  $: void replayDisasterPulse;
 
   type Point = { x: number; y: number };
   type GridPoint = { x: number; y: number };
@@ -2789,14 +2795,17 @@
       
       const range = visibleRange();
       const entries = buildDepthSortedEntries(range);
-      overlayCtx.globalAlpha = 0.4;
+      const strength = Math.max(0, Math.min(100, $overlayStrengthStore)) / 100;
+      overlayCtx.globalAlpha = 0.14 + strength * 0.34;
       
       // Batch path operations - use minimal state changes
       for (const entry of entries) {
         const value = sampleOverlay(entry.x, entry.y, type);
+        const cutoff = 0.07 + (1 - strength) * 0.12;
+        if (value < cutoff) continue;
         const center = worldCenter(entry.x, entry.y);
         drawDiamond(overlayCtx, center.x, center.y);
-        overlayCtx.fillStyle = heatmapColorRamp(value);
+        overlayCtx.fillStyle = heatmapColorRamp(Math.min(1, value * (0.65 + strength * 0.55)));
         overlayCtx.fill();
       }
       
