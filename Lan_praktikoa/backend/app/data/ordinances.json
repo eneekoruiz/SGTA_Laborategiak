@@ -1,0 +1,132 @@
+{
+  "ordinances": [
+    {
+      "id": "sales_tax",
+      "name": "Sales Tax",
+      "annual_cost": -200,
+      "effects": {
+        "commercial_demand_modifier": -0.05,
+        "income_change": 200
+      }
+    },
+    {
+      "id": "income_tax",
+      "name": "Income Tax",
+      "annual_cost": -200,
+      "effects": {
+        "residential_demand_modifier": -0.05,
+        "income_change": 200
+      }
+    },
+    {
+      "id": "legalized_gambling",
+      "name": "Legalized Gambling",
+      "annual_cost": -150,
+      "effects": {
+        "crime_modifier": 0.1,
+        "income_change": 150
+      }
+    },
+    {
+      "id": "parking_fines",
+      "name": "Parking Fines",
+      "annual_cost": -50,
+      "effects": {
+        "income_change": 50
+      }
+    },
+    {
+      "id": "free_clinics",
+      "name": "Free Clinics",
+      "annual_cost": 50,
+      "effects": {
+        "hq_bonus": 5,
+        "health_modifier": 0.05
+      },
+      "group": "health"
+    },
+    {
+      "id": "junior_sports",
+      "name": "Junior Sports",
+      "annual_cost": 50,
+      "effects": {
+        "crime_modifier": -0.05,
+        "eq_bonus": 3,
+        "education_modifier": 0.03
+      },
+      "group": "education"
+    },
+    {
+      "id": "pro_reading",
+      "name": "Pro-Reading Campaign",
+      "annual_cost": 50,
+      "effects": {
+        "eq_bonus": 5,
+        "education_modifier": 0.05
+      },
+      "group": "education"
+    },
+    {
+      "id": "anti_drug",
+      "name": "Anti-Drug Campaign",
+      "annual_cost": 50,
+      "effects": {
+        "crime_modifier": -0.05
+      }
+    },
+    {
+      "id": "pollution_controls",
+      "name": "Pollution Controls",
+      "annual_cost": 50,
+      "effects": {
+        "pollution_modifier": -0.15,
+        "industrial_demand_modifier": -0.05
+      }
+    },
+    {
+      "id": "tourist_promotion",
+      "name": "Tourist Promotion",
+      "annual_cost": 100,
+      "effects": {
+        "commercial_demand_modifier": 0.1,
+        "income_change": 200
+      }
+    },
+    {
+      "id": "nuclear_free",
+      "name": "Nuclear Free Zone",
+      "annual_cost": 0,
+      "effects": {
+        "nuclear_power_banned": true
+      }
+    },
+    {
+      "id": "neighborhood_watch",
+      "name": "Neighborhood Watch",
+      "annual_cost": 25,
+      "effects": {
+        "crime_modifier": -0.03
+      }
+    },
+    {
+      "id": "cpr_training",
+      "name": "CPR Training",
+      "annual_cost": 25,
+      "effects": {
+        "hq_bonus": 2,
+        "health_modifier": 0.02
+      },
+      "group": "health"
+    },
+    {
+      "id": "smoking_ban",
+      "name": "Smoking Ban",
+      "annual_cost": 0,
+      "effects": {
+        "hq_bonus": 3,
+        "health_modifier": 0.03
+      },
+      "group": "health"
+    }
+  ]
+}

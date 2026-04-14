@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  # 1. Base de Datos (Nombre de servicio 'mongo' según sección 7.2)
+  mongo:
+    image: mongo:latest
+    container_name: simhiri_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  # 2. IA Zerbitzua (Debe estar en el 5001)
+  ai-service:
+    build: ./ai-service
+    container_name: simhiri_ai
+    ports:
+      - "5001:8000"  # <--- FUERA: 5001 (Specs), DENTRO: 8000 (Lo que ella tiene)
+    env_file: ./ai-service/.env   # Para que lea las claves de GroQ y GitHub del .env
+
+  # 3. Backend (Debe estar en el 5000)
+  backend:
+    build: ./backend
+    container_name: simhiri_backend
+    ports:
+      - "5000:8000"  # <--- FUERA: 5000 (Specs), DENTRO: 8000 (Su puerto interno)
+    depends_on:
+      - mongo
+    env_file: ./backend/.env
+
+  # 4. Frontend (Debe estar en el 3000)
+  frontend:
+    build: ./frontend
+    container_name: simhiri_frontend
+    ports:
+      - "3000:5173"  # <--- FUERA: 3000 (Specs), DENTRO: 5173 (Tu Vite)
+    depends_on:
+      - backend
+    env_file: ./frontend/.env
+
+
+
+
+volumes:
+  mongo_data:
+    driver: local

@@ -1,0 +1,176 @@
+{
+  "buildings": [
+    {
+      "type": "coal_power",
+      "name": "Coal Power Plant",
+      "cost": 4000,
+      "size": {"w": 4, "h": 4},
+      "power_output_mw": 200,
+      "pollution": 150,
+      "available_year": 1900,
+      "lifespan_months": 600
+    },
+    {
+      "type": "hydro_power",
+      "name": "Hydro Electric Plant",
+      "cost": 400,
+      "size": {"w": 1, "h": 1},
+      "power_output_mw": 20,
+      "pollution": 0,
+      "available_year": 1900,
+      "lifespan_months": 0,
+      "requires": "water"
+    },
+    {
+      "type": "oil_power",
+      "name": "Oil Power Plant",
+      "cost": 6500,
+      "size": {"w": 4, "h": 4},
+      "power_output_mw": 220,
+      "pollution": 120,
+      "available_year": 1900,
+      "lifespan_months": 600
+    },
+    {
+      "type": "gas_power",
+      "name": "Natural Gas Plant",
+      "cost": 2000,
+      "size": {"w": 4, "h": 4},
+      "power_output_mw": 50,
+      "pollution": 30,
+      "available_year": 1950,
+      "lifespan_months": 600
+    },
+    {
+      "type": "nuclear_power",
+      "name": "Nuclear Power Plant",
+      "cost": 15000,
+      "size": {"w": 4, "h": 4},
+      "power_output_mw": 500,
+      "pollution": 0,
+      "available_year": 1955,
+      "lifespan_months": 600,
+      "risk": "meltdown"
+    },
+    {
+      "type": "wind_power",
+      "name": "Wind Turbine",
+      "cost": 100,
+      "size": {"w": 1, "h": 1},
+      "power_output_mw": 4,
+      "pollution": 0,
+      "available_year": 1980,
+      "lifespan_months": 0
+    },
+    {
+      "type": "solar_power",
+      "name": "Solar Power Plant",
+      "cost": 1300,
+      "size": {"w": 4, "h": 4},
+      "power_output_mw": 50,
+      "pollution": 0,
+      "available_year": 1990,
+      "lifespan_months": 600
+    },
+    {
+      "type": "school",
+      "name": "School",
+      "cost": 250,
+      "size": {"w": 2, "h": 2},
+      "eq_bonus": 5,
+      "requires": "power",
+      "service_radius": 8,
+      "funding_levels": [0, 50, 100, 120]
+    },
+    {
+      "type": "college",
+      "name": "College",
+      "cost": 1000,
+      "size": {"w": 3, "h": 3},
+      "eq_bonus": 10,
+      "requires": "power",
+      "service_radius": 12,
+      "funding_levels": [0, 50, 100, 120]
+    },
+    {
+      "type": "library",
+      "name": "Library",
+      "cost": 500,
+      "size": {"w": 2, "h": 2},
+      "eq_bonus": 3,
+      "requires": "power",
+      "service_radius": 6,
+      "funding_levels": [0, 50, 100, 120]
+    },
+    {
+      "type": "museum",
+      "name": "Museum",
+      "cost": 1000,
+      "size": {"w": 3, "h": 3},
+      "eq_bonus": 4,
+      "requires": "power",
+      "service_radius": 10,
+      "funding_levels": [0, 50, 100, 120]
+    },
+    {
+      "type": "hospital",
+      "name": "Hospital",
+      "cost": 500,
+      "size": {"w": 2, "h": 2},
+      "hq_bonus": 50,
+      "requires": "power",
+      "service_radius": 8,
+      "funding_levels": [0, 50, 100, 120]
+    },
+    {
+      "type": "police_station",
+      "name": "Police Station",
+      "cost": 500,
+      "size": {"w": 2, "h": 2},
+      "crime_reduction": 15,
+      "requires": "power",
+      "service_radius": 7,
+      "funding_levels": [0, 50, 100, 120]
+    },
+    {
+      "type": "fire_station",
+      "name": "Fire Station",
+      "cost": 500,
+      "size": {"w": 2, "h": 2},
+      "fire_coverage_radius": 8,
+      "requires": "power",
+      "funding_levels": [0, 50, 100, 120]
+    },
+    {
+      "type": "airport",
+      "name": "Airport",
+      "cost": 5000,
+      "size": {"w": 6, "h": 6},
+      "commercial_bonus": 20,
+      "requires": "power",
+      "industrial_bonus": 10
+    },
+    {
+      "type": "seaport",
+      "name": "Sea Port",
+      "cost": 3000,
+      "size": {"w": 6, "h": 3},
+      "commercial_bonus": 15,
+      "requires": ["power", "water"]
+    },
+    {
+      "type": "train_station",
+      "name": "Train Station",
+      "cost": 1000,
+      "size": {"w": 3, "h": 3},
+      "requires": ["power", "rail"]
+    },
+    {
+      "type": "bus_station",
+      "name": "Bus Station",
+      "cost": 500,
+      "size": {"w": 2, "h": 2},
+      "requires": ["power", "road"]
+    }
+  ]
+}
