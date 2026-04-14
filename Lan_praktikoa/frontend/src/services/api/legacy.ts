@@ -41,10 +41,15 @@ interface AuthUser {
 interface RegisterResponse {
   message: string;
   user: AuthUser;
+  token?: string;
+  access_token?: string;
+  data?: { access_token?: string; token?: string };
 }
 
 interface LoginResponse {
-  token: string;
+  token?: string;
+  access_token?: string;
+  data?: { access_token?: string; token?: string };
   user: AuthUser;
 }
 
@@ -1019,6 +1024,16 @@ export function clearAuthToken(): void {
   localStorage.removeItem('token');
 }
 
+function extractAuthToken(result: any): string | null {
+  return (
+    result?.token ||
+    result?.access_token ||
+    result?.data?.access_token ||
+    result?.data?.token ||
+    null
+  );
+}
+
 /**
  * Registers a user through active provider and persists token when returned.
  *
@@ -1035,8 +1050,9 @@ export async function register(
     () => mockApiService.register(username, email, password)
   );
 
-  if ((result as LoginResponse & { token?: string }).token) {
-    setAuthToken((result as LoginResponse & { token: string }).token);
+  const token = extractAuthToken(result);
+  if (token) {
+    setAuthToken(token);
   }
 
   return result;
@@ -1054,7 +1070,11 @@ export async function login(email: string, password: string): Promise<LoginRespo
     () => mockApiService.login(email, password)
   );
 
-  setAuthToken(result.token);
+  const token = extractAuthToken(result);
+  if (token) {
+    setAuthToken(token);
+  }
+
   return result;
 }
 
