@@ -1,4 +1,5 @@
 import { writable } from 'svelte/store';
+import { getStoredAuthToken } from './apiService';
 
 export type RouteName = 'landing' | 'login' | 'register' | 'games' | 'new-game' | 'game';
 
@@ -50,14 +51,58 @@ export function resolveRoute(pathname: string): AppRoute {
   return { name: 'landing', path: '/' };
 }
 
+/**
+ * Determine if a route requires authentication
+ */
+function isProtectedRoute(route: AppRoute | RouteName): boolean {
+  const routeName = typeof route === 'string' ? route : route.name;
+  return routeName === 'games' || routeName === 'new-game' || routeName === 'game';
+}
+
+/**
+ * Check if user is authenticated
+ */
+function isAuthenticated(): boolean {
+  const token = getStoredAuthToken();
+  return !!token && token.length > 0;
+}
+
 export function syncRoute(pathname = window.location.pathname): AppRoute {
   const nextRoute = resolveRoute(pathname);
+
+  // Check if target route requires authentication (direct URL access)
+  if (isProtectedRoute(nextRoute) && !isAuthenticated()) {
+    // Redirect to login
+    const loginRoute = resolveRoute('/login');
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({}, '', loginRoute.path);
+    }
+    currentRoute.set(loginRoute);
+    return loginRoute;
+  }
+
   currentRoute.set(nextRoute);
   return nextRoute;
 }
 
 export function navigate(path: string, replace = false): AppRoute {
   const nextRoute = resolveRoute(path);
+
+  // Check if target route requires authentication
+  if (isProtectedRoute(nextRoute) && !isAuthenticated()) {
+    // Redirect to login instead
+    const loginRoute = resolveRoute('/login');
+    if (typeof window !== 'undefined') {
+      if (replace) {
+        window.history.replaceState({}, '', loginRoute.path);
+      } else {
+        window.history.pushState({}, '', loginRoute.path);
+      }
+    }
+    currentRoute.set(loginRoute);
+    return loginRoute;
+  }
+
   if (typeof window !== 'undefined') {
     if (replace) {
       window.history.replaceState({}, '', nextRoute.path);

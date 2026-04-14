@@ -27,13 +27,15 @@ services:
     depends_on:
       - mongo
     env_file: ./backend/.env
+    environment:
+      - AI_SERVICE_URL=http://ai-service:8000
 
   # 4. Frontend (Debe estar en el 3000)
   frontend:
     build: ./frontend
     container_name: simhiri_frontend
     ports:
-      - "3000:5173"  # <--- FUERA: 3000 (Specs), DENTRO: 5173 (Tu Vite)
+      - "3001:3000"  # <--- FUERA: 3000 (Specs), DENTRO: 5173 (Tu Vite)
     depends_on:
       - backend
     env_file: ./frontend/.env

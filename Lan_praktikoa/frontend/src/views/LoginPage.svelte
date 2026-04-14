@@ -2,11 +2,18 @@
   import { onMount } from 'svelte';
   import { getStoredAuthToken, login } from '../services/apiService';
   import { navigate } from '../services/router';
+  import { createFormErrorStore, applyApiErrorsToForm } from '../store/formErrors';
+  import ErrorAlert from '../components/ErrorAlert.svelte';
+  import FormField from '../components/FormField.svelte';
 
-  let username = '';
+  let email = '';
   let password = '';
   let loading = false;
   let error = '';
+  let affectedFields: string[] = [];
+
+  // Form-specific error store
+  const formErrors = createFormErrorStore();
 
   onMount(() => {
     if (getStoredAuthToken()) {
@@ -17,15 +24,34 @@
   async function submitLogin(): Promise<void> {
     loading = true;
     error = '';
+    formErrors.clearAll();
 
     try {
-      await login(username.trim(), password);
+      await login(email.trim(), password);
       navigate('/games', true);
     } catch (err) {
+      // Extract error details from enhanced error object
+      const statusCode = (err as any)?.statusCode || 0;
+      const errorFields = (err as any)?.affectedFields || [];
+      const fieldMessages = (err as any)?.fieldMessages || {};
+
+      // Set form field errors
+      if (errorFields.length > 0) {
+        applyApiErrorsToForm(formErrors, errorFields, fieldMessages);
+        affectedFields = errorFields;
+      }
+
+      // Set main error message
       error = err instanceof Error ? err.message : 'Saio-hasiera huts egin du';
     } finally {
       loading = false;
     }
+  }
+
+  function handleDismiss() {
+    error = '';
+    affectedFields = [];
+    formErrors.clearAll();
   }
 </script>
 
@@ -39,22 +65,51 @@
     <h1>Sartu zure hiri-zorroan</h1>
     <p class="lede">Erabili zure SimHiri kontua gordetako partidak, eszenatokiak eta hiri-shell bizia irekitzeko.</p>
 
-    {#if error}
-      <div class="alert">{error}</div>
-    {/if}
+    <ErrorAlert
+      {error}
+      {affectedFields}
+      onDismiss={handleDismiss}
+      level="warning"
+      dismissible={true}
+    />
 
     <form on:submit|preventDefault={submitLogin} class="form">
-      <label>
-        <span>Erabiltzaile-izena</span>
-        <input bind:value={username} name="username" autocomplete="username" required minlength="3" />
-      </label>
+      <FormField
+        name="email"
+        label="Emaila"
+        error={$formErrors.email || ''}
+        required={true}
+      >
+        <input
+          bind:value={email}
+          name="email"
+          type="email"
+          autocomplete="email"
+          required
+          disabled={loading}
+        />
+      </FormField>
 
-      <label>
-        <span>Pasahitza</span>
-        <input bind:value={password} name="password" type="password" autocomplete="current-password" required minlength="8" />
-      </label>
+      <FormField
+        name="password"
+        label="Pasahitza"
+        error={$formErrors.password || ''}
+        required={true}
+      >
+        <input
+          bind:value={password}
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          required
+          minlength="8"
+          disabled={loading}
+        />
+      </FormField>
 
-      <button class="primary" type="submit" disabled={loading}>{loading ? 'Saioa irekitzen...' : 'Sartu'}</button>
+      <button class="primary" type="submit" disabled={loading}>
+        {loading ? 'Saioa irekitzen...' : 'Sartu'}
+      </button>
     </form>
 
     <div class="links">

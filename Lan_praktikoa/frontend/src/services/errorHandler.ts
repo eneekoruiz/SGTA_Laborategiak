@@ -125,15 +125,21 @@ export function clearErrors(): void {
  * Handle API response errors (4xx, 5xx, network, timeout, etc.)
  */
 export function handleApiError(
-  error: Error | Response,
+  error: Error | Response | any,
   endpoint: string,
-  context?: string
+  contextOrLevel?: string | ErrorLevel
 ): void {
   let title = 'API Error';
   let message = 'An unexpected error occurred';
   let level: ErrorLevel = 'error';
   let priority: NotificationPriority = 'medium';
   let isNetworkError = false;
+
+  // Extract error details if new format
+  const errorType = error?.errorType || error?.error_type;
+  const affectedFields = error?.affectedFields || error?.fields || [];
+  const fieldMessages = error?.fieldMessages || error?.details || {};
+  const statusCode = error?.statusCode || error?.status || 0;
 
   if (error instanceof Response) {
     // HTTP response error
@@ -170,8 +176,25 @@ export function handleApiError(
       title = 'Invalid Response';
       message = 'The server sent an invalid response. The server code may be broken.';
     } else {
+      // Use the message from the error object (which may have been enhanced)
       message = error.message;
     }
+  } else if (error && typeof error === 'object') {
+    // Plain object with error details (new format)
+    title = error.title || message || 'Error';
+    message = error.message || 'An unexpected error occurred';
+    level = contextOrLevel as ErrorLevel || error.level || 'error';
+    priority = error.priority || 'medium';
+
+    // Check if network error
+    if (statusCode === 0 || error.message?.includes('network') || error.message?.includes('konexio')) {
+      isNetworkError = true;
+    }
+  }
+
+  // Override level if provided as context parameter
+  if (typeof contextOrLevel === 'string' && ['info', 'warning', 'error', 'critical'].includes(contextOrLevel)) {
+    level = contextOrLevel as ErrorLevel;
   }
 
   // Track consecutive network failures
@@ -185,17 +208,26 @@ export function handleApiError(
     isBackendHealthy.set(true);
   }
 
+  // Create notification with error details
   sendNotification({
     title,
     message,
     priority,
     endpoint,
-    retryable: isNetworkError
+    retryable: isNetworkError,
+    duration: level === 'critical' ? null : 5000
   });
 
   if (import.meta.env.DEV) {
     // Log for local debugging only
-    console.error(`[API Error] ${endpoint}:`, { error, context, isNetworkError });
+    console.error(`[API Error] ${endpoint}:`, {
+      error,
+      statusCode,
+      errorType,
+      affectedFields,
+      fieldMessages,
+      message
+    });
   }
 }
 
