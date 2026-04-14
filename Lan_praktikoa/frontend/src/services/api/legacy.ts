@@ -293,16 +293,55 @@ async function request<T>(endpoint: string, options: FetchOptions): Promise<T> {
         }
       }
 
-      // Parse error response from backend
+      // Parse error response from backend with enhanced error details
       let errorData: any = {};
+      let errorMessage = `HTTP ${response.status}`;
+      let errorType = 'HTTPError';
+      let affectedFields: string[] = [];
+      let fieldMessages: Record<string, string> = {};
+
       try {
         errorData = await response.json();
+
+        // If using new error response format
+        if (errorData.success === false && errorData.error_type) {
+          errorMessage = errorData.message || errorMessage;
+          errorType = errorData.error_type;
+          affectedFields = errorData.fields || [];
+          fieldMessages = errorData.details || {};
+        }
+        // Legacy format fallback
+        else if (errorData.detail) {
+          // Try to extract from Pydantic detail array
+          if (Array.isArray(errorData.detail)) {
+            const details = errorData.detail.map((d: any) => {
+              if (typeof d === 'object' && d.msg) {
+                return d.msg;
+              }
+              return String(d);
+            });
+            errorMessage = details.join('; ');
+          } else if (typeof errorData.detail === 'string') {
+            errorMessage = errorData.detail;
+          }
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        }
       } catch {
-        // Backend returned invalid JSON
+        // Backend returned invalid JSON or no response body
+        // Keep default error message
       }
 
-      const error = new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
+      // Create enhanced error with structured data
+      const error = new Error(errorMessage);
       (error as any).response = response;
+      (error as any).statusCode = response.status;
+      (error as any).errorType = errorType;
+      (error as any).affectedFields = affectedFields;
+      (error as any).fieldMessages = fieldMessages;
+
       throw error;
     }
 
@@ -312,19 +351,78 @@ async function request<T>(endpoint: string, options: FetchOptions): Promise<T> {
   } catch (err) {
     // Handle all types of errors
     if (err instanceof Error) {
+      // Extract error details for UI
+      const statusCode = (err as any).statusCode || 0;
+      const errorType = (err as any).errorType || 'APIError';
+      const affectedFields = (err as any).affectedFields || [];
+      const fieldMessages = (err as any).fieldMessages || {};
+
+      // Determine error context
+      let errorTitle = 'Errorea';
+      let errorMessage = err.message;
+      let errorLevel: 'info' | 'warning' | 'error' | 'critical' = 'error';
+
       if (err.message.includes('abort')) {
-        // Request was aborted (timeout)
-        handleApiError(err, endpoint, 'Request timeout');
-        throw new Error('Request timeout');
-      } else {
-        // Network error or parse error
-        handleApiError(err, endpoint);
-        throw err;
+        // Timeout
+        errorTitle = 'Denbora amaitu da';
+        errorMessage = 'Eskararen denbora amaitu da. Konexioa geldoa dago edo zerbitzaria ez dago erabilgarri.';
+        errorLevel = 'warning';
+      } else if (statusCode === 422) {
+        // Validation error
+        errorTitle = 'Balioaren errorea';
+        errorLevel = 'warning';
+      } else if (statusCode === 401 || statusCode === 403) {
+        // Auth error
+        errorTitle = 'Autentikazio errorea';
+        errorLevel = 'error';
+      } else if (statusCode >= 500) {
+        // Server error
+        errorTitle = 'Zerbitzariaren errorea';
+        errorMessage = 'Zerbitzarian errore bat gertatu da. Saiatu berriro geroago.';
+        errorLevel = 'critical';
+      } else if (!statusCode) {
+        // Network error
+        errorTitle = 'Konexio errorea';
+        if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+          errorMessage = 'Ezin da zerbitzariarekin konektatu. Egiaztatu zure Internet konexioa.';
+        } else if (err.message.includes('CORS')) {
+          errorMessage = 'Baliabide eta korronte gurutzatuen policy errorea.';
+        }
+        errorLevel = 'critical';
       }
+
+      // Log error for debugging
+      if (typeof console !== 'undefined') {
+        console.error(`[API_ERROR] ${statusCode || 'NETWORK'} ${endpoint}`, {
+          message: errorMessage,
+          errorType,
+          affectedFields,
+          fieldMessages,
+          fullError: err
+        });
+      }
+
+      // Pass error details to store for UI display
+      // The UI will extract field-specific errors if needed
+      handleApiError(
+        {
+          title: errorTitle,
+          message: errorMessage,
+          endpoint,
+          errorType,
+          affectedFields,
+          fieldMessages,
+          statusCode
+        } as any,
+        endpoint,
+        errorLevel
+      );
+
+      throw err;
     } else {
       // Unknown error
       const error = new Error('API request failed');
-      handleApiError(error, endpoint);
+      handleApiError(error, endpoint, 'critical');
       throw error;
     }
   }
@@ -938,11 +1036,11 @@ export async function register(
  *
  * Why: one login boundary prevents provider-specific auth handling in UI components.
  */
-export async function login(username: string, password: string): Promise<LoginResponse> {
+export async function login(email: string, password: string): Promise<LoginResponse> {
   const result = await tryRealElseMock(
     '/api/auth/login',
-    { method: 'POST', body: { username, password } },
-    () => mockApiService.login(username, password)
+    { method: 'POST', body: { email, password } },
+    () => mockApiService.login(email, password)
   );
 
   setAuthToken(result.token);

@@ -1109,12 +1109,12 @@ function hasInfrastructureNearby(
  * Why: USE_MOCK must remain a drop-in backend substitute for integration and QA.
  */
 export const mockApiService = {
-  async login(username: string, password: string): Promise<{ token: string; user: MockUser }> {
+  async login(email: string, password: string): Promise<{ token: string; user: MockUser }> {
     void password;
-    const user = mockUsers.find((entry) => entry.username === username) ?? {
+    const user = mockUsers.find((entry) => entry.email === email) ?? {
       id: `user-${mockUsers.length + 1}`,
-      username,
-      email: `${username}@simhiri.local`
+      username: email.split('@')[0],
+      email
     };
 
     mockCurrentUser = user;

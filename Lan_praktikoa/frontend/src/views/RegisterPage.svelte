@@ -1,6 +1,9 @@
 <script lang="ts">
   import { register } from '../services/apiService';
   import { navigate } from '../services/router';
+  import { createFormErrorStore, applyApiErrorsToForm } from '../store/formErrors';
+  import ErrorAlert from '../components/ErrorAlert.svelte';
+  import FormField from '../components/FormField.svelte';
 
   let username = '';
   let email = '';
@@ -8,8 +11,12 @@
   let confirmPassword = '';
   let loading = false;
   let error = '';
+  let affectedFields: string[] = [];
 
-  function validate(): string {
+  // Form-specific error store
+  const formErrors = createFormErrorStore();
+
+  function validateLocalForm(): string {
     if (!/^[A-Za-z0-9_]{3,30}$/.test(username.trim())) {
       return 'Erabiltzaile-izenak 3-30 karaktere izan behar ditu eta letrak, zenbakiak edo azpimarrak soilik eduki.';
     }
@@ -30,19 +37,45 @@
   }
 
   async function submitRegister(): Promise<void> {
-    error = validate();
-    if (error) return;
+    error = '';
+    affectedFields = [];
+    formErrors.clearAll();
+
+    // Client-side validation first
+    const validationError = validateLocalForm();
+    if (validationError) {
+      error = validationError;
+      return;
+    }
 
     loading = true;
 
     try {
       await register(username.trim(), email.trim(), password);
-      navigate('/games', true);
+      // After successful registration, redirect to login to require explicit authentication
+      navigate('/login', true);
     } catch (err) {
+      // Extract error details from enhanced error object
+      const errorFields = (err as any)?.affectedFields || [];
+      const fieldMessages = (err as any)?.fieldMessages || {};
+
+      // Set form field errors
+      if (errorFields.length > 0) {
+        applyApiErrorsToForm(formErrors, errorFields, fieldMessages);
+        affectedFields = errorFields;
+      }
+
+      // Set main error message
       error = err instanceof Error ? err.message : 'Erregistroak huts egin du';
     } finally {
       loading = false;
     }
+  }
+
+  function handleDismiss() {
+    error = '';
+    affectedFields = [];
+    formErrors.clearAll();
   }
 </script>
 
@@ -56,32 +89,88 @@
     <h1>Sortu zure SimHiri profila</h1>
     <p class="lede">Erregistratu behin, eta gero hasi edo berrabiarazi zure hiri-simulazioak partida-zerrendatik.</p>
 
-    {#if error}
-      <div class="alert">{error}</div>
-    {/if}
+    <ErrorAlert
+      {error}
+      {affectedFields}
+      onDismiss={handleDismiss}
+      level={affectedFields.length > 0 ? 'warning' : 'error'}
+      dismissible={true}
+    />
 
     <form on:submit|preventDefault={submitRegister} class="form">
-      <label>
-        <span>Erabiltzaile-izena</span>
-        <input bind:value={username} name="username" autocomplete="username" required minlength="3" maxlength="30" />
-      </label>
+      <FormField
+        name="username"
+        label="Erabiltzaile-izena"
+        error={$formErrors.username || ''}
+        required={true}
+        hint="3-30 karaktere, letrak/zenbakiak/azpimarra"
+      >
+        <input
+          bind:value={username}
+          name="username"
+          type="text"
+          autocomplete="username"
+          required
+          minlength="3"
+          maxlength="30"
+          disabled={loading}
+        />
+      </FormField>
 
-      <label>
-        <span>Email</span>
-        <input bind:value={email} name="email" type="email" autocomplete="email" required />
-      </label>
+      <FormField
+        name="email"
+        label="Posta Elektroniko-a"
+        error={$formErrors.email || ''}
+        required={true}
+      >
+        <input
+          bind:value={email}
+          name="email"
+          type="email"
+          autocomplete="email"
+          required
+          disabled={loading}
+        />
+      </FormField>
 
-      <label>
-        <span>Password</span>
-        <input bind:value={password} name="password" type="password" autocomplete="new-password" required minlength="8" />
-      </label>
+      <FormField
+        name="password"
+        label="Pasahitza"
+        error={$formErrors.password || ''}
+        required={true}
+        hint="Gutxienez 8 karaktere, letra + zenbakia"
+      >
+        <input
+          bind:value={password}
+          name="password"
+          type="password"
+          autocomplete="new-password"
+          required
+          minlength="8"
+          disabled={loading}
+        />
+      </FormField>
 
-      <label>
-        <span>Berretsi pasahitza</span>
-        <input bind:value={confirmPassword} name="confirmPassword" type="password" autocomplete="new-password" required minlength="8" />
-      </label>
+      <FormField
+        name="confirmPassword"
+        label="Berretsi Pasahitza"
+        error={$formErrors.confirm_password || $formErrors.confirmPassword || ''}
+        required={true}
+      >
+        <input
+          bind:value={confirmPassword}
+          name="confirmPassword"
+          type="password"
+          autocomplete="new-password"
+          required
+          minlength="8"
+          disabled={loading}
+        />
+      </FormField>
 
-      <button class="primary" type="submit" disabled={loading}>{loading ? 'Kontua sortzen...' : 'Erregistratu'}</button>
+      <button class="primary" type="submit" disabled={loading}>
+        {loading ? 'Kontua sortzen...' : 'Erregistratu'}
+      </button>
     </form>
 
     <div class="links">

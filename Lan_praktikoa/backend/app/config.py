@@ -20,7 +20,7 @@ class Settings:
     DEBUG: bool = os.getenv("DEBUG", "True").lower() == "true"
 
     # CORS
-    CORS_ORIGINS: list = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
+    CORS_ORIGINS: list = os.getenv("CORS_ORIGINS", "http://localhost:3001,http://localhost:5173,http://localhost:3000").split(",")
     CORS_CREDENTIALS: bool = True
     CORS_METHODS: list = ["*"]
     CORS_HEADERS: list = ["*"]
@@ -43,7 +43,7 @@ class Settings:
 
     # AI
     AI_REQUEST_TIMEOUT: int = int(os.getenv("AI_REQUEST_TIMEOUT", "30"))
-    AI_SERVICE_URL: str = os.getenv("AI_SERVICE_URL", "http://localhost:5001")
+    AI_SERVICE_URL: str = os.getenv("AI_SERVICE_URL", "http://ai-service:8000")
 
     # Game Balance
     MAX_BONDS: int = 10
