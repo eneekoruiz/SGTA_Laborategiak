@@ -231,41 +231,45 @@
 
   function cloneTiles(data: Tile[][]): Tile[][] {
     return data.map((row) =>
-      row.map((tile) => ({
-        ...tile,
-        infrastructure: [...tile.infrastructure],
-        zone: tile.zone
-          ? {
-              ...tile.zone,
-              position: { ...tile.zone.position },
-              size: { ...tile.zone.size }
-            }
-          : null,
-        building: tile.building
-          ? {
-              ...tile.building,
-              position: { ...tile.building.position },
-              size: { ...tile.building.size }
-            }
-          : null,
-        surfaceEntity:
-          tile.building
-            ? { type: 'building', value: String(tile.building.type) }
-            : tile.zone
-              ? { type: 'zone', value: tile.zone.type }
-              : tile.infrastructure.find((infra) => SURFACE_INFRA_TYPES.has(infra))
-                ? {
-                    type: 'infrastructure',
-                    value: String(tile.infrastructure.find((infra) => SURFACE_INFRA_TYPES.has(infra)))
-                  }
-                : null,
-        undergroundEntity: tile.infrastructure.find((infra) => UNDERGROUND_INFRA_TYPES.has(infra))
-          ? {
-              type: 'infrastructure',
-              value: String(tile.infrastructure.find((infra) => UNDERGROUND_INFRA_TYPES.has(infra)))
-            }
-          : null
-      }))
+      row.map((tile) => {
+        // Normalize infrastructure to always be an array
+        const infra = Array.isArray(tile.infrastructure) ? tile.infrastructure : [];
+        return {
+          ...tile,
+          infrastructure: [...infra],
+          zone: tile.zone
+            ? {
+                ...tile.zone,
+                position: { ...tile.zone.position },
+                size: { ...tile.zone.size }
+              }
+            : null,
+          building: tile.building
+            ? {
+                ...tile.building,
+                position: { ...tile.building.position },
+                size: { ...tile.building.size }
+              }
+            : null,
+          surfaceEntity:
+            tile.building
+              ? { type: 'building', value: String(tile.building.type) }
+              : tile.zone
+                ? { type: 'zone', value: tile.zone.type }
+                : infra.find((i) => SURFACE_INFRA_TYPES.has(i))
+                  ? {
+                      type: 'infrastructure',
+                      value: String(infra.find((i) => SURFACE_INFRA_TYPES.has(i)))
+                    }
+                  : null,
+          undergroundEntity: infra.find((i) => UNDERGROUND_INFRA_TYPES.has(i))
+            ? {
+                type: 'infrastructure',
+                value: String(infra.find((i) => UNDERGROUND_INFRA_TYPES.has(i)))
+              }
+            : null
+        };
+      })
     );
   }
 
@@ -378,7 +382,8 @@
 
   function isSurfaceOccupied(tile: Tile | null): boolean {
     if (!tile) return false;
-    return Boolean(tile.building || tile.zone || tile.infrastructure.some((infra) => SURFACE_INFRA_TYPES.has(infra)));
+    const infra = Array.isArray(tile.infrastructure) ? tile.infrastructure : [];
+    return Boolean(tile.building || tile.zone || infra.some((i) => SURFACE_INFRA_TYPES.has(i)));
   }
 
   function pushNotification(

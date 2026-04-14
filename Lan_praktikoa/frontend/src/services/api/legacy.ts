@@ -502,11 +502,14 @@ export async function getGame(gameId: string): Promise<{ game_state: GameState }
  * provider-specific payload differences during backend integration.
  */
 export async function getStats(gameId: string): Promise<StatsResponse> {
-  return tryRealElseMock(
+  const result = await tryRealElseMock(
     `/api/games/${gameId}/stats`,
     { method: 'GET' },
     () => mockApiService.getStats(gameId)
   );
+  // API returns {success, message, data: {player, ai, ...}}
+  // Extract just the data part
+  return (result as any).data || result;
 }
 
 /**
@@ -515,11 +518,12 @@ export async function getStats(gameId: string): Promise<StatsResponse> {
  * Why: group-module UI should not branch by provider when backend endpoints land.
  */
 export async function getEducation(gameId: string): Promise<EducationResponse> {
-  return tryRealElseMock(
+  const result = await tryRealElseMock(
     `/api/games/${gameId}/education`,
     { method: 'GET' },
     () => mockApiService.getEducation(gameId)
   );
+  return (result as any).data || result;
 }
 
 /**
@@ -528,11 +532,12 @@ export async function getEducation(gameId: string): Promise<EducationResponse> {
  * Why: keeps module-specific dashboards compatible across mock/live modes.
  */
 export async function getHealth(gameId: string): Promise<HealthResponse> {
-  return tryRealElseMock(
+  const result = await tryRealElseMock(
     `/api/games/${gameId}/health`,
     { method: 'GET' },
     () => mockApiService.getHealth(gameId)
   );
+  return (result as any).data || result;
 }
 
 /**
@@ -629,7 +634,7 @@ export async function buildStructure(
     `/api/games/${gameId}/build`,
     {
       method: 'POST',
-      body: { building_type: buildingType, position }
+      body: { type: buildingType, position }
     },
     () => mockApiService.buildStructure(gameId, buildingType, position)
   );
@@ -1035,8 +1040,10 @@ export async function register(
     () => mockApiService.register(username, email, password)
   );
 
-  if ((result as LoginResponse & { token?: string }).token) {
-    setAuthToken((result as LoginResponse & { token: string }).token);
+  // Backend returns token at result.data.access_token, not result.token
+  const token = (result as any).data?.access_token || (result as LoginResponse & { token?: string }).token;
+  if (token) {
+    setAuthToken(token);
   }
 
   return result;
@@ -1054,7 +1061,11 @@ export async function login(email: string, password: string): Promise<LoginRespo
     () => mockApiService.login(email, password)
   );
 
-  setAuthToken(result.token);
+  // Backend returns token at result.data.access_token, not result.token
+  const token = (result as any).data?.access_token || (result as any).token;
+  if (token) {
+    setAuthToken(token);
+  }
   return result;
 }
 

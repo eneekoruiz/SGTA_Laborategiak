@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { deleteGame, listGames } from '../services/apiService';
+  import { deleteGame, listGames, clearAuthToken } from '../services/apiService';
   import { navigate } from '../services/router';
 
   let games: any[] = [];
@@ -47,6 +47,11 @@
     return `${monthName} ${date.year}`;
   }
 
+  function handleLogout(): void {
+    clearAuthToken();
+    navigate('/login', true);
+  }
+
   onMount(loadGames);
 </script>
 
@@ -66,6 +71,7 @@
       <button class="primary" on:click={() => navigate('/games/new')}>Partida Berria</button>
       <button class="secondary" on:click={() => navigate('/')}>Hasiera</button>
       <button class="secondary" on:click={loadGames}>Berritu</button>
+      <button class="logout" on:click={handleLogout}>Saioa itxi</button>
     </div>
   </header>
 
@@ -257,6 +263,12 @@
   .secondary {
     background: rgba(255, 255, 255, 0.08);
     color: #f4f8ff;
+  }
+
+  .logout {
+    background: rgba(252, 165, 165, 0.16);
+    color: #ffd5d5;
+    border: 1px solid rgba(252, 165, 165, 0.35);
   }
 
   .empty-state,

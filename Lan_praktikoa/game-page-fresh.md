@@ -1,0 +1,109 @@
+- main [ref=e21]:
+  - generic [ref=e22]:
+    - generic [ref=e25]:
+      - group "Perspektiba azkarrak" [ref=e26]:
+        - button "N" [ref=e27] [cursor=pointer]
+        - button "E" [ref=e28] [cursor=pointer]
+        - button "S" [ref=e29] [cursor=pointer]
+        - button "W" [ref=e30] [cursor=pointer]
+      - button "Mapa 90 gradu biratu" [ref=e31] [cursor=pointer]: Biratu
+      - generic "Maparen iparrorratza":
+        - generic:
+          - generic: "N"
+    - complementary [ref=e32]:
+      - button "Datu-geruzak ireki edo itxi" [ref=e33] [cursor=pointer]:
+        - img [ref=e34]
+      - generic:
+        - generic:
+          - heading "Datu-geruzak" [level=3]
+          - button "Datu-geruza itxi":
+            - img
+        - generic:
+          - button "Krimena": Krimena
+          - button "Aire-kutsadura": Aire-kutsadura
+          - button "Ur-kutsadura": Ur-kutsadura
+          - button "Lurraren balioa": Lurraren balioa
+          - button "Trafikoa": Trafikoa
+          - button "Energia": Energia
+          - button "Ura": Ura
+          - button "Sute-estaldura": Sute-estaldura
+          - button "Polizia-estaldura": Polizia-estaldura
+          - button "Osasuna": Osasuna
+          - button "Hezkuntza": Hezkuntza
+        - generic:
+          - text: Intentsitatea
+          - generic:
+            - slider "Datu-geruzen intentsitatea": "72"
+            - strong: 72%
+    - generic:
+      - generic:
+        - button "Itzuli" [ref=e36] [cursor=pointer]
+        - button "Gorde" [ref=e37] [cursor=pointer]
+      - region "Goiko HUD kontrolak" [ref=e38]:
+        - generic "RCI eskaria" [ref=e39]:
+          - generic [ref=e40]:
+            - generic [ref=e41]: R
+            - strong [ref=e44]: "0"
+          - generic [ref=e45]:
+            - generic [ref=e46]: C
+            - strong [ref=e49]: "0"
+          - generic [ref=e50]:
+            - generic [ref=e51]: I
+            - strong [ref=e54]: "0"
+        - generic "Abiadura hautatzailea" [ref=e55]:
+          - button "Estat." [ref=e56] [cursor=pointer]
+          - button "Manual" [ref=e57] [cursor=pointer]
+          - button "Normal" [ref=e58] [cursor=pointer]
+          - button "Azkarra" [ref=e59] [cursor=pointer]
+    - generic [ref=e60]:
+      - generic [ref=e61]:
+        - generic "Onarpena":
+          - generic: 😐
+        - generic "Data":
+          - generic: Data
+          - strong: 1900/01
+        - generic "Biztanleria":
+          - generic: Bizt.
+          - strong: "100"
+        - generic "Osasuna / Hezkuntza":
+          - generic: HQ
+          - strong: "50"
+        - generic "Altxorra":
+          - generic: Altxorra
+          - strong: §15,000
+      - generic [ref=e63]:
+        - button "Zonak" [ref=e64] [cursor=pointer]:
+          - img [ref=e66]
+          - generic: Zonak
+        - button "Azpiegiturak" [ref=e69] [cursor=pointer]:
+          - img [ref=e71]
+          - generic: Azpiegiturak
+        - button "Eraikinak" [ref=e74] [cursor=pointer]:
+          - img [ref=e76]
+          - generic: Eraikinak
+        - button "Eraitsi" [ref=e79] [cursor=pointer]:
+          - img [ref=e81]
+          - generic: Eraitsi
+      - generic [ref=e85]:
+        - button "Aurrekontua" [ref=e86] [cursor=pointer]:
+          - generic [ref=e87]: 💰
+          - generic: Aurrekontua
+        - button "Hezk. / Osasuna" [ref=e89] [cursor=pointer]:
+          - generic [ref=e90]: 🏥
+          - generic: Hezk. / Osasuna
+        - button "AA aurkaria" [ref=e92] [cursor=pointer]:
+          - generic [ref=e93]: 🏙️
+          - generic: AA aurkaria
+        - button "Egunkaria" [ref=e95] [cursor=pointer]:
+          - generic [ref=e96]: 📰
+          - generic: Egunkaria
+      - generic [ref=e99]:
+        - button "⏭️ Hilabetea" [ref=e100] [cursor=pointer]:
+          - generic [ref=e101]: ⏭️
+          - generic: Hilabetea
+        - button "🤖 AA Txanda" [ref=e102] [cursor=pointer]:
+          - generic [ref=e103]: 🤖
+          - generic: AA Txanda
+    - region "Teklatu-lasterbideak" [ref=e105]:
+      - button "Teklatu-lasterbideak" [ref=e106] [cursor=pointer]:
+        - generic [ref=e107]: ⌨

@@ -2,6 +2,13 @@
   import { fade } from 'svelte/transition';
 
   let isExpanded = false;
+  
+  // Draggable state
+  let isDragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let panelLeft = 20;
+  let panelBottom = 28;
 
   const shortcuts = [
     { key: 'R', action: 'Mapa biratu' },
@@ -16,11 +23,52 @@
   }
 
   function handleMouseLeave(): void {
-    isExpanded = false;
+    if (!isDragging) {
+      isExpanded = false;
+    }
+  }
+
+  function onDragStart(e: MouseEvent): void {
+    if (!isExpanded) return;
+    
+    isDragging = true;
+    dragStartX = e.clientX - panelLeft;
+    dragStartY = e.clientY + panelBottom;
+    
+    document.addEventListener('mousemove', onDragMove);
+    document.addEventListener('mouseup', onDragEnd);
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function onDragMove(e: MouseEvent): void {
+    if (!isDragging) return;
+    
+    panelLeft = Math.max(0, e.clientX - dragStartX);
+    panelBottom = Math.max(0, dragStartY - e.clientY);
+    
+    // Keep panel within viewport bounds
+    const panelWidth = 240;
+    const panelHeight = 250;
+    panelLeft = Math.min(window.innerWidth - panelWidth, Math.max(0, panelLeft));
+    panelBottom = Math.min(window.innerHeight - panelHeight, Math.max(0, panelBottom));
+  }
+
+  function onDragEnd(): void {
+    isDragging = false;
+    document.removeEventListener('mousemove', onDragMove);
+    document.removeEventListener('mouseup', onDragEnd);
   }
 </script>
 
-<div class="keyboard-legend" role="region" aria-label="Teklatu-lasterbideak" on:mouseenter={() => (isExpanded = true)} on:mouseleave={handleMouseLeave}>
+<div 
+  class="keyboard-legend" 
+  role="region" 
+  aria-label="Teklatu-lasterbideak" 
+  on:mouseenter={() => (isExpanded = true)} 
+  on:mouseleave={handleMouseLeave}
+  style="left: {panelLeft}px; bottom: {panelBottom}px;"
+>
   <button class="legend-pill" on:click={toggleExpand} aria-label="Teklatu-lasterbideak">
     <span class="icon">⌨</span>
     {#if isExpanded}
@@ -30,7 +78,10 @@
 
   {#if isExpanded}
     <div class="legend-panel" in:fade={{ duration: 180 }}>
-      <div class="legend-title">Teklatu-lasterbideak</div>
+      <div class="panel-header" on:mousedown={onDragStart}>
+        <div class="legend-title">Teklatu-lasterbideak</div>
+        <div class="drag-handle">⠿</div>
+      </div>
       <div class="legend-grid">
         {#each shortcuts as shortcut, idx}
           <div class="shortcut-item">
@@ -50,6 +101,7 @@
     left: 20px;
     z-index: 20;
     font-family: inherit;
+    transition: none;
   }
 
   .legend-pill {
@@ -89,7 +141,7 @@
     bottom: 100%;
     left: 0;
     margin-bottom: 12px;
-    padding: 14px 16px;
+    padding: 0;
     width: auto;
     min-width: 220px;
     border-radius: 14px;
@@ -99,21 +151,52 @@
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
   }
 
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 10px;
+    cursor: grab;
+    user-select: none;
+    border-bottom: 1px solid rgba(100, 180, 255, 0.2);
+    transition: background 0.2s;
+  }
+
+  .panel-header:hover {
+    background: rgba(100, 180, 255, 0.05);
+  }
+
+  .panel-header:active {
+    cursor: grabbing;
+  }
+
+  .drag-handle {
+    font-size: 1rem;
+    color: rgba(180, 220, 255, 0.5);
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+
+  .panel-header:hover .drag-handle {
+    opacity: 1;
+    color: rgba(180, 220, 255, 0.8);
+  }
+
   .legend-title {
     font-size: 0.68rem;
     font-weight: 600;
     color: rgba(180, 220, 255, 0.7);
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    margin-bottom: 10px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid rgba(100, 180, 255, 0.2);
+    pointer-events: none;
   }
 
   .legend-grid {
     display: grid;
     grid-template-columns: 1fr;
     gap: 8px;
+    padding: 10px 16px 14px;
   }
 
   .shortcut-item {

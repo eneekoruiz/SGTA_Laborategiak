@@ -1,0 +1,141 @@
+- main [ref=e4]:
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e9]:
+        - group "Perspektiba azkarrak" [ref=e10]:
+          - button "N" [ref=e11] [cursor=pointer]
+          - button "E" [ref=e12] [cursor=pointer]
+          - button "S" [ref=e13] [cursor=pointer]
+          - button "W" [ref=e14] [cursor=pointer]
+        - button "Mapa 90 gradu biratu" [ref=e15] [cursor=pointer]: Biratu
+        - generic "Maparen iparrorratza":
+          - generic:
+            - generic: "N"
+      - generic:
+        - generic:
+          - strong: "Laukia:"
+          - text: 50, 51
+        - generic:
+          - strong: "Lur mota:"
+        - generic:
+          - strong: "Zona:"
+          - text: ez
+        - generic:
+          - strong: "Energia:"
+          - text: ez
+        - generic:
+          - strong: "Ura:"
+          - text: ez
+    - complementary [ref=e16]:
+      - button "Datu-geruzak ireki edo itxi" [active] [ref=e17] [cursor=pointer]:
+        - img [ref=e18]
+      - generic:
+        - generic:
+          - heading "Datu-geruzak" [level=3]
+          - button "Datu-geruza itxi":
+            - img
+        - generic:
+          - button "Krimena": Krimena
+          - button "Aire-kutsadura": Aire-kutsadura
+          - button "Ur-kutsadura": Ur-kutsadura
+          - button "Lurraren balioa": Lurraren balioa
+          - button "Trafikoa": Trafikoa
+          - button "Energia": Energia
+          - button "Ura": Ura
+          - button "Sute-estaldura": Sute-estaldura
+          - button "Polizia-estaldura": Polizia-estaldura
+          - button "Osasuna": Osasuna
+          - button "Hezkuntza": Hezkuntza
+        - generic:
+          - text: Intentsitatea
+          - generic:
+            - slider "Datu-geruzen intentsitatea": "72"
+            - strong: 72%
+    - generic:
+      - generic:
+        - button "Itzuli" [ref=e20] [cursor=pointer]
+        - button "Gorde" [ref=e21] [cursor=pointer]
+      - region "Goiko HUD kontrolak" [ref=e22]:
+        - generic "RCI eskaria" [ref=e23]:
+          - generic [ref=e24]:
+            - generic [ref=e25]: R
+            - strong [ref=e28]: "0"
+          - generic [ref=e29]:
+            - generic [ref=e30]: C
+            - strong [ref=e33]: "0"
+          - generic [ref=e34]:
+            - generic [ref=e35]: I
+            - strong [ref=e38]: "0"
+        - generic "Abiadura hautatzailea" [ref=e39]:
+          - button "Estat." [ref=e40] [cursor=pointer]
+          - button "Manual" [ref=e41] [cursor=pointer]
+          - button "Normal" [ref=e42] [cursor=pointer]
+          - button "Azkarra" [ref=e43] [cursor=pointer]
+    - generic [ref=e92]:
+      - heading "Estatistikak" [level=3] [ref=e94]
+      - article [ref=e96]:
+        - generic [ref=e97]:
+          - generic [ref=e98]: Module 8
+          - strong [ref=e99]: Datuak kargatzen...
+      - generic [ref=e100]:
+        - button "Krimena" [ref=e101] [cursor=pointer]
+        - button "Aire-kutsadura" [ref=e102] [cursor=pointer]
+        - button "Ur-kutsadura" [ref=e103] [cursor=pointer]
+        - button "Lurraren balioa" [ref=e104] [cursor=pointer]
+        - button "Trafikoa" [ref=e105] [cursor=pointer]
+        - button "Energia" [ref=e106] [cursor=pointer]
+        - button "Ura" [ref=e107] [cursor=pointer]
+        - button "Sute-estaldura" [ref=e108] [cursor=pointer]
+        - button "Polizia-estaldura" [ref=e109] [cursor=pointer]
+    - generic [ref=e44]:
+      - generic [ref=e45]:
+        - generic "Onarpena":
+          - generic: 😐
+        - generic "Data":
+          - generic: Data
+          - strong: 1900/01
+        - generic "Biztanleria":
+          - generic: Bizt.
+          - strong: "100"
+        - generic "Osasuna / Hezkuntza":
+          - generic: HQ
+          - strong: "50"
+        - generic "Altxorra":
+          - generic: Altxorra
+          - strong: §10,000
+      - generic [ref=e47]:
+        - button "Zonak" [ref=e48] [cursor=pointer]:
+          - img [ref=e50]
+          - generic: Zonak
+        - button "Azpiegiturak" [ref=e53] [cursor=pointer]:
+          - img [ref=e55]
+          - generic: Azpiegiturak
+        - button "Eraikinak" [ref=e58] [cursor=pointer]:
+          - img [ref=e60]
+          - generic: Eraikinak
+        - button "Eraitsi" [ref=e63] [cursor=pointer]:
+          - img [ref=e65]
+          - generic: Eraitsi
+      - generic [ref=e69]:
+        - button "Aurrekontua" [ref=e70] [cursor=pointer]:
+          - generic [ref=e71]: 💰
+          - generic: Aurrekontua
+        - button "Hezk. / Osasuna" [ref=e73] [cursor=pointer]:
+          - generic [ref=e74]: 🏥
+          - generic: Hezk. / Osasuna
+        - button "AA aurkaria" [ref=e76] [cursor=pointer]:
+          - generic [ref=e77]: 🏙️
+          - generic: AA aurkaria
+        - button "Egunkaria" [ref=e79] [cursor=pointer]:
+          - generic [ref=e80]: 📰
+          - generic: Egunkaria
+      - generic [ref=e83]:
+        - button "⏭️ Hilabetea" [ref=e84] [cursor=pointer]:
+          - generic [ref=e85]: ⏭️
+          - generic: Hilabetea
+        - button "🤖 AA Txanda" [ref=e86] [cursor=pointer]:
+          - generic [ref=e87]: 🤖
+          - generic: AA Txanda
+    - region "Teklatu-lasterbideak" [ref=e89]:
+      - button "Teklatu-lasterbideak" [ref=e90] [cursor=pointer]:
+        - generic [ref=e91]: ⌨
