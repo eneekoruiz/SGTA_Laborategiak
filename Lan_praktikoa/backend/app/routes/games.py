@@ -5,7 +5,7 @@ from datetime import datetime
 from uuid import uuid4
 from pydantic import BaseModel, Field
 
-from ..models import GameCreate, BuildingCreate, BudgetUpdate, APIResponse, AITurnResponse
+from ..models import GameCreate, BuildingCreate, BudgetUpdate, APIResponse, AITurnResponse, CreateGameResponse, GetGameResponse
 from ..services.simulation_engine import SimulationEngine
 from ..services.ai_service import get_ai_turn, _summarize_state_for_llm
 from ..services.game_service import GameService
@@ -43,7 +43,7 @@ async def get_user_games(
     return APIResponse(success=True, message="Jokoak ongi lortu dira", data=games)
 
 
-@router.post("", response_model=APIResponse, status_code=status.HTTP_201_CREATED, tags=["Games"])
+@router.post("", response_model=CreateGameResponse, status_code=status.HTTP_201_CREATED, tags=["Games"])
 async def create_game(
     game_create: GameCreate,
     user_id: str = Depends(get_current_user_id),
@@ -51,14 +51,13 @@ async def create_game(
 ):
     """Joko berria sortu eta MongoDB-n persistitu."""
     game_state = await game_service.create_game(game_create, user_id)
-    return APIResponse(
-        success=True,
-        message="Jokoa ongi sortu da",
-        data={"id": game_state["_id"], "game": game_state}
+    return CreateGameResponse(
+        game_id=game_state["_id"],
+        game_state=game_state
     )
 
 
-@router.get("/{game_id}", response_model=APIResponse, tags=["Games"])
+@router.get("/{game_id}", response_model=GetGameResponse, tags=["Games"])
 async def get_game(
     game_id: str,
     user_id: str = Depends(get_current_user_id),
@@ -68,7 +67,7 @@ async def get_game(
     game = await game_service.get_game(game_id, user_id)
     if not game:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Jokoa ez da aurkitu")
-    return APIResponse(success=True, message="Jokoa ongi lortu da", data=game)
+    return GetGameResponse(game_state=game)
 
 
 @router.post("/{game_id}/save", response_model=APIResponse, tags=["Games"])

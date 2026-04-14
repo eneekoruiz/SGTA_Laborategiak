@@ -155,3 +155,16 @@ class GameCreate(BaseModel):
     scenario_id: str
     difficulty: Difficulty = Field(default=Difficulty.MEDIUM)
     ai_personality: AIPersonality = Field(default=AIPersonality.BALANCED)
+
+
+class CreateGameResponse(BaseModel):
+    """Response model for POST /api/games."""
+
+    game_id: str
+    game_state: GameState
+
+
+class GetGameResponse(BaseModel):
+    """Response model for GET /api/games/{gameId}."""
+
+    game_state: GameState
