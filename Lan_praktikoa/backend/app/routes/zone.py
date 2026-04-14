@@ -31,14 +31,14 @@ async def create_zone(game_id: str, zone: ZoneCreate, user_id: str = Depends(get
     if zone.type not in ZONE_COSTS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Zona mota baliogabea da")
 
-    if not (1 <= zone.size["w"] <= 6 and 1 <= zone.size["h"] <= 6):
+    if not (1 <= zone.size.w <= 6 and 1 <= zone.size.h <= 6):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Zona tamaina 1x1 eta 6x6 artean egon behar da",
         )
 
     cost_per_tile = ZONE_COSTS[zone.type]
-    total_tiles = zone.size["w"] * zone.size["h"]
+    total_tiles = zone.size.w * zone.size.h
     total_cost = cost_per_tile * total_tiles
 
     player_city = game.get("player_city", {})
@@ -53,10 +53,10 @@ async def create_zone(game_id: str, zone: ZoneCreate, user_id: str = Depends(get
     map_size = game.get("map", {}).get("size", {"width": 100, "height": 100})
     affected_tiles = []
 
-    for dx in range(zone.size["w"]):
-        for dy in range(zone.size["h"]):
-            x = zone.position["x"] + dx
-            y = zone.position["y"] + dy
+    for dx in range(zone.size.w):
+        for dy in range(zone.size.h):
+            x = zone.position.x + dx
+            y = zone.position.y + dy
             if not (0 <= x < map_size["width"] and 0 <= y < map_size["height"]):
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Zona kokapena maparen muga kanpoan dago")
             affected_tiles.append({"x": x, "y": y})
@@ -67,8 +67,8 @@ async def create_zone(game_id: str, zone: ZoneCreate, user_id: str = Depends(get
     new_zone = {
         "id": zone_id,
         "type": zone.type,
-        "position": zone.position,
-        "size": zone.size,
+        "position": {"x": zone.position.x, "y": zone.position.y},
+        "size": {"w": zone.size.w, "h": zone.size.h},
         "development_level": 0,
         "powered": False,
         "watered": False,

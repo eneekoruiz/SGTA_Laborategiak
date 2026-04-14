@@ -303,11 +303,13 @@
   }
 
   function getSurfaceInfrastructure(tile: Tile): InfrastructureType | null {
-    return tile.infrastructure.find((infra) => isSurfaceInfrastructure(infra)) ?? null;
+    const infra = Array.isArray(tile.infrastructure) ? tile.infrastructure : [];
+    return infra.find((i) => isSurfaceInfrastructure(i)) ?? null;
   }
 
   function getUndergroundInfrastructure(tile: Tile): InfrastructureType | null {
-    return tile.infrastructure.find((infra) => isUndergroundInfrastructure(infra)) ?? null;
+    const infra = Array.isArray(tile.infrastructure) ? tile.infrastructure : [];
+    return infra.find((i) => isUndergroundInfrastructure(i)) ?? null;
   }
 
   function getSurfaceEntity(tile: Tile): { type: 'zone' | 'building' | 'infrastructure'; value: string } | null {
@@ -2539,7 +2541,7 @@
         }
       }
 
-      if (showInfrastructure && tile.infrastructure.length > 0) {
+      if (showInfrastructure && tile.infrastructure && tile.infrastructure.length > 0) {
         const hasSurfaceStructure = Boolean(tile.building || (tile.zone && tile.zone.development_level > 0));
         if (undergroundMode) {
           const undergroundInfra = getUndergroundInfrastructure(tile);

@@ -119,8 +119,9 @@ const SURFACE_INFRA = new Set(['road', 'highway', 'highway_ramp', 'power_line', 
 const UNDERGROUND_INFRA = new Set(['water_pipe', 'subway', 'subway_tunnel']);
 
 function normalizeTileOccupancy(tile: Tile): Tile {
-  const surfaceInfra = tile.infrastructure.find((infra) => SURFACE_INFRA.has(infra));
-  const undergroundInfra = tile.infrastructure.find((infra) => UNDERGROUND_INFRA.has(infra));
+  const infra = Array.isArray(tile.infrastructure) ? tile.infrastructure : [];
+  const surfaceInfra = infra.find((i) => SURFACE_INFRA.has(i));
+  const undergroundInfra = infra.find((i) => UNDERGROUND_INFRA.has(i));
 
   const normalizedInfrastructure = [
     ...(surfaceInfra ? [surfaceInfra] : []),
