@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from .config import settings
 from .models import APIResponse
-from .routes import auth, games, zone
+from .routes import auth, games, zone, scenarios
 from .middleware.logging import AuditLoggingMiddleware, setup_logging
 from .utils.error_mapping import parse_validation_errors, format_error_response
 
@@ -61,7 +61,7 @@ async def health_check():
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(games.router, prefix="/api/games", tags=["Games"])
 app.include_router(zone.router, prefix="/api/games", tags=["City Actions"])
-
+app.include_router(scenarios.router, prefix="/api/scenarios", tags=["Scenarios"])
 
 # Initialize database indexes on startup
 from .db.database import init_db

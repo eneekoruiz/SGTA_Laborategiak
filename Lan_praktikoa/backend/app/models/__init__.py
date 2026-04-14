@@ -6,7 +6,7 @@ from .building import Building, BuildingCreate
 from .infrastructure import Infrastructure, InfrastructureType
 from .budget import Budget, BudgetUpdate
 from .city import CityMetrics, CityState
-from .game import GameState, GameCreate
+from .game import GameState, GameCreate, CreateGameResponse, GetGameResponse
 from .education_health import EducationMetrics, HealthMetrics, EducationHealthResponse, EducationFacility, HealthFacility
 from .api import APIResponse, AITurnResponse
 
@@ -30,6 +30,8 @@ __all__ = [
     "CityState",
     "GameState",
     "GameCreate",
+    "CreateGameResponse",
+    "GetGameResponse",
     "EducationMetrics",
     "HealthMetrics",
     "EducationHealthResponse",
