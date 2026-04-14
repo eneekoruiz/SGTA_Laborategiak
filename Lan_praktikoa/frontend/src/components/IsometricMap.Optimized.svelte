@@ -2674,7 +2674,7 @@
         if (!tile.road_access) {
           dynamicCtx.fillText('🚫', (c.x - 12) | 0, (c.y - tileHeight * 0.95) | 0);
         }
-      } else if (showStatusIcons && tile.building && (!tile.powered || !tile.watered)) {
+      } else if (showStatusIcons && tile.building && (!tile.powered || !tile.watered || !tile.road_access)) {
         dynamicCtx.font = '14px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
         dynamicCtx.textAlign = 'center';
         dynamicCtx.textBaseline = 'middle';
@@ -2685,6 +2685,9 @@
         }
         if (!tile.watered) {
           dynamicCtx.fillText('💧', (c.x + 12) | 0, (c.y - tileHeight * 0.95) | 0);
+        }
+        if (!tile.road_access) {
+          dynamicCtx.fillText('🚫', (c.x - 12) | 0, (c.y - tileHeight * 0.95) | 0);
         }
       }
     }

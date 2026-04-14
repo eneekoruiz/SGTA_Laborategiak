@@ -15,39 +15,52 @@
 <style>
   .hud-corners {
     position: fixed;
-    top: 0; left: 0; right: 0;
+    top: 130px;
+    left: 0;
+    right: 0;
     width: 100vw;
     z-index: 39;
     pointer-events: none;
+    padding: 0 20px;
     display: flex;
     justify-content: space-between;
-    padding: 16px;
+    align-items: flex-start;
   }
 
   .corner-btn {
     pointer-events: auto;
     padding: 10px 20px;
     border-radius: 12px;
-    background: linear-gradient(175deg, rgba(19, 24, 32, 0.66), rgba(19, 24, 32, 0.42));
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(12px) saturate(132%);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 20px rgba(2, 8, 16, 0.34);
+    background: linear-gradient(175deg, rgba(19, 24, 32, 0.82), rgba(19, 24, 32, 0.58));
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 10px 28px rgba(0, 0, 0, 0.32);
     color: #edf4ff;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
-    transition: transform 0.2s ease, filter 0.2s ease;
-    font-size: 0.85rem;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    font-size: 0.8rem;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
   }
 
   .corner-btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    filter: brightness(1.1);
+    transform: translateY(-3px);
+    filter: brightness(1.15);
+    background: linear-gradient(175deg, rgba(25, 35, 50, 0.9), rgba(20, 30, 42, 0.68));
+    border-color: rgba(255, 255, 255, 0.25);
   }
 
   .corner-btn:disabled {
-    opacity: 0.6;
+    opacity: 0.55;
     cursor: not-allowed;
+  }
+
+  .top-left {
+    margin-left: 0;
+  }
+
+  .top-right {
+    margin-right: 0;
   }
 </style>

@@ -9,7 +9,7 @@ import {
   mockGameState,
   mockHealth,
   mockStats
-} from './mock/scenarioData';
+} from './mock/scenarioData.ts';
 import {
   attackRival,
   buildStructure,
@@ -25,13 +25,13 @@ import {
   submitCheat,
   toggleOrdinance,
   updateBudget
-} from './mock/handlers';
+} from './mock/handlers.ts';
 import {
   getOverlay,
   getTileServiceConnection,
   endMonth,
   MockSimulationEngine
-} from './mock/simulator';
+} from './mock/simulator.ts';
 
 /**
  * Canonical mock simulation engine export.

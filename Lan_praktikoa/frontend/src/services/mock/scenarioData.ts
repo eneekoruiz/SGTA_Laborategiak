@@ -4,7 +4,7 @@ import {
   mockGameState,
   mockHealth,
   mockStats
-} from './legacy';
+} from './legacy.ts';
 
 /**
  * Shared mock game-state fixture.

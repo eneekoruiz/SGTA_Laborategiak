@@ -3,12 +3,12 @@ import {
   ORDINANCE_RCI_MODIFIERS,
   ROAD_TYPES,
   SIMULATION_CONSTANTS
-} from './constants';
+} from './constants.ts';
 import {
   hasServiceCoverage as utilityHasServiceCoverage,
   isPowerPlant,
   updateUtilityCoverage as utilityUpdateUtilityCoverage
-} from './utilityGrid';
+} from './utilityGrid.ts';
 
 export type RCIValues = { r: number; c: number; i: number };
 

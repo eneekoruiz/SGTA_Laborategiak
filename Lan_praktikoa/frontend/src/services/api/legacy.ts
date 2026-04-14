@@ -1,12 +1,7 @@
 import { mockApiService } from '../mock/legacy';
 import {
-  deductTreasury,
-  population,
-  rci_demand,
   setGameState,
-  setStats,
-  treasury,
-  updateTileAt
+  setStats
 } from '../../store/game';
 import { handleApiError, onApiSuccess } from '../errorHandler';
 import { navigate } from '../router';
@@ -223,6 +218,8 @@ const AUTH_TOKEN_KEY = 'authToken';
  * Set via: VITE_LIVE_MODE=true in .env or env var
  */
 const LIVE_MODE = import.meta.env.VITE_LIVE_MODE === 'true';
+const FORCE_USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
+const BACKEND_FALLBACK_TO_MOCK = import.meta.env.VITE_BACKEND_FALLBACK_TO_MOCK === 'true';
 
 /**
  * Runtime provider switch.
@@ -231,7 +228,7 @@ const LIVE_MODE = import.meta.env.VITE_LIVE_MODE === 'true';
  * call sites, so the rest of the app remains backend-agnostic.
  */
 const apiRuntimeConfig = {
-  useMock: !LIVE_MODE
+  useMock: FORCE_USE_MOCKS || !LIVE_MODE
 };
 
 /**
@@ -244,7 +241,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 /**
  * Request timeout in milliseconds
  */
-const API_TIMEOUT = 10000; // 10 seconds
+const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT_MS ?? 10000); // 10 seconds
 
 interface FetchOptions {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -331,10 +328,12 @@ async function request<T>(endpoint: string, options: FetchOptions): Promise<T> {
 }
 
 /**
- * Smart fallback wrapper: Try real API, fall back to mock.
+ * Smart provider wrapper.
  *
- * LIVE_MODE=true: Always try real backend
- * LIVE_MODE=false: Always use mock (development)
+ * Behavior:
+ * - useMock=true: use mock provider only.
+ * - useMock=false: use backend.
+ * - Optional runtime fallback to mock only if VITE_BACKEND_FALLBACK_TO_MOCK=true.
  */
 async function tryRealElseMock<T>(
   endpoint: string,
@@ -351,7 +350,16 @@ async function tryRealElseMock<T>(
     }
   }
 
-  return request<T>(endpoint, options);
+  try {
+    return await request<T>(endpoint, options);
+  } catch (error) {
+    if (!BACKEND_FALLBACK_TO_MOCK) {
+      throw error;
+    }
+    const wrapped = error instanceof Error ? error : new Error('Backend provider failed');
+    handleApiError(wrapped, endpoint, 'backend provider; switching to mock fallback');
+    return mockFallback();
+  }
 }
 
 /**
@@ -465,11 +473,6 @@ export async function placeZone(
     () => mockApiService.placeZone(gameId, zoneType, position, size)
   );
 
-  // Deduct cost from treasury immediately (action buffering)
-  if (result.success) {
-    deductTreasury(result.cost);
-  }
-
   return result;
 }
 
@@ -498,11 +501,6 @@ export async function placeInfrastructure(
     () => mockApiService.placeInfrastructure(gameId, type, segments)
   );
 
-  // Deduct cost from treasury immediately (action buffering)
-  if (result.success) {
-    deductTreasury(result.cost);
-  }
-
   return result;
 }
 
@@ -524,11 +522,6 @@ export async function buildStructure(
     },
     () => mockApiService.buildStructure(gameId, buildingType, position)
   );
-
-  // Deduct cost from treasury immediately (action buffering)
-  if (result.success) {
-    deductTreasury(result.cost);
-  }
 
   return result;
 }
@@ -564,14 +557,6 @@ export async function demolish(
     },
     () => mockApiService.demolish(gameId, position, type)
   );
-
-  // Demolition has an explicit fee and a 50% refund of original cost.
-  // Positive delta means treasury increases, negative delta means treasury decreases.
-  if (result.success) {
-    const demolitionFee = typeof result.cost === 'number' ? result.cost : 10;
-    const treasuryDelta = result.refund - demolitionFee;
-    deductTreasury(-treasuryDelta);
-  }
 
   return result;
 }
@@ -665,9 +650,6 @@ export async function endMonth(
   if (result?.game_state) {
     const gs = result.game_state;
     setGameState(gs);
-    treasury.set(gs.player_city.treasury);
-    population.set(gs.player_city.population);
-    rci_demand.set({ ...gs.player_city.metrics.rci_demand });
     if (result.stats) {
       setStats(result.stats);
     }
@@ -845,6 +827,8 @@ export async function isBackendHealthy(): Promise<boolean> {
 export function getApiConfig() {
   return {
     LIVE_MODE,
+    FORCE_USE_MOCKS,
+    BACKEND_FALLBACK_TO_MOCK,
     useMock: apiRuntimeConfig.useMock,
     API_BASE,
     API_TIMEOUT
@@ -1019,84 +1003,33 @@ export async function getScenarios(): Promise<ScenariosResponse> {
 // ═════════════════════════════════════════════════════════════
 
 type ApiContractResult = { status: 'success' };
-
-function createLocalBuilding(type: BuildingType, x: number, y: number) {
-  const now = new Date();
-  return {
-    id: `local-b-${x}-${y}-${Date.now()}`,
-    type,
-    position: { x, y },
-    size: { w: 1, h: 1 },
-    built_year: now.getFullYear(),
-    built_month: now.getMonth() + 1,
-    age_months: 0,
-    powered: false,
-    funding_pct: 100,
-    active: true
-  };
-}
+const LOCAL_CONTRACT_GAME_ID = import.meta.env.VITE_MOCK_GAME_ID || 'game-001';
 
 /**
  * Local-only mock API method: place a building and resolve success.
  */
 export function postBuilding(x: number, y: number, type: BuildingType): Promise<ApiContractResult> {
-  updateTileAt(x, y, (tile) => ({
-    ...tile,
-    zone: null,
-    building: createLocalBuilding(type, x, y)
-  }));
-
-  treasury.update((value) => value - 100);
-  population.update((value) => Math.max(0, value + 2));
-  rci_demand.update((value) => ({ r: value.r - 1, c: value.c - 1, i: value.i + 1 }));
-
-  return Promise.resolve({ status: 'success' });
+  return mockApiService
+    .buildStructure(LOCAL_CONTRACT_GAME_ID, type, { x, y })
+    .then(() => ({ status: 'success' }));
 }
 
 /**
  * Local-only mock API method: remove any content from one tile and resolve success.
  */
 export function postDemolish(x: number, y: number): Promise<ApiContractResult> {
-  updateTileAt(x, y, (tile) => ({
-    ...tile,
-    zone: null,
-    building: null,
-    infrastructure: []
-  }));
-
-  treasury.update((value) => value - 20);
-  rci_demand.update((value) => ({ r: value.r + 1, c: value.c + 1, i: value.i + 1 }));
-
-  return Promise.resolve({ status: 'success' });
+  return mockApiService
+    .demolish(LOCAL_CONTRACT_GAME_ID, { x, y }, 'building')
+    .then(() => ({ status: 'success' }));
 }
 
 /**
  * Local-only mock API method: place a zone and resolve success.
  */
 export function postZone(x: number, y: number, type: ZoneType): Promise<ApiContractResult> {
-  updateTileAt(x, y, (tile) => ({
-    ...tile,
-    building: null,
-    zone: {
-      id: `local-z-${x}-${y}-${Date.now()}`,
-      type,
-      position: { x, y },
-      size: { w: 1, h: 1 },
-      development_level: 0,
-      powered: tile.powered,
-      watered: tile.watered,
-      road_access: tile.road_access,
-      abandoned: false,
-      population: 0,
-      built_year: new Date().getFullYear(),
-      built_month: new Date().getMonth() + 1
-    }
-  }));
-
-  treasury.update((value) => value - 5);
-  rci_demand.update((value) => ({ r: value.r - 2, c: value.c, i: value.i }));
-
-  return Promise.resolve({ status: 'success' });
+  return mockApiService
+    .placeZone(LOCAL_CONTRACT_GAME_ID, type, { x, y }, { w: 1, h: 1 })
+    .then(() => ({ status: 'success' }));
 }
 
 /**
@@ -1107,14 +1040,9 @@ export function postInfrastructure(
   y: number,
   type: InfrastructureType
 ): Promise<ApiContractResult> {
-  updateTileAt(x, y, (tile) => ({
-    ...tile,
-    infrastructure: tile.infrastructure.includes(type) ? tile.infrastructure : [...tile.infrastructure, type]
-  }));
-
-  treasury.update((value) => value - 2);
-
-  return Promise.resolve({ status: 'success' });
+  return mockApiService
+    .placeInfrastructure(LOCAL_CONTRACT_GAME_ID, type, [{ from: { x, y }, to: { x, y } }])
+    .then(() => ({ status: 'success' }));
 }
 
 /**

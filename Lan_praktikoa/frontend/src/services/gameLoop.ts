@@ -8,7 +8,7 @@
  * - instant: no delay (manual control)
  */
 
-import { gameState, gameSpeed, simTick, applyAutoGrowth, incrementSimTick } from '../store/game';
+import { gameState, gameSpeed, simTick, incrementSimTick } from '../store/game';
 import { endMonth } from './apiService';
 import { get } from 'svelte/store';
 
@@ -33,9 +33,6 @@ export function startGameLoop() {
 
     // Increment tick counter
     incrementSimTick();
-
-    // Apply auto-growth to zones that meet conditions
-    applyAutoGrowth();
 
     // If instant mode, don't auto-advance months (player controls it)
     if (speed !== 'instant') {
@@ -74,6 +71,7 @@ export async function advanceMonth() {
     if (result.success) {
       // The API has already updated game_state, just sync it
       gameState.set(result.game_state);
+      incrementSimTick();
     }
   } catch (err) {
     if (import.meta.env.DEV) {

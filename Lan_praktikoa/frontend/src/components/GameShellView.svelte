@@ -84,7 +84,7 @@
   let bulldozerActive = false;
 
   let undergroundMode = false;
-  let showStatusIcons = false;
+  let showStatusIcons = true;
   let activeOverlay: string | null = null;
   let overlayStrength = 72;
   let aiFocusTile: { x: number; y: number; zoom?: number } | null = null;
@@ -451,13 +451,14 @@
 
   function cityMoodEmoji(): string {
     const approval = stats?.player.approval ?? gameState?.player_city.metrics.approval ?? 50;
-    const crime = stats?.player.crime_rate ?? gameState?.player_city.metrics.crime_rate ?? 0;
-    const pollution = stats?.player.pollution ?? gameState?.player_city.metrics.pollution ?? 0;
+    const powerCoverage = stats?.player.power_coverage ?? gameState?.player_city.power_grid.coverage_pct ?? 100;
+    const waterCoverage = stats?.player.water_coverage ?? gameState?.player_city.water_system.coverage_pct ?? 100;
+    const worstCoverage = Math.min(powerCoverage, waterCoverage);
 
-    if (approval >= 75 && crime < 28 && pollution < 35) return '😁';
-    if (approval >= 60 && crime < 40 && pollution < 50) return '😊';
-    if (approval >= 45) return '😐';
-    if (approval >= 30 || crime > 55 || pollution > 62) return '😟';
+    if (approval >= 75 && worstCoverage >= 96) return '😁';
+    if (approval >= 60 && worstCoverage >= 88) return '😊';
+    if (approval >= 45 && worstCoverage >= 78) return '😐';
+    if (approval >= 30 || worstCoverage >= 68) return '😟';
     return '😡';
   }
 
@@ -1213,6 +1214,29 @@
           />
 
           <section class="top-status-bar" aria-label="Goiko HUD kontrolak">
+            <div class="city-info-cluster" aria-label="Hiriaren informazioa">
+              <div class="info-metric">
+                <span class="emoji">{cityMoodEmoji()}</span>
+                <small>Onarpena</small>
+              </div>
+              <div class="info-metric">
+                <small>Data</small>
+                <strong>{gameState?.current_date.year ?? 2050}/{String(gameState?.current_date.month ?? 1).padStart(2, '0')}</strong>
+              </div>
+              <div class="info-metric">
+                <small>Bizt.</small>
+                <strong>{stats?.player.population?.toLocaleString('eu-ES') ?? 0}</strong>
+              </div>
+              <div class="info-metric">
+                <small>HQ</small>
+                <strong>{Math.round(stats?.player.hq ?? 0)}</strong>
+              </div>
+              <div class="info-metric">
+                <small>Altxorra</small>
+                <strong>§{Math.round(stats?.player.treasury ?? 0).toLocaleString('eu-ES')}</strong>
+              </div>
+            </div>
+
             <div class="rci-cluster" aria-label="RCI eskaria">
               <div class="rci-item r">
                 <span class="rci-label">R</span>
@@ -1233,6 +1257,9 @@
 
             <div class="speed-cluster" aria-label="Abiadura hautatzailea">
               <button class="chip speed-chip" class:active-chip={activeShelf === 'stats'} on:click={() => openShelf('stats')} disabled={isGameOver}>Estat.</button>
+              <button class="chip speed-chip" class:active-chip={showStatusIcons} on:click={() => (showStatusIcons = !showStatusIcons)} disabled={isGameOver}>
+                Ikonoak {showStatusIcons ? 'ON' : 'OFF'}
+              </button>
               <button class="chip speed-chip" class:active-chip={!autoAdvance} on:click={() => setHudSpeedMode('manual')} disabled={isGameOver}>Manual</button>
               <button class="chip speed-chip" class:active-chip={autoAdvance && $gameSpeed === 'normal'} on:click={() => setHudSpeedMode('normal')} disabled={isGameOver}>Normal</button>
               <button class="chip speed-chip" class:active-chip={autoAdvance && ($gameSpeed === 'fast' || $gameSpeed === 'instant')} on:click={() => setHudSpeedMode('fast')} disabled={isGameOver}>Azkarra</button>
@@ -1430,32 +1457,7 @@
       {/if}
 
       <footer class="bottom-dock" class:tool-focused={hasPersistentTool()} in:fade={{ duration: 180 }}>
-          <!-- BLOQUE 1: INFORMACIÓN DEL JUGADOR -->
-          <div class="dock-block dock-player-info">
-            <div class="info-metric readonly" title="Onarpena">
-              <span class="emoji">{cityMoodEmoji()}</span>
-            </div>
-            <div class="info-metric readonly" title="Data">
-              <small>Data</small>
-              <strong>{gameState?.current_date.year ?? 2050}/{String(gameState?.current_date.month ?? 1).padStart(2, '0')}</strong>
-            </div>
-            <div class="info-metric readonly" title="Biztanleria">
-              <small>Bizt.</small>
-              <strong>{stats?.player.population?.toLocaleString('eu-ES') ?? 0}</strong>
-            </div>
-            <div class="info-metric readonly" title="Osasuna / Hezkuntza">
-              <small>HQ</small>
-              <strong>{Math.round(stats?.player.hq ?? 0)}</strong>
-            </div>
-            <div class="info-metric readonly" title="Altxorra">
-              <small>Altxorra</small>
-              <strong>§{Math.round(stats?.player.treasury ?? 0).toLocaleString('eu-ES')}</strong>
-            </div>
-          </div>
-
-          <div class="dock-divider" aria-hidden="true"></div>
-
-          <!-- BLOQUE 2: HERRAMIENTAS -->
+          <!-- BLOQUE 1: HERRAMIENTAS -->
           <div class="dock-block dock-tools">
             {#each bottomDockLeftItems as item}
               <button class="dock-item" class:active={isDockItemActive(item.id)} on:click|stopPropagation={() => openShelf(item.id)} disabled={isGameOver}>
@@ -1483,7 +1485,7 @@
 
           <div class="dock-divider" aria-hidden="true"></div>
 
-          <!-- BLOQUE 3: GESTIÓN EXPLÍCITA -->
+          <!-- BLOQUE 2: GESTIÓN EXPLÍCITA -->
           <div class="dock-block dock-management">
             {#each bottomDockRightItems as item}
               <button class="dock-item action-btn" class:active={isDockItemActive(item.id)} on:click|stopPropagation={() => openShelf(item.id)} disabled={isGameOver}>
@@ -1508,7 +1510,7 @@
 
           <div class="dock-divider" aria-hidden="true"></div>
 
-          <!-- BLOQUE 4: TIEMPO Y CONTROLES IA -->
+          <!-- BLOQUE 3: TIEMPO Y CONTROLES IA -->
           <div class="dock-block dock-time-state">
             <button class="dock-item action-btn highlight" on:click|stopPropagation={() => endMonth()} disabled={endMonthPending || isGameOver}>
               <span class="icon">⏭️</span>
@@ -1663,90 +1665,162 @@
   .top-status-bar {
     margin: 10px auto 0;
     width: fit-content;
-    max-width: min(760px, calc(100vw - 40px));
+    max-width: min(920px, calc(100vw - 80px));
     display: flex;
-    gap: 10px;
-    align-items: center;
+    gap: 14px;
+    align-items: stretch;
     justify-content: center;
     pointer-events: auto;
-    padding: 8px 10px;
-    border-radius: 16px;
-    border: 1px solid var(--glass-panel-border);
-    background: linear-gradient(155deg, rgba(14, 20, 30, 0.82), rgba(16, 24, 36, 0.62));
-    backdrop-filter: blur(12px) saturate(140%);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28), var(--glass-panel-shadow);
+    padding: 10px 14px;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: linear-gradient(155deg, rgba(14, 20, 30, 0.88), rgba(16, 24, 36, 0.72));
+    backdrop-filter: blur(16px) saturate(145%);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .city-info-cluster {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-right: 10px;
+    border-right: 1px solid rgba(255, 255, 255, 0.16);
+  }
+
+  .city-info-cluster .info-metric {
+    min-width: 72px;
+    padding: 6px 10px;
+    font-size: 0.65rem;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s ease;
+  }
+
+  .city-info-cluster .info-metric:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+
+  .city-info-cluster .info-metric strong {
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  .city-info-cluster .info-metric .emoji {
+    font-size: 1.4rem;
+    margin-bottom: 2px;
+    display: block;
+  }
+
+  .city-info-cluster .info-metric small {
+    font-size: 0.6rem;
+    font-weight: 600;
   }
 
   .rci-cluster {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    padding: 0 4px;
   }
 
   .rci-item {
     display: grid;
-    grid-template-columns: auto 68px auto;
+    grid-template-columns: auto 70px auto;
     align-items: center;
-    gap: 6px;
-    padding: 4px 8px;
+    gap: 7px;
+    padding: 6px 10px;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.04);
-    min-width: 116px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.07);
+    min-width: 125px;
+    transition: all 0.2s ease;
+  }
+
+  .rci-item:hover {
+    background: rgba(255, 255, 255, 0.11);
+    border-color: rgba(255, 255, 255, 0.22);
   }
 
   .rci-label {
     font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
+    font-weight: 800;
+    letter-spacing: 0.1em;
   }
 
   .rci-track {
     height: 8px;
     border-radius: 999px;
     overflow: hidden;
-    background: rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.16);
   }
 
   .rci-fill {
     height: 100%;
     border-radius: 999px;
     width: 0;
-    transition: width 220ms ease;
+    transition: width 240ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
 
   .rci-item strong {
-    font-size: 0.72rem;
+    font-size: 0.74rem;
     font-family: var(--font-mono, monospace);
-    color: rgba(235, 245, 255, 0.96);
-    min-width: 28px;
+    color: #e0f4ff;
+    min-width: 30px;
     text-align: right;
+    font-weight: 700;
   }
 
   .rci-item.r .rci-fill {
-    background: linear-gradient(90deg, rgba(92, 221, 132, 0.7), rgba(78, 204, 115, 1));
+    background: linear-gradient(90deg, rgba(92, 221, 132, 0.75), rgba(68, 200, 105, 1));
   }
 
   .rci-item.c .rci-fill {
-    background: linear-gradient(90deg, rgba(88, 177, 255, 0.72), rgba(52, 141, 230, 1));
+    background: linear-gradient(90deg, rgba(88, 177, 255, 0.76), rgba(45, 130, 225, 1));
   }
 
   .rci-item.i .rci-fill {
-    background: linear-gradient(90deg, rgba(242, 216, 108, 0.72), rgba(224, 193, 70, 1));
+    background: linear-gradient(90deg, rgba(250, 220, 110, 0.75), rgba(220, 180, 50, 1));
   }
 
   .speed-cluster {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-left: 4px;
+    gap: 8px;
+    padding: 0 4px;
   }
 
   .speed-chip {
-    min-width: 82px;
-    font-size: 0.68rem;
-    letter-spacing: 0.06em;
+    min-width: 76px;
+    font-size: 0.7rem;
+    letter-spacing: 0.065em;
     text-transform: uppercase;
+    font-weight: 700;
+    padding: 7px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #e0f4ff;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  .speed-chip:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+  }
+
+  .speed-chip:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .speed-chip.active-chip {
+    background: linear-gradient(135deg, rgba(58, 156, 255, 0.35), rgba(58, 156, 255, 0.2));
+    border-color: rgba(58, 156, 255, 0.5);
+    box-shadow: 0 0 16px rgba(58, 156, 255, 0.25);
   }
 
   .hud-group {

@@ -1,5 +1,5 @@
-import { writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 
 import { mockApiService, mockGameState } from '../src/services/mockApiService.ts';
 
@@ -31,6 +31,25 @@ function findFreeGrassTile() {
   if (!tile) {
     throw new Error('No free grass tile found for test placement.');
   }
+  return { x: tile.x, y: tile.y };
+}
+
+function findGrassAdjacentToWater() {
+  const tile = tilesFlat().find((t) => {
+    if (t.terrain_type !== 'grass' || t.zone || t.building) return false;
+    const neighbors = [
+      { x: t.x + 1, y: t.y },
+      { x: t.x - 1, y: t.y },
+      { x: t.x, y: t.y + 1 },
+      { x: t.x, y: t.y - 1 }
+    ];
+    return neighbors.some(({ x, y }) => mockGameState.map.tiles[y]?.[x]?.terrain_type === 'water');
+  });
+
+  if (!tile) {
+    return null;
+  }
+
   return { x: tile.x, y: tile.y };
 }
 
@@ -249,11 +268,31 @@ async function runCertification() {
   await endMonths(1);
   const lvlRoadOnly = mockGameState.map.tiles[p.y][p.x].zone?.development_level ?? -1;
 
-  await mockApiService.placeInfrastructure(GAME_ID, 'power_line', [{ from: p, to: p }]);
+  const adjacentPowerSource = [
+    { x: p.x + 1, y: p.y },
+    { x: p.x - 1, y: p.y },
+    { x: p.x, y: p.y + 1 },
+    { x: p.x, y: p.y - 1 }
+  ].find(({ x, y }) => {
+    const tile = mockGameState.map.tiles[y]?.[x];
+    return Boolean(tile && tile.terrain_type === 'grass' && !tile.zone && !tile.building);
+  });
+
+  const powerSource = adjacentPowerSource ?? findFreeGrassTile();
+  await mockApiService.buildStructure(GAME_ID, 'wind_power', powerSource);
+  await mockApiService.placeInfrastructure(GAME_ID, 'power_line', [
+    { from: powerSource, to: powerSource },
+    { from: p, to: p }
+  ]);
   await endMonths(1);
   const lvlRoadPower = mockGameState.map.tiles[p.y][p.x].zone?.development_level ?? -1;
 
-  await mockApiService.placeInfrastructure(GAME_ID, 'water_pipe', [{ from: p, to: p }]);
+  const waterSource = findGrassAdjacentToWater() ?? findFreeGrassTile();
+  await mockApiService.buildStructure(GAME_ID, 'water_pump', waterSource);
+  await mockApiService.placeInfrastructure(GAME_ID, 'water_pipe', [
+    { from: waterSource, to: waterSource },
+    { from: p, to: p }
+  ]);
   await endMonths(1);
   const lvlAllUtilities = mockGameState.map.tiles[p.y][p.x].zone?.development_level ?? -1;
 
@@ -361,7 +400,9 @@ async function runCertification() {
     reportLines.push(`- ${note}`);
   }
 
-  const outPath = resolve(process.cwd(), '..', 'CERTIFICATION_REPORT.md');
+  const reportFile = (process.env.CERT_REPORT_PATH || 'CERTIFICATION_REPORT.md').trim();
+  const outPath = resolve(process.cwd(), reportFile);
+  mkdirSync(dirname(outPath), { recursive: true });
   writeFileSync(outPath, `${reportLines.join('\n')}\n`, 'utf8');
 
   console.log('Certification report written to:', outPath);

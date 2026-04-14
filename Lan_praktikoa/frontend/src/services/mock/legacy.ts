@@ -7,7 +7,7 @@ import type {
   Tile,
   Zone
 } from '../../types/game';
-import { computeRCIDemandValues, growthLevelForTile, updateUtilityCoverage, zonePopulationForLevel as simulationZonePopulationForLevel, hasServiceCoverage as simulationHasServiceCoverage } from '../../lib/simulation/core';
+import { computeRCIDemandValues, growthLevelForTile, updateUtilityCoverage, zonePopulationForLevel as simulationZonePopulationForLevel, hasServiceCoverage as simulationHasServiceCoverage } from '../../lib/simulation/core.ts';
 
 interface MockUser {
   id: string;
@@ -504,14 +504,14 @@ function applyMonthlySimulationToPlayer(state: GameState): {
       let nextLevel = prevLevel;
       const canGrow = tile.powered && tile.road_access;
 
-      // TASK 1: Autonomous growth at level 0 with 20% random chance
-      if (prevLevel === 0 && canGrow && Math.random() < 0.2) {
+      // SPECS 3.1-3.5: level 1 requires power + road access.
+      if (prevLevel === 0 && canGrow) {
         nextLevel = 1;
       }
 
       // Upgrades for already-developed zones.
       if (prevLevel >= 1 && canGrow) {
-        if (tile.watered && positiveDemand && Math.random() < 0.45) {
+        if (tile.watered && positiveDemand) {
           nextLevel = Math.max(nextLevel, 2);
         }
         if (
@@ -520,8 +520,7 @@ function applyMonthlySimulationToPlayer(state: GameState): {
           simulationHasServiceCoverage(pollutionAndCrimeTiles, x, y) &&
           tile.crime < 80 &&
           tile.pollution_air < 80 &&
-          tile.land_value >= 140 &&
-          Math.random() < 0.3
+          tile.land_value >= 140
         ) {
           nextLevel = 3;
         }

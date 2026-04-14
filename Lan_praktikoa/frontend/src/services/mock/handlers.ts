@@ -1,4 +1,4 @@
-import { mockApiService as legacyService } from './legacy';
+import { mockApiService as legacyService } from './legacy.ts';
 
 /** Why: auth tests need deterministic mock login. How: forwards to legacy login handler. */
 export function login(...args: Parameters<typeof legacyService.login>): ReturnType<typeof legacyService.login> {

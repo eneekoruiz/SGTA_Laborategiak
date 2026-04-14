@@ -1,4 +1,4 @@
-import { MockSimulationEngine, mockApiService as legacyService } from './legacy';
+import { MockSimulationEngine, mockApiService as legacyService } from './legacy.ts';
 
 /**
  * Canonical mock simulation engine.

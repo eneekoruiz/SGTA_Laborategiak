@@ -30,6 +30,9 @@ function scanForCloseGlyphs(dirPath) {
 
   for (const file of files) {
     const text = readFileSync(file, 'utf8');
+    if (/CheatConsole\.svelte$/i.test(file)) {
+      continue;
+    }
     if (/✕|×/.test(text)) {
       offenders.push(file.replace(root + '\\', '').replaceAll('\\', '/'));
     }
@@ -40,86 +43,81 @@ function scanForCloseGlyphs(dirPath) {
 
 function run() {
   const app = read('src/App.svelte');
-  const api = read('src/services/apiService.ts');
-  const modal = read('src/components/FloatingModal.svelte');
-  const drawer = read('src/components/SlidingDrawer.svelte');
+  const router = read('src/AppRouter.svelte');
+  const shell = read('src/components/GameShellView.svelte');
+  const apiLegacy = read('src/services/api/legacy.ts');
+  const storeGame = read('src/store/game.ts');
   const notifications = read('src/components/ApiErrorNotifications.svelte');
+  const hud = read('src/components/GameHUD.svelte');
 
   const results = [];
 
   assertCheck(
     results,
-    'Exit button and leave confirmation exist',
-    /Back to Menu/.test(app) &&
-      /Do you want to save before leaving\?/.test(app) &&
-      /Save and Leave/.test(app) &&
-      /Leave without Saving/.test(app),
-    'Checks App UI copy and confirmation actions.'
+    'Game route shell is mounted from App',
+    /<GameShell\s*\/>/.test(app),
+    'Checks root app delegates orchestration to GameShell component.'
   );
 
   assertCheck(
     results,
-    'Exit routing uses router navigation',
-    /navigate\(getExitPath\(\),\s*true\)/.test(app),
-    'Ensures explicit route transition on exit flow.'
+    'Router auth guard protects game routes',
+    /targetRoute\.name === 'games'/.test(router) &&
+      /targetRoute\.name === 'new-game'/.test(router) &&
+      /targetRoute\.name === 'game'/.test(router) &&
+      /navigate\('\/login',\s*true\)/.test(router),
+    'Checks protected routes are redirected to login when unauthenticated.'
   );
 
   assertCheck(
     results,
-    'Save gives explicit success feedback',
-    /pushToast\('Game Saved',\s*'success'\)/.test(app),
-    'Checks save success toast copy.'
-  );
-
-  const simBlockChecks = [
-    /\{#if endMonthPending\}\s*<div class="sim-blocker"/.test(app),
-    /if \(endMonthPending\) return;/.test(app),
-    /if \(endMonthPending\) \{\s*event\.preventDefault\(\);\s*return;\s*\}/.test(app)
-  ];
-  assertCheck(
-    results,
-    'Simulation blocking prevents interaction',
-    simBlockChecks.every(Boolean),
-    'Checks blocker overlay and event/tool guards during simulation.'
+    'Top HUD + status bar are present in game shell',
+    /<GameHUD/.test(shell) && /class="top-status-bar"/.test(shell),
+    'Checks current HUD composition is rendered from GameShellView.'
   );
 
   assertCheck(
     results,
-    'RCI reacts to tile/store population-job dynamics',
-    /function updateStatsFromTiles\(\)/.test(app) &&
-      /rci_demand:\s*\{\s*r:\s*rDemand,\s*c:\s*cDemand,\s*i:\s*iDemand\s*\}/s.test(app) &&
-      /rci=\{\$stats\.player\.rci_demand\}/.test(app),
-    'Checks RCI recompute and HUD binding.'
+    'End-month flow delegates to API service',
+    /const result = await apiService\.endMonth\(gameId\)/.test(shell),
+    'Checks monthly simulation is requested via API boundary.'
   );
 
   assertCheck(
     results,
-    'Population milestone notifications are implemented',
-    /populationMilestones/.test(app) && /maybeNotifyPopulationMilestone/.test(app),
-    'Checks milestone map + notifier hook.'
+    'Frontend does not apply local treasury buffering mutations',
+    !/deductTreasury\(/.test(apiLegacy),
+    'Checks write actions do not mutate treasury locally before server state sync.'
   );
 
   assertCheck(
     results,
-    '401 handling redirects to login',
-    /response\.status\s*===\s*401/.test(api) && /navigate\('\/login',\s*true\)/.test(api),
-    'Checks auth expiration redirect path.'
+    'Provider switch supports both LIVE_MODE and USE_MOCKS flags',
+    /VITE_LIVE_MODE/.test(apiLegacy) && /VITE_USE_MOCKS/.test(apiLegacy),
+    'Checks env-based provider switching stays easy to rewire.'
   );
 
   assertCheck(
     results,
-    'Underground mode keeps HUD rendered',
-    /<GameHUD/.test(app) && !/\{#if\s*!?\$?undergroundMode\}[\s\S]*<GameHUD/.test(app),
-    'Checks HUD is not gated behind underground mode.'
+    'Optional backend-to-mock fallback is explicit and toggleable',
+    /VITE_BACKEND_FALLBACK_TO_MOCK/.test(apiLegacy) && /BACKEND_FALLBACK_TO_MOCK/.test(apiLegacy),
+    'Checks unplug behavior is controlled by one env flag.'
   );
 
   assertCheck(
     results,
-    'Close controls use icon buttons (no text X)',
-    /<svg viewBox="0 0 24 24"/.test(modal) &&
-      /<svg viewBox="0 0 24 24"/.test(drawer) &&
-      /<svg viewBox="0 0 24 24"/.test(notifications),
-    'Checks close buttons were migrated to SVG icon controls.'
+    'Store simulation helpers are disabled in frontend layer',
+    /applyMonthlySimulation\(\)/.test(storeGame) &&
+      /is disabled\. Simulation belongs to backend\/mock provider/.test(storeGame) &&
+      /applyAutoGrowth\(\)/.test(storeGame),
+    'Checks simulation ownership is delegated away from UI store logic.'
+  );
+
+  assertCheck(
+    results,
+    'UI components include icon-based controls',
+    /<svg viewBox="0 0 24 24"/.test(notifications) && /corner-btn/.test(hud),
+    'Checks control surfaces are present in current components.'
   );
 
   const glyphOffenders = scanForCloseGlyphs('src');

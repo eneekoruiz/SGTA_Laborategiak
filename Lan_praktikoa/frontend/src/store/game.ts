@@ -8,11 +8,6 @@ import type {
   CityState,
   Tile
 } from '../types/game';
-import {
-  applyAutoGrowthSnapshot,
-  applyMonthlySimulationSnapshot,
-  getTickInterval
-} from '../lib/simulation/core';
 
 /**
  * GAME STATE STORES
@@ -44,56 +39,6 @@ export const gameSpeed = writable<'normal' | 'fast' | 'instant'>('normal');
 
 // Simulation tick counter
 export const simTick = writable<number>(0);
-
-// Mock simulation engine state (API-contract preparation)
-export const treasury = writable<number>(5000);
-export const population = writable<number>(1000);
-export const rci_demand = writable<{ r: number; c: number; i: number }>({ r: 10, c: 8, i: 6 });
-
-let mockTurnTimer: ReturnType<typeof setInterval> | null = null;
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
-
-/**
- * Simulate one lightweight turn for frontend-only integration testing.
- */
-export function simulateTurn(): void {
-  const popDelta = Math.floor(Math.random() * 41) - 20;
-  const treasuryDelta = Math.floor(Math.random() * 151) - 70;
-  const rDelta = Math.floor(Math.random() * 7) - 3;
-  const cDelta = Math.floor(Math.random() * 7) - 3;
-  const iDelta = Math.floor(Math.random() * 7) - 3;
-
-  population.update((value) => Math.max(0, value + popDelta));
-  treasury.update((value) => value + treasuryDelta);
-  rci_demand.update((value) => ({
-    r: clamp(value.r + rDelta, -200, 200),
-    c: clamp(value.c + cDelta, -200, 200),
-    i: clamp(value.i + iDelta, -200, 200)
-  }));
-}
-
-/**
- * Starts the mock turn loop (10 seconds by default).
- */
-export function startMockSimulationEngine(intervalMs = 10000): void {
-  if (typeof window === 'undefined' || mockTurnTimer) return;
-  mockTurnTimer = setInterval(() => {
-    simulateTurn();
-  }, intervalMs);
-}
-
-export function stopMockSimulationEngine(): void {
-  if (!mockTurnTimer) return;
-  clearInterval(mockTurnTimer);
-  mockTurnTimer = null;
-}
-
-if (typeof window !== 'undefined') {
-  startMockSimulationEngine(10000);
-}
 
 // Derived stores for convenient access (read-only)
 export const playerCity: Readable<CityState | null> = derived(gameState, ($gs) => $gs?.player_city || null);
@@ -351,14 +296,12 @@ export function incrementSimTick() {
  * Why: the store should orchestrate state transitions, not host full game rules.
  */
 export function applyMonthlySimulation(callback?: (state: GameState) => void) {
-  gameState.update((current) => {
-    if (!current) return current;
-    const updated = applyMonthlySimulationSnapshot(current);
-    if (callback) callback(updated);
-    return updated;
-  });
-
-  incrementSimTick();
+  const current = get(gameState);
+  if (!current) return;
+  if (callback) callback(current);
+  if (import.meta.env.DEV) {
+    console.warn('[store/game] applyMonthlySimulation() is disabled. Simulation belongs to backend/mock provider.');
+  }
 }
 
 /**
@@ -382,8 +325,7 @@ export function deductTreasury(amount: number) {
  * If zone has: road_access + watered + powered → level becomes 1
  */
 export function applyAutoGrowth() {
-  gameState.update((current) => {
-    if (!current || !current.map.tiles) return current;
-    return applyAutoGrowthSnapshot(current);
-  });
+  if (import.meta.env.DEV) {
+    console.warn('[store/game] applyAutoGrowth() is disabled. Growth simulation belongs to backend/mock provider.');
+  }
 }
