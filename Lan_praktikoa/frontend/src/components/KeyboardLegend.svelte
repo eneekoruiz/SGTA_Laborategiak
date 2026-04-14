@@ -1,0 +1,148 @@
+<script lang="ts">
+  import { fade } from 'svelte/transition';
+
+  let isExpanded = false;
+
+  const shortcuts = [
+    { key: 'R', action: 'Mapa biratu' },
+    { key: 'U', action: 'Lurpeko bista' },
+    { key: 'Space', action: 'Mugitu eta nabigatu' },
+    { key: 'Esc', action: 'Hautapena garbitu' },
+    { key: 'Ctrl + Tab', action: 'Trikimailu kontsola' }
+  ];
+
+  function toggleExpand(): void {
+    isExpanded = !isExpanded;
+  }
+
+  function handleMouseLeave(): void {
+    isExpanded = false;
+  }
+</script>
+
+<div class="keyboard-legend" role="region" aria-label="Teklatu-lasterbideak" on:mouseenter={() => (isExpanded = true)} on:mouseleave={handleMouseLeave}>
+  <button class="legend-pill" on:click={toggleExpand} aria-label="Teklatu-lasterbideak">
+    <span class="icon">⌨</span>
+    {#if isExpanded}
+      <span class="label">Lasterbideak</span>
+    {/if}
+  </button>
+
+  {#if isExpanded}
+    <div class="legend-panel" in:fade={{ duration: 180 }}>
+      <div class="legend-title">Teklatu-lasterbideak</div>
+      <div class="legend-grid">
+        {#each shortcuts as shortcut, idx}
+          <div class="shortcut-item">
+            <kbd class="key">{shortcut.key}</kbd>
+            <span class="action">{shortcut.action}</span>
+          </div>
+        {/each}
+      </div>
+    </div>
+  {/if}
+</div>
+
+<style>
+  .keyboard-legend {
+    position: fixed;
+    bottom: 28px;
+    left: 20px;
+    z-index: 20;
+    font-family: inherit;
+  }
+
+  .legend-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(100, 200, 255, 0.4);
+    background: linear-gradient(145deg, rgba(15, 25, 40, 0.8), rgba(20, 35, 55, 0.6));
+    backdrop-filter: blur(16px) saturate(150%);
+    color: rgba(180, 220, 255, 0.9);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .legend-pill:hover {
+    border-color: rgba(120, 220, 255, 0.6);
+    background: linear-gradient(145deg, rgba(20, 35, 55, 0.9), rgba(25, 45, 65, 0.7));
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15), 0 8px 20px rgba(100, 180, 255, 0.15);
+  }
+
+  .icon {
+    font-size: 1.1rem;
+  }
+
+  .label {
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .legend-panel {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    margin-bottom: 12px;
+    padding: 14px 16px;
+    width: auto;
+    min-width: 220px;
+    border-radius: 14px;
+    border: 1px solid rgba(100, 200, 255, 0.3);
+    background: linear-gradient(135deg, rgba(12, 20, 32, 0.92), rgba(18, 32, 50, 0.88));
+    backdrop-filter: blur(20px) saturate(160%);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  }
+
+  .legend-title {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(180, 220, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(100, 180, 255, 0.2);
+  }
+
+  .legend-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .shortcut-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.7rem;
+  }
+
+  .key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 28px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    border: 1px solid rgba(100, 200, 255, 0.5);
+    background: linear-gradient(180deg, rgba(100, 180, 255, 0.25), rgba(80, 160, 255, 0.1));
+    color: rgba(220, 240, 255, 0.95);
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-size: 0.65rem;
+    font-weight: 500;
+    text-align: center;
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.1);
+  }
+
+  .action {
+    color: rgba(180, 220, 255, 0.8);
+    font-weight: 400;
+  }
+</style>

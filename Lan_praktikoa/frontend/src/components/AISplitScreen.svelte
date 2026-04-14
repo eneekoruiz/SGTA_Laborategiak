@@ -10,16 +10,16 @@
   export let actionFocus: { x: number; y: number } | null = null;
   export let replayBudgetPing: { id: number; x: number; y: number; amount: number } | null = null;
   export let replayDisasterPulse = 0;
-  export let playerLabel = 'Player City (Static)';
-  export let aiLabel = 'AI City (Dynamic)';
+  export let playerLabel = 'Jokalariaren hiria (estatikoa)';
+  export let aiLabel = 'AA hiria (dinamikoa)';
 </script>
 
 {#if open}
-  <section class="split-screen" aria-label="AI split spectator mode">
+  <section class="split-screen" aria-label="AA ikuspegi zatitua">
     <article class="pane player">
       <header>
         <strong>{playerLabel}</strong>
-        <span>Static</span>
+        <span>Estatikoa</span>
       </header>
       <div class="map-host">
         <IsometricMap
@@ -40,7 +40,7 @@
     <article class="pane ai">
       <header>
         <strong>{aiLabel}</strong>
-        <span>Interactive</span>
+        <span>Interaktiboa</span>
       </header>
       <div class="map-host">
         <IsometricMap
