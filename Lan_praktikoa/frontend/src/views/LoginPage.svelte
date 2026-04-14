@@ -53,6 +53,15 @@
     affectedFields = [];
     formErrors.clearAll();
   }
+
+  function handleInputChange() {
+    // Clear error on any input change
+    if (error) {
+      error = '';
+      affectedFields = [];
+      formErrors.clearAll();
+    }
+  }
 </script>
 
 <svelte:head>
@@ -87,6 +96,7 @@
           autocomplete="email"
           required
           disabled={loading}
+          on:input={handleInputChange}
         />
       </FormField>
 
@@ -104,6 +114,7 @@
           required
           minlength="8"
           disabled={loading}
+          on:input={handleInputChange}
         />
       </FormField>
 

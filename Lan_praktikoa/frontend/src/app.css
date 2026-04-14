@@ -64,3 +64,202 @@ h3,
 p {
   margin-top: 0;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LAYOUT UTILITIES - Professional Flex & Grid Layouts
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/** FLEX CONTAINERS **/
+.flex-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-4, 1rem);
+  align-items: center;
+}
+
+.flex-row-between {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4, 1rem);
+}
+
+.flex-row-start {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+}
+
+.flex-row-center {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-4, 1rem);
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3, 0.75rem);
+}
+
+.flex-gap-sm {
+  gap: var(--space-2, 0.5rem);
+}
+
+.flex-gap-md {
+  gap: var(--space-4, 1rem);
+}
+
+.flex-gap-lg {
+  gap: var(--space-5, 1.5rem);
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.flex-1 {
+  flex: 1 1 auto;
+}
+
+/** GRID CONTAINERS **/
+.grid-container {
+  display: grid;
+  gap: var(--space-4, 1rem);
+}
+
+.grid-2-col {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4, 1rem);
+}
+
+.grid-3-col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4, 1rem);
+}
+
+.grid-auto-fit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--space-4, 1rem);
+}
+
+/** CARD STYLING **/
+.card {
+  background: rgba(13, 27, 42, 0.6);
+  border: var(--glass-border);
+  border-radius: var(--radius-md, 1.125rem);
+  padding: var(--space-4, 1rem);
+  box-shadow: var(--elev-1);
+  transition: all var(--dur-mid) var(--ease-standard);
+}
+
+.card:hover {
+  box-shadow: var(--elev-2);
+  background: rgba(13, 27, 42, 0.7);
+}
+
+.card-lg {
+  padding: var(--space-5, 1.5rem);
+  border-radius: var(--radius-lg, 1.5rem);
+}
+
+.card-sm {
+  padding: var(--space-3, 0.75rem);
+  border-radius: var(--radius-sm, 0.75rem);
+}
+
+/** SPACING UTILITIES **/
+.p-2 { padding: var(--space-2, 0.5rem); }
+.p-3 { padding: var(--space-3, 0.75rem); }
+.p-4 { padding: var(--space-4, 1rem); }
+.p-5 { padding: var(--space-5, 1.5rem); }
+
+.m-2 { margin: var(--space-2, 0.5rem); }
+.m-3 { margin: var(--space-3, 0.75rem); }
+.m-4 { margin: var(--space-4, 1rem); }
+.m-5 { margin: var(--space-5, 1.5rem); }
+
+.mt-2 { margin-top: var(--space-2, 0.5rem); }
+.mt-3 { margin-top: var(--space-3, 0.75rem); }
+.mt-4 { margin-top: var(--space-4, 1rem); }
+
+.mb-2 { margin-bottom: var(--space-2, 0.5rem); }
+.mb-3 { margin-bottom: var(--space-3, 0.75rem); }
+.mb-4 { margin-bottom: var(--space-4, 1rem); }
+
+/** ALIGNMENT UTILITIES **/
+.items-start { align-items: flex-start; }
+.items-center { align-items: center; }
+.items-end { align-items: flex-end; }
+.items-baseline { align-items: baseline; }
+.items-stretch { align-items: stretch; }
+
+.justify-start { justify-content: flex-start; }
+.justify-center { justify-content: center; }
+.justify-end { justify-content: flex-end; }
+.justify-between { justify-content: space-between; }
+.justify-around { justify-content: space-around; }
+
+/** SIZING UTILITIES **/
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+.w-auto { width: auto; }
+.h-auto { height: auto; }
+
+.min-h-0 { min-height: 0; }
+.overflow-auto { overflow: auto; }
+.overflow-hidden { overflow: hidden; }
+
+/** ICON ALIGNMENT **/
+.icon-center {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon-lg {
+  width: 24px;
+  height: 24px;
+}
+
+.icon-md {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-sm {
+  width: 16px;
+  height: 16px;
+}
+
+/** RESPONSIVE UTILITIES **/
+@media (max-width: 768px) {
+  .grid-2-col {
+    grid-template-columns: 1fr;
+  }
+  
+  .grid-3-col {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .flex-row-between {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
