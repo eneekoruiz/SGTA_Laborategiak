@@ -11,23 +11,37 @@
   import { currentRoute, navigate, startRouter } from './services/router';
 
   let route = $currentRoute;
+  let isRedirecting = false;
+  
   $: route = $currentRoute;
 
+  /**
+   * ✅ CRITICAL: Enforce authentication on protected routes
+   * BLOCKS rendering for 0 milliseconds if not authenticated
+   * @param targetRoute The route being accessed
+   */
   function enforceAuth(targetRoute = route): void {
     const token = getStoredAuthToken();
-    const isProtected =
-      targetRoute.name === 'games' ||
-      targetRoute.name === 'new-game' ||
-      targetRoute.name === 'game';
+    
+    // Define routes that require authentication
+    const protectedRoutes = ['games', 'new-game', 'game'];
+    const isProtectedRoute = protectedRoutes.includes(targetRoute.name);
 
-    if (isProtected && !token) {
+    // 🔴 CRITICAL: If accessing protected route without token
+    if (isProtectedRoute && !token) {
+      console.warn(`[ROUTE_GUARD] Unauthorized access attempt to ${targetRoute.name}. Redirecting...`);
+      isRedirecting = true;
       navigate('/login', true);
       return;
     }
 
+    // 🟢 OPTIMIZATION: If logged in but on auth routes, redirect to games
     if ((targetRoute.name === 'login' || targetRoute.name === 'register') && token) {
       navigate('/games', true);
+      return;
     }
+    
+    isRedirecting = false;
   }
 
   $: if (route) {
@@ -40,9 +54,16 @@
   });
 </script>
 
+<!-- Global Error Notifications -->
 <ApiErrorNotifications />
 
-{#if route.name === 'landing'}
+<!-- CRITICAL: Show loading while redirecting from protected routes -->
+{#if isRedirecting}
+  <div class="loading-screen">
+    <div class="spinner"></div>
+    <p>Aguardatzen...</p>
+  </div>
+{:else if route.name === 'landing'}
   <LandingPage />
 {:else if route.name === 'login'}
   <LoginView />
@@ -57,3 +78,42 @@
 {:else}
   <LandingPage />
 {/if}
+
+<style>
+  /**
+   * Loading screen shown during redirects
+   * Z-index 9999 to appear above all content
+   */
+  .loading-screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 1rem;
+    background: linear-gradient(135deg, #0f1b2f 0%, #13233c 100%);
+    color: #f4f8ff;
+    z-index: 9999;
+  }
+
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid rgba(244, 248, 255, 0.1);
+    border-top-color: #5b9fd1;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  p {
+    font-size: 1rem;
+    opacity: 0.7;
+  }
+</style>

@@ -10,6 +10,7 @@ import {
 } from '../../store/game';
 import { handleApiError, onApiSuccess } from '../errorHandler';
 import { navigate } from '../router';
+import { interceptResponse } from './interceptor';
 import type {
   AITurnAction,
   AITurnPayload,
@@ -281,18 +282,17 @@ async function request<T>(endpoint: string, options: FetchOptions): Promise<T> {
 
     clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        clearAuthToken();
-        if (typeof window !== 'undefined') {
-          const path = window.location.pathname;
-          const isAuthRoute = path === '/login' || path === '/register';
-          if (!isAuthRoute) {
-            navigate('/login', true);
-          }
-        }
-      }
+    // ✅ APPLY GLOBAL INTERCEPTOR (handles 401/403/5xx silently)
+    try {
+      await interceptResponse(response, endpoint);
+    } catch (interceptError) {
+      // Interceptor already handled 401/403 errors silently
+      // Mark the error so we know not to log it again
+      (interceptError as any).handledByInterceptor = true;
+      throw interceptError;
+    }
 
+    if (!response.ok) {
       // Parse error response from backend with enhanced error details
       let errorData: any = {};
       let errorMessage = `HTTP ${response.status}`;
@@ -303,14 +303,18 @@ async function request<T>(endpoint: string, options: FetchOptions): Promise<T> {
       try {
         errorData = await response.json();
 
-        // If using new error response format
-        if (errorData.success === false && errorData.error_type) {
+        // Priority 1: Use message field directly (backend provides human-readable text)
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+        // Priority 2: New error response format with structured data
+        else if (errorData.success === false && errorData.error_type) {
           errorMessage = errorData.message || errorMessage;
           errorType = errorData.error_type;
           affectedFields = errorData.fields || [];
           fieldMessages = errorData.details || {};
         }
-        // Legacy format fallback
+        // Priority 3: Legacy format fallback
         else if (errorData.detail) {
           // Try to extract from Pydantic detail array
           if (Array.isArray(errorData.detail)) {
@@ -326,12 +330,13 @@ async function request<T>(endpoint: string, options: FetchOptions): Promise<T> {
           }
         } else if (errorData.error) {
           errorMessage = errorData.error;
-        } else if (errorData.message) {
-          errorMessage = errorData.message;
         }
       } catch {
         // Backend returned invalid JSON or no response body
-        // Keep default error message
+        // For 401, use default message in Euskera
+        if (response.status === 401) {
+          errorMessage = 'Zure saioa amaitu da okerreko token batengatik';
+        }
       }
 
       // Create enhanced error with structured data
@@ -345,7 +350,7 @@ async function request<T>(endpoint: string, options: FetchOptions): Promise<T> {
       throw error;
     }
 
-    const data = await response.json();
+    const data = await response.json(); 
     onApiSuccess(); // Reset failure counter on success
     return data;
   } catch (err) {
@@ -391,8 +396,10 @@ async function request<T>(endpoint: string, options: FetchOptions): Promise<T> {
         errorLevel = 'critical';
       }
 
-      // Log error for debugging
-      if (typeof console !== 'undefined') {
+      // Log error for debugging (SKIP if interceptor already handled it)
+      const handledByInterceptor = (err as any).handledByInterceptor === true;
+      
+      if (typeof console !== 'undefined' && !handledByInterceptor) {
         console.error(`[API_ERROR] ${statusCode || 'NETWORK'} ${endpoint}`, {
           message: errorMessage,
           errorType,
@@ -402,21 +409,25 @@ async function request<T>(endpoint: string, options: FetchOptions): Promise<T> {
         });
       }
 
-      // Pass error details to store for UI display
-      // The UI will extract field-specific errors if needed
-      handleApiError(
-        {
-          title: errorTitle,
-          message: errorMessage,
+      // Skip error notification if already handled by interceptor (401/403)
+      // Interceptor will send its own notification via sendNotification()
+      if (!handledByInterceptor) {
+        // Pass error details to store for UI display
+        // The UI will extract field-specific errors if needed
+        handleApiError(
+          {
+            title: errorTitle,
+            message: errorMessage,
+            endpoint,
+            errorType,
+            affectedFields,
+            fieldMessages,
+            statusCode
+          } as any,
           endpoint,
-          errorType,
-          affectedFields,
-          fieldMessages,
-          statusCode
-        } as any,
-        endpoint,
-        errorLevel
-      );
+          errorLevel
+        );
+      }
 
       throw err;
     } else {
