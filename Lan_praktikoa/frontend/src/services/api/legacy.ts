@@ -41,15 +41,10 @@ interface AuthUser {
 interface RegisterResponse {
   message: string;
   user: AuthUser;
-  token?: string;
-  access_token?: string;
-  data?: { access_token?: string; token?: string };
 }
 
 interface LoginResponse {
-  token?: string;
-  access_token?: string;
-  data?: { access_token?: string; token?: string };
+  token: string;
   user: AuthUser;
 }
 
@@ -507,11 +502,14 @@ export async function getGame(gameId: string): Promise<{ game_state: GameState }
  * provider-specific payload differences during backend integration.
  */
 export async function getStats(gameId: string): Promise<StatsResponse> {
-  return tryRealElseMock(
+  const result = await tryRealElseMock(
     `/api/games/${gameId}/stats`,
     { method: 'GET' },
     () => mockApiService.getStats(gameId)
   );
+  // API returns {success, message, data: {player, ai, ...}}
+  // Extract just the data part
+  return (result as any).data || result;
 }
 
 /**
@@ -520,11 +518,12 @@ export async function getStats(gameId: string): Promise<StatsResponse> {
  * Why: group-module UI should not branch by provider when backend endpoints land.
  */
 export async function getEducation(gameId: string): Promise<EducationResponse> {
-  return tryRealElseMock(
+  const result = await tryRealElseMock(
     `/api/games/${gameId}/education`,
     { method: 'GET' },
     () => mockApiService.getEducation(gameId)
   );
+  return (result as any).data || result;
 }
 
 /**
@@ -533,11 +532,12 @@ export async function getEducation(gameId: string): Promise<EducationResponse> {
  * Why: keeps module-specific dashboards compatible across mock/live modes.
  */
 export async function getHealth(gameId: string): Promise<HealthResponse> {
-  return tryRealElseMock(
+  const result = await tryRealElseMock(
     `/api/games/${gameId}/health`,
     { method: 'GET' },
     () => mockApiService.getHealth(gameId)
   );
+  return (result as any).data || result;
 }
 
 /**
@@ -634,7 +634,7 @@ export async function buildStructure(
     `/api/games/${gameId}/build`,
     {
       method: 'POST',
-      body: { building_type: buildingType, position }
+      body: { type: buildingType, position }
     },
     () => mockApiService.buildStructure(gameId, buildingType, position)
   );
@@ -1024,16 +1024,6 @@ export function clearAuthToken(): void {
   localStorage.removeItem('token');
 }
 
-function extractAuthToken(result: any): string | null {
-  return (
-    result?.token ||
-    result?.access_token ||
-    result?.data?.access_token ||
-    result?.data?.token ||
-    null
-  );
-}
-
 /**
  * Registers a user through active provider and persists token when returned.
  *
@@ -1050,7 +1040,8 @@ export async function register(
     () => mockApiService.register(username, email, password)
   );
 
-  const token = extractAuthToken(result);
+  // Backend returns token at result.data.access_token, not result.token
+  const token = (result as any).data?.access_token || (result as LoginResponse & { token?: string }).token;
   if (token) {
     setAuthToken(token);
   }
@@ -1070,11 +1061,11 @@ export async function login(email: string, password: string): Promise<LoginRespo
     () => mockApiService.login(email, password)
   );
 
-  const token = extractAuthToken(result);
+  // Backend returns token at result.data.access_token, not result.token
+  const token = (result as any).data?.access_token || (result as any).token;
   if (token) {
     setAuthToken(token);
   }
-
   return result;
 }
 

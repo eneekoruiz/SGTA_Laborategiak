@@ -1,0 +1,27 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - paragraph [ref=e5]: SimHiri / Hiri-estrategia motorra
+    - heading "Eraiki hiri bizi bat simulazio-muin sendoarekin." [level=1] [ref=e6]
+    - paragraph [ref=e7]: Kudeatu zonak, azpiegiturak, aurrekontuak, aurkari-hiriak eta AAren hileko txandak Svelte frontend dotore bakar batean.
+    - generic [ref=e8]:
+      - button "Sartu" [ref=e9] [cursor=pointer]
+      - button "Kontua sortu" [ref=e10] [cursor=pointer]
+      - button "Ireki partida-zerrenda" [ref=e11] [cursor=pointer]
+  - complementary [ref=e12]:
+    - generic [ref=e13]:
+      - generic [ref=e14]: Uneko pila
+      - strong [ref=e15]: Frontend / Svelte / TypeScript
+    - generic [ref=e16]:
+      - article [ref=e17]:
+        - heading "Hiri-motor isometrikoa" [level=2] [ref=e18]
+        - paragraph [ref=e19]: Zoom daitekeen mapa, gainjartze-bero-mapak eta geruzazko azpiegitura errendatzea.
+      - article [ref=e20]:
+        - heading "Eszenatoki gidatutako hasierak" [level=2] [ref=e21]
+        - paragraph [ref=e22]: Aukeratu eszenatokia, ezarri zailtasuna eta abiarazi hiri berri bat fluxo bakarrean.
+      - article [ref=e23]:
+        - heading "Kudeaketa HUD bizia" [level=2] [ref=e24]
+        - paragraph [ref=e25]: Aurrekontua, ordenantzak, aurkari-hiriaren metrikak eta hileko simulazio kontrolak.
+    - generic [ref=e26]:
+      - generic [ref=e27]: Errendatzaile isometrikoa
+      - generic [ref=e28]: Bero-mapen gainjartzeak
+      - generic [ref=e29]: Autentikazioa + joko-shella

@@ -5,9 +5,13 @@ from datetime import datetime
 from uuid import uuid4
 from pydantic import BaseModel, Field
 
-from ..models import GameCreate, BuildingCreate, BudgetUpdate, APIResponse, AITurnResponse, CreateGameResponse, GetGameResponse
+from ..models import (
+    GameCreate, BuildingCreate, BudgetUpdate, APIResponse,
+    AITurnResponse, CreateGameResponse, GetGameResponse
+)
 from ..services.simulation_engine import SimulationEngine
-from ..services.ai_service import get_ai_turn, _summarize_state_for_llm
+from ..services.ai_service import get_ai_turn
+from ..services.ai_action_applier import AIActionApplier
 from ..services.game_service import GameService
 from ..db.database import get_games_collection
 from ..auth.dependencies import get_current_user_id
@@ -226,13 +230,28 @@ async def end_month(
     if not game:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Jokoa ez da aurkitu")
 
-    # Hilabetea simulatzeko
+    # Hilabetea simulatzeko (jokalari eta AI hiriak)
     updated_game = simulation_engine.simulate_turn(game)
 
-    # AI txanda lortu
-    summarized_state = _summarize_state_for_llm(updated_game)
+    # AI txanda lortu (AI zerbitzura deia)
     ai_turn_result: AITurnResponse = await get_ai_turn(updated_game)
-    # AI aldaketak aplikatu hemen beharrezkoa bada
+    
+    # AI ekintzak AI hiriari aplikatu
+    map_size = updated_game.get("map", {}).get("size", {"width": 100, "height": 100})
+    ai_city = updated_game.get("ai_city", {})
+    ai_city_updated, applied_actions = AIActionApplier.apply_actions(
+        ai_city,
+        ai_turn_result.actions,
+        updated_game.get("current_date", {"year": 1900, "month": 1}),
+        map_size
+    )
+    
+    # AI hiriaren egoera eguneratu
+    updated_game["ai_city"] = ai_city_updated
+    
+    # AI simulazioa berriro exekutatu (AI ekintzak aplikatu ondoren)
+    ai_simulation_update = simulation_engine._simulate_city(updated_game["ai_city"])
+    updated_game["ai_city"].update(ai_simulation_update)
 
     updated_game["last_saved"] = datetime.utcnow()
     await game_service.save_game(game_id, user_id, updated_game)
@@ -241,12 +260,9 @@ async def end_month(
     ai_city_after = updated_game.get("ai_city", {})
     current_date = updated_game.get("current_date", {"year": 1900, "month": 1})
 
-    victory = {
-        "status": "ongoing",
-        "condition": None,
-        "winner": None,
-        "reason": None,
-    }
+    # Garaipena baldintzak egiaztatu
+    victory = updated_game.get("victory_status", "ongoing")
+    victory_condition = updated_game.get("victory_condition", {})
 
     data = {
         "new_date": current_date,
@@ -257,14 +273,22 @@ async def end_month(
             "monthly_expenses": player_city_after.get("budget", {}).get("monthly_expenses", 0),
             "events": player_city_after.get("events", []),
         },
-        "ai_simulation": {
-            "population": ai_city_after.get("population", 0),
-            "treasury": ai_city_after.get("treasury", 0),
-            "monthly_income": ai_city_after.get("budget", {}).get("monthly_income", 0),
-            "monthly_expenses": ai_city_after.get("budget", {}).get("monthly_expenses", 0),
+        "ai_turn": {
+            "actions": applied_actions,
+            "reasoning": ai_turn_result.reasoning,
+            "simulation": {
+                "population": ai_city_after.get("population", 0),
+                "treasury": ai_city_after.get("treasury", 0),
+                "monthly_income": ai_city_after.get("budget", {}).get("monthly_income", 0),
+                "monthly_expenses": ai_city_after.get("budget", {}).get("monthly_expenses", 0),
+            },
         },
         "game_state": updated_game,
-        "victory_check": victory,
+        "victory_check": {
+            "status": victory,
+            "winner": victory_condition.get("winner") if victory_condition else None,
+            "reason": victory_condition.get("reason") if victory_condition else None,
+        },
     }
     return APIResponse(success=True, message=f"Hilabetea amaitu da. {current_date['year']} urtea, {current_date['month']} hilabetea", data=data)
 

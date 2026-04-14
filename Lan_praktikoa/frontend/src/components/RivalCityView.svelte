@@ -8,24 +8,27 @@
 
   function cloneTileGrid(source: Tile[][]): Tile[][] {
     return source.map((row) =>
-      row.map((tile) => ({
-        ...tile,
-        infrastructure: [...tile.infrastructure],
-        zone: tile.zone
-          ? {
-              ...tile.zone,
-              position: { ...tile.zone.position },
-              size: { ...tile.zone.size }
-            }
-          : null,
-        building: tile.building
-          ? {
-              ...tile.building,
-              position: { ...tile.building.position },
-              size: { ...tile.building.size }
-            }
-          : null
-      }))
+      row.map((tile) => {
+        const infra = Array.isArray(tile.infrastructure) ? tile.infrastructure : [];
+        return {
+          ...tile,
+          infrastructure: [...infra],
+          zone: tile.zone
+            ? {
+                ...tile.zone,
+                position: { ...tile.zone.position },
+                size: { ...tile.zone.size }
+              }
+            : null,
+          building: tile.building
+            ? {
+                ...tile.building,
+                position: { ...tile.building.position },
+                size: { ...tile.building.size }
+              }
+            : null
+        };
+      })
     );
   }
 

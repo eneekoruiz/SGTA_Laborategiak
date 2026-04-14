@@ -1,0 +1,38 @@
+# =========================
+# VARIABLES DE ENTORNO Y OS
+# =========================
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+
+# =========================
+# FRONTEND (Svelte / Node.js)
+# =========================
+frontend/node_modules/
+node_modules/
+dist/
+build/
+.svelte-kit/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# =========================
+# BACKEND Y AI-SERVICE (FastAPI / Python)
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+
+# Base de datos local (si usas SQLite para pruebas)
+*.sqlite3
+*.db
+.playwright-mcp/
