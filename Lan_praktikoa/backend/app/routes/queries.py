@@ -6,18 +6,26 @@ from ..models import APIResponse
 from ..services.game_service import GameService
 from ..auth.dependencies import get_current_user_id
 
+from ..services.game_constants import GAME_CONSTANTS
+
 router = APIRouter()
+
+
+@router.get("/config/constants", response_model=APIResponse, tags=["Queries"])
+async def get_constants():
+    """Jokoaren konstante globalak lortu (kostuak, mantentze-lanak, etab.)."""
+    return APIResponse(
+        success=True,
+        message="Konstanteak ongi lortu dira",
+        data=GAME_CONSTANTS
+    )
 
 
 def get_game_service(games_collection=None) -> GameService:
     """Game service lortu (dependency injection)."""
     from ..db.database import get_games_collection
     if games_collection is None:
-        # Fallback for when not using dependency injection
-        from motor.motor_asyncio import AsyncIOMotorClient
-        from ..config import settings
-        client = AsyncIOMotorClient(settings.MONGODB_URI)
-        games_collection = client[settings.MONGODB_DB].games
+        games_collection = get_games_collection()
     return GameService(games_collection)
 
 
@@ -112,6 +120,8 @@ async def get_game_stats(
             "rci_demand": player_metrics.get("rci_demand", {"r": 0, "c": 0, "i": 0}),
             "power_coverage": player_city.get("power_grid", {}).get("coverage_pct", 0),
             "water_coverage": player_city.get("water_system", {}).get("coverage_pct", 0),
+            "monthly_income": player_city.get("budget", {}).get("monthly_income", 0),
+            "monthly_expenses": player_city.get("budget", {}).get("monthly_expenses", 0),
             "zones": len(player_city.get("zones", [])),
             "buildings": len(player_city.get("buildings", [])),
             "education": player_metrics.get("education", {}),

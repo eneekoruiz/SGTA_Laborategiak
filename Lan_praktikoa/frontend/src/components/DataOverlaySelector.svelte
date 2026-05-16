@@ -1,14 +1,67 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
+  import type { Tile } from '../types/game';
 
   export let activeOverlay: string | null = null;
   export let isActive = false;
   export let overlayStrength = 72;
+  export let overlayTiles: Tile[][] = [];
   export let onOverlayChange: (type: string | null) => void = () => {};
   export let onStrengthChange: (value: number) => void = () => {};
   export let onToggle: () => void = () => {};
 
   let expanded = false;
+
+  // Calculate coverage percentage for service overlays
+  $: coveragePct = calculateCoverage();
+  
+  function calculateCoverage(): number {
+    if (!activeOverlay || !overlayTiles.length) return 0;
+    
+    const serviceMap: Record<string, string[]> = {
+      'police_coverage': ['police_station'],
+      'fire_coverage': ['fire_station'],
+      'health': ['hospital'],
+      'education': ['school', 'college']
+    };
+    
+    const services = serviceMap[activeOverlay];
+    if (!services) return 0;
+    
+    let totalTiles = 0;
+    let coveredTiles = 0;
+    const SERVICE_RADIUS = 18;
+    
+    for (let y = 0; y < overlayTiles.length; y++) {
+      for (let x = 0; x < overlayTiles[y].length; x++) {
+        totalTiles++;
+        const tile = overlayTiles[y][x];
+        
+        // Check if tile has service building
+        if (tile.building && services.includes(tile.building.type)) {
+          coveredTiles++;
+          continue;
+        }
+        
+        // Check if tile is within radius of any service building
+        for (let sy = 0; sy < overlayTiles.length; sy++) {
+          for (let sx = 0; sx < overlayTiles[sy].length; sx++) {
+            const neighbor = overlayTiles[sy][sx];
+            if (neighbor.building && services.includes(neighbor.building.type)) {
+              const dist = Math.sqrt(Math.pow(x - sx, 2) + Math.pow(y - sy, 2));
+              if (dist <= SERVICE_RADIUS) {
+                coveredTiles++;
+                break;
+              }
+            }
+          }
+          if (coveredTiles % totalTiles !== (coveredTiles - 1) % totalTiles) break;
+        }
+      }
+    }
+    
+    return totalTiles > 0 ? Math.round((coveredTiles / totalTiles) * 100) : 0;
+  }
 
   const overlayTypes = [
     { id: 'crime', label: 'Krimena', color: '#d27f7f' },
@@ -90,7 +143,7 @@
   on:mouseleave={closePanel}
   in:fade={{ duration: 200 }}
 >
-  <button class="rail-trigger" aria-label="Datu-geruzak ireki edo itxi" on:click={openPanel}>
+  <button class="premium-btn rail-trigger" aria-label="Datu-geruzak ireki edo itxi" on:click={openPanel}>
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4c4.5 0 8 3.2 9 8-1 4.8-4.5 8-9 8s-8-3.2-9-8c1-4.8 4.5-8 9-8zm0 4.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z" /></svg>
   </button>
 
@@ -105,7 +158,7 @@
     <div class="overlay-list">
       {#each overlayTypes as overlay (overlay.id)}
         <button
-          class="overlay-btn"
+          class="premium-btn overlay-btn"
           class:active={activeOverlay === overlay.id}
           on:click={() => toggleOverlay(overlay.id)}
         >
@@ -132,6 +185,13 @@
           <span>Baxua</span>
           <span>Altua</span>
         </div>
+        
+        {#if ['police_coverage', 'fire_coverage', 'health', 'education'].includes(activeOverlay)}
+          <div class="coverage-stat">
+            <span class="coverage-label">Estaldura:</span>
+            <span class="coverage-value">{coveragePct}%</span>
+          </div>
+        {/if}
       </div>
     {/if}
 
@@ -322,6 +382,29 @@
     font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.5);
     font-weight: 500;
+  }
+
+  .coverage-stat {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 0.5px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .coverage-label {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+  }
+
+  .coverage-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.95);
   }
 
   .dismiss-overlay {

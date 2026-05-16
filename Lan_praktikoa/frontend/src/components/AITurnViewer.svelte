@@ -1,9 +1,13 @@
 <script lang="ts">
-  import { createEventDispatcher, onDestroy } from 'svelte';
-  import type { GameState, StatsResponse } from '../types/game';
+  import { createEventDispatcher, onMount } from 'svelte';
+  import type { GameState, StatsResponse, Tile } from '../types/game';
+
+  import IsometricMap from './IsometricMap.Optimized.svelte';
+  import { soundManager } from '../services/soundManager';
 
   interface AITurnAction {
     type: string;
+    subType?: string;
     label: string;
     detail?: string;
   }
@@ -14,87 +18,243 @@
   export let reasoning = '';
   export let gameState: GameState | null = null;
   export let stats: StatsResponse | null = null;
+  export let aiCityTiles: Tile[][] | null = null;
+  export let aiActionsRaw: any[] = [];
 
   const dispatch = createEventDispatcher<{ close: void }>();
-
-  let playing = true;
-  let speed: 'normal' | 'fast' | 'instant' = 'normal';
-  let step = 0;
-  let timer: ReturnType<typeof setTimeout> | null = null;
+  let mappedTiles: Tile[][] = [];
+  let focusTile: { x: number; y: number } | null = null;
+  let markers: Array<{ x: number; y: number; color: string; label?: string }> = [];
+  let activeActionIndex: number | null = null;
 
   function clampPct(value: number, max = 100): number {
     return Math.max(0, Math.min(100, (value / Math.max(1, max)) * 100));
   }
 
-  $: currentAction = actions[Math.min(step, Math.max(actions.length - 1, 0))] ?? null;
-
-  function stopTimer(): void {
-    if (timer) {
-      clearTimeout(timer);
-      timer = null;
-    }
-  }
-
-  function scheduleNextStep(): void {
-    stopTimer();
-    if (!open || !playing) return;
-    if (step >= actions.length - 1) return;
-
-    const delay = speed === 'normal' ? 900 : speed === 'fast' ? 350 : 100;
-    timer = setTimeout(() => {
-      step = Math.min(actions.length - 1, step + 1);
-    }, delay);
-  }
-
-  function togglePlayback(): void {
-    playing = !playing;
-  }
-
-  function rewind(): void {
-    step = Math.max(0, step - 1);
-  }
-
-  function advance(): void {
-    step = Math.min(actions.length - 1, step + 1);
-  }
-
-  function fastForward(): void {
-    step = Math.max(0, actions.length - 1);
-    playing = false;
-    stopTimer();
-  }
-
-  function reset(): void {
-    step = 0;
-    playing = true;
-  }
-
   function closeViewer(): void {
-    stopTimer();
-    playing = false;
     dispatch('close');
   }
 
-  $: if (open && playing) {
-    scheduleNextStep();
-  } else if (!open) {
-    stopTimer();
-    step = 0;
+
+
+  $: {
+    if (aiCityTiles) {
+      // 1. Empezar con el grid base (usualmente hierba vacía si es el fallback)
+      mappedTiles = JSON.parse(JSON.stringify(aiCityTiles));
+
+      const aiCity = gameState?.ai_city;
+      
+      // 2. Estampar el estado PERMANENTE de la ciudad de la IA (zonas, edificios, infra)
+      if (aiCity) {
+        // Estampar Zonas
+        if (aiCity.zones) {
+          aiCity.zones.forEach(z => {
+            const { x, y } = z.position;
+            if (mappedTiles[y] && mappedTiles[y][x]) {
+              mappedTiles[y][x].zone = { ...z };
+              mappedTiles[y][x].surfaceEntity = { type: 'zone', value: z.type };
+            }
+          });
+        }
+        
+        // Estampar Edificios
+        if (aiCity.buildings) {
+          aiCity.buildings.forEach(b => {
+            const { x, y } = b.position;
+            if (mappedTiles[y] && mappedTiles[y][x]) {
+              mappedTiles[y][x].building = { ...b };
+              mappedTiles[y][x].surfaceEntity = { type: 'building', value: b.type };
+              mappedTiles[y][x].road_access = true;
+            }
+          });
+        }
+
+        // Estampar Infraestructura
+        if (aiCity.infrastructure) {
+            const infraMap = {
+                roads: 'road',
+                highways: 'highway',
+                power_lines: 'power_line',
+                rail: 'rail',
+                water_pipes: 'water_pipe',
+                subway: 'subway'
+            };
+
+            Object.entries(aiCity.infrastructure).forEach(([key, segments]) => {
+                const type = infraMap[key as keyof typeof infraMap];
+                if (!type || !Array.isArray(segments)) return;
+
+                segments.forEach((seg: any) => {
+                    const tiles = seg.tiles_covered || [];
+                    tiles.forEach((p: any) => {
+                        if (mappedTiles[p.y] && mappedTiles[p.y][p.x]) {
+                            const tile = mappedTiles[p.y][p.x];
+                            if (!Array.isArray(tile.infrastructure)) tile.infrastructure = [];
+                            if (!tile.infrastructure.includes(type)) {
+                                tile.infrastructure.push(type);
+                            }
+                            if (type === 'road' || type === 'highway') tile.road_access = true;
+                            
+                            // Actualizar entidad visual
+                            if (['road', 'highway', 'rail', 'power_line'].includes(type)) {
+                                tile.surfaceEntity = { type: 'infrastructure', value: type };
+                            } else {
+                                tile.undergroundEntity = { type: 'infrastructure', value: type };
+                            }
+                        }
+                    });
+                });
+            });
+        }
+      }
+
+      // 3. Estampar las ACCIONES DEL TURNO ACTUAL (vienen del aiActionsRaw)
+      if (aiActionsRaw && Array.isArray(aiActionsRaw)) {
+        for (let i = 0; i < aiActionsRaw.length; i++) {
+          const action = aiActionsRaw[i];
+          const pos = action.position || { x: action.x, y: action.y };
+          if (!pos || pos.x === undefined || pos.y === undefined) continue;
+
+          const { x, y } = pos;
+          if (mappedTiles[y] && mappedTiles[y][x]) {
+            const tile = mappedTiles[y][x];
+            
+            // CANDADO INVIOLABLE (SEGURIDAD IA)
+            const targetTile = tile; 
+            const isStructurePresent = !!(targetTile.building || targetTile.zone);
+            const actionType = action.type || action.action_type;
+            const actionIsInfrastructure = actionType === 'road' || actionType === 'infrastructure';
+
+            // Bloqueo de asfalto sobre zonas/edificios
+            if (isStructurePresent && actionIsInfrastructure) {
+                console.error(`DETENIDO: La IA intentó asfaltar la zona/edificio en [${x}, ${y}]. Acción abortada.`);
+                if (actions[i] && !actions[i].label.includes('Ezeztatua')) {
+                    actions[i].label += " (Ezeztatua: Gainjartze debekatua)";
+                }
+                continue; 
+            }
+
+            // Validación de 'Destructive Actions': La IA no puede demoler estructuras
+            if (actionType === 'demolish' && isStructurePresent) {
+                console.error(`SEGURIDAD: Intento de demolición de la IA bloqueado en [${x}, ${y}].`);
+                if (actions[i] && !actions[i].label.includes('Ezeztatua')) {
+                    actions[i].label += " (Ezeztatua: Demolizio debekatua)";
+                }
+                continue;
+            }
+
+            // Bloqueo general de sobrescritura
+            const isConstructionAction = ['zone', 'build', 'building', 'infrastructure'].includes(actionType);
+            const isOccupied = isStructurePresent || (targetTile.infrastructure && targetTile.infrastructure.length > 0);
+
+            if (isOccupied && isConstructionAction) {
+                console.warn(`IA ignorada: Intento de sobrescribir el tile [${x}, ${y}] ocupado.`);
+                if (actions[i] && !actions[i].label.includes('Ezeztatua')) {
+                    actions[i].label += " (Ezeztatua: Lekua beteta)";
+                }
+                continue;
+            }
+
+            if (type === 'zone') {
+              tile.zone = { 
+                type: action.zone_type || action.mota || 'residential_light', 
+                development_level: 1, 
+                position: { x, y },
+                size: { w: 1, h: 1 },
+                abandoned: false, powered: true, watered: true, road_access: true
+              };
+              tile.surfaceEntity = { type: 'zone', value: tile.zone.type };
+              soundManager.playSFX('zone');
+            } else if (type === 'build' || type === 'building') {
+              tile.building = { 
+                  id: `ai-new-${x}-${y}`, 
+                  type: action.building_type || action.mota || 'school', 
+                  position: { x, y }, 
+                  size: { w: 1, h: 1 }, 
+                  powered: true, active: true 
+              };
+              tile.surfaceEntity = { type: 'building', value: tile.building.type };
+              tile.road_access = true;
+              soundManager.playSFX('build');
+            } else if (type === 'infrastructure') {
+              const infraType = action.infrastructure_type || action.infra_type || 'road';
+              if (!Array.isArray(tile.infrastructure)) tile.infrastructure = [];
+              if (!tile.infrastructure.includes(infraType)) tile.infrastructure.push(infraType);
+              tile.surfaceEntity = { type: 'infrastructure', value: infraType };
+              tile.road_access = true;
+              soundManager.playSFX('infrastructure');
+            }
+          }
+        }
+      }
+      
+      // 4. Generate Markers for current turn
+      if (aiActionsRaw && Array.isArray(aiActionsRaw)) {
+        markers = aiActionsRaw.map((action, i) => {
+          const pos = action.position || { x: action.x, y: action.y };
+          return {
+            x: pos.x,
+            y: pos.y,
+            color: getIndicatorColor({ type: action.type || action.action_type, subType: action.zone_type || action.building_type || action.infrastructure_type }),
+            label: (i + 1).toString()
+          };
+        }).filter(m => m.x !== undefined && m.y !== undefined);
+      } else {
+        markers = [];
+      }
+      
+      console.log("🟢 MAPA DE LA IA RECONSTRUIDO CON ÉXITO");
+    } else {
+        mappedTiles = aiCityTiles ?? [];
+        markers = [];
+    }
   }
 
-  $: if (!playing) {
-    stopTimer();
+  function handleActionClick(action: any, index: number): void {
+    const rawAction = aiActionsRaw[index];
+    if (rawAction) {
+      const pos = rawAction.position || { x: rawAction.x, y: rawAction.y };
+      if (pos && pos.x !== undefined) {
+        focusTile = { x: pos.x, y: pos.y };
+        activeActionIndex = index;
+        soundManager.playSFX('click');
+      }
+    }
   }
 
-  onDestroy(stopTimer);
+  onMount(() => {
+    if (mode === 'fullscreen' && aiCityTiles) {
+      const event = new CustomEvent('map-init', { detail: { mode: 'fullscreen' } });
+      document.dispatchEvent(event);
+    }
+  });
+
+  function getIndicatorColor(action: any) {
+    const type = action.type;
+    const sub = (action.subType || '').toLowerCase();
+    
+    if (type === 'zone') {
+      if (sub.includes('residential')) return '#4ade80'; // Green
+      if (sub.includes('commercial')) return '#60a5fa'; // Blue
+      if (sub.includes('industrial')) return '#facc15'; // Yellow/Orange
+    }
+    if (type === 'infrastructure') {
+      if (sub.includes('road') || sub.includes('highway')) return '#94a3b8'; // Slate/Gray
+      if (sub.includes('water')) return '#3b82f6'; // Blue
+      if (sub.includes('power')) return '#eab308'; // Amber/Yellow
+    }
+    if (type === 'build') return '#f87171'; // Red
+    if (type === 'attack') return '#ef4444'; // Bright Red
+    return 'rgba(255, 255, 255, 0.15)';
+  }
 </script>
 
 {#if open}
-  <div class={`replay ${mode}`} role="region" aria-label="AA txandaren errepikapena">
+  <div class={`replay ${mode}`} role="region" aria-label="AA hiria">
     <header class="topbar">
       <div>
-        <p>AA Errepikapena</p>
-        <h3>{playing ? 'Txandaren laburpena' : 'Erreprodukzioa pausatuta'}</h3>
+        <p>IA-ren Hiria</p>
+        <h3>Hilabete Amaiera</h3>
       </div>
       <button on:click={closeViewer}>Itxi</button>
     </header>
@@ -110,15 +270,15 @@
             </article>
             <article>
               <span class="card-label">Altxorra</span>
-              <strong>§ {stats?.player.treasury ?? gameState?.player_city.treasury ?? 0}</strong>
+              <strong>§ {Math.floor(stats?.player.treasury ?? gameState?.player_city.treasury ?? 0)}</strong>
             </article>
             <article>
               <span class="card-label">Puntuazioa</span>
-              <strong>{stats?.player.composite_score ?? gameState?.player_city.metrics.composite_score ?? 0}</strong>
+              <strong>{Math.round(stats?.player.composite_score ?? gameState?.player_city.metrics.composite_score ?? 0)}</strong>
             </article>
             <article>
               <span class="card-label">Onarpena</span>
-              <strong>{stats?.player.approval ?? gameState?.player_city.metrics.approval ?? 0}%</strong>
+              <strong>{Math.round(stats?.player.approval ?? gameState?.player_city.metrics.approval ?? 0)}%</strong>
             </article>
           </div>
 
@@ -142,55 +302,65 @@
         </section>
       {/if}
 
-      <section class="panel timeline">
-        <div class="controls">
-          <button on:click={togglePlayback}>{playing ? 'Pausatu' : 'Erreproduzitu'}</button>
-          <button on:click={rewind}>Atzera</button>
-          <button on:click={advance}>Hurrengoa</button>
-          <button on:click={fastForward}>Azkartu</button>
-          <button on:click={reset}>Berrabiarazi</button>
-          <select bind:value={speed} aria-label="Erreprodukzio abiadura">
-            <option value="normal">Normala</option>
-            <option value="fast">Azkarra</option>
-            <option value="instant">Berehalakoa</option>
-          </select>
-        </div>
-
-        <div class="progress">
-          <div class="fill" style={`width: ${actions.length ? ((step + 1) / actions.length) * 100 : 0}%`}></div>
-        </div>
-
-        <div class="action-list">
-          {#each actions as action, idx}
-            <article class:active={idx === step} class:done={idx < step}>
-              <strong>{action.label}</strong>
-              <span>{action.type}</span>
-              {#if action.detail}
-                <p>{action.detail}</p>
-              {/if}
-            </article>
-          {/each}
-        </div>
-      </section>
+      {#if mode === 'fullscreen' && aiCityTiles}
+        <section class="panel replay-map-panel">
+          <div class="map-container">
+            <IsometricMap
+              tiles={mappedTiles}
+              mapWidth={aiCityTiles[0]?.length || 64}
+              mapHeight={aiCityTiles.length || 64}
+              tileWidth={96}
+              tileHeight={48}
+              inputLocked={false} 
+              showInfrastructure={true}
+              showZones={true}
+              {markers}
+              {focusTile}
+            />
+          </div>
+        </section>
+      {/if}
 
       <aside class="panel summary">
         <h4>AA ekintzen jarioa</h4>
-        {#if currentAction}
-          <div class="spotlight">
-            <p>Uneko ekintza</p>
-            <strong>{currentAction.label}</strong>
-            <span>{currentAction.type}</span>
-            {#if currentAction.detail}
-              <small>{currentAction.detail}</small>
-            {/if}
+        {#if actions.length > 0}
+         <div class="log-container">
+            {#each actions as action}
+              {#if action.type === 'time'}
+                <div class="feed-header">
+                  {action.label}
+                </div>
+              {:else}
+                <article 
+                  class="log-entry" 
+                  class:active={activeActionIndex === (actions.indexOf(action) - 1)}
+                  style={`--indicator: ${getIndicatorColor(action)}`}
+                  on:click={() => handleActionClick(action, actions.indexOf(action) - 1)}
+                >
+                  <div class="type-indicator"></div>
+                  <div class="entry-index">{actions.indexOf(action)}</div>
+                  <div class="entry-body">
+                    <div class="entry-main">
+                      <span class="entry-label">{action.label}</span>
+                      <span class="entry-badge">{action.subType || action.type}</span>
+                    </div>
+                    {#if action.detail}
+                      <span class="entry-detail">{action.detail}</span>
+                    {/if}
+                  </div>
+                  <button class="view-btn">Ikusi</button>
+                </article>
+              {/if}
+            {/each}
           </div>
+        {:else}
+          <p>Ez dago ekintzarik erakusteko.</p>
         {/if}
 
         <h4>Txandaren laburpena</h4>
         <p>{reasoning || 'Ez dago txanda honetarako arrazoiketa erabilgarririk.'}</p>
         <div class="meta">
           <span>{actions.length} ekintza</span>
-          <span>Urratsa {Math.min(step + 1, Math.max(actions.length, 1))}</span>
         </div>
       </aside>
     </div>
@@ -212,36 +382,19 @@
     box-shadow: 0 24px 48px rgba(2, 9, 20, 0.28);
   }
 
-  
-  .replay.panel {
-    right: 16px;
-    bottom: 110px; /* Above new dock */
-    width: min(440px, calc(100vw - 32px));
-    max-height: min(72vh, 760px);
-  }
-
-  .replay.split {
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    bottom: auto;
-    right: auto;
-    width: min(980px, calc(100vw - 32px));
-    max-height: min(80vh, 860px);
-  }
-
   .replay.fullscreen {
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    bottom: auto;
-    right: auto;
-    width: 90vw;
-    height: 90vh;
-    max-height: none;
-    border-radius: 24px;
+    top: 0;
+    left: 0;
+    transform: none;
+    bottom: 0;
+    right: 0;
+    width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    max-width: 100vw;
+    border-radius: 0;
+    z-index: 9999;
   }
-
 
   .topbar,
   .panel {
@@ -259,10 +412,7 @@
   }
 
   .topbar p,
-  .topbar h3,
-  .summary h4,
-  .action-list strong,
-  .action-list p {
+  .topbar h3 {
     margin: 0;
   }
 
@@ -277,9 +427,7 @@
     font-size: 1rem;
   }
 
-  .topbar button,
-  .controls button,
-  select {
+  .topbar button {
     border: 0;
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.08);
@@ -297,15 +445,14 @@
     flex: 1;
   }
 
-  .replay.split .layout,
-  .replay.fullscreen .layout {
-    grid-template-columns: 1fr 1.35fr 1fr;
-  }
-
   .city-state {
     display: grid;
     align-content: start;
     gap: 12px;
+  }
+
+  .replay.fullscreen .city-state {
+    display: none;
   }
 
   .city-grid {
@@ -377,72 +524,43 @@
     min-height: 0;
   }
 
-  .timeline {
-    display: grid;
-    gap: 14px;
-  }
-
-  .controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .progress {
-    height: 10px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.07);
+  .replay-map-panel {
+    grid-column: 1 / -1;
+    min-height: 70vh;
+    height: 70vh;
+    padding: 0;
     overflow: hidden;
+    display: block !important;
+    visibility: visible !important;
   }
 
-  .fill {
-    height: 100%;
-    background: linear-gradient(90deg, #a8d5ba, #87ceeb);
+  .map-container {
+    width: 100%;
+    height: 70vh;
+    min-height: 70vh;
+    background: #1a2635;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    visibility: visible !important;
+    contain: content;
   }
 
-  .action-list {
-    display: grid;
-    gap: 10px;
-    overflow: auto;
-    padding-right: 4px;
+  .map-container :global(canvas) {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain;
+    transform: scale(1.1);
+    transform-origin: center center;
+    opacity: 1 !important;
+    visibility: visible !important;
   }
 
-  .action-list article {
-    padding: 12px;
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    opacity: 0.5;
-  }
-
-  .action-list article.active {
-    opacity: 1;
-    background: rgba(182, 154, 99, 0.16);
-    border-color: rgba(182, 154, 99, 0.28);
-  }
-
-  .action-list article.done {
-    opacity: 0.72;
-  }
-
-  .action-list span,
-  .meta span,
-  .summary p {
-    color: rgba(233, 241, 252, 0.78);
-  }
-
-  .action-list span {
-    display: block;
-    margin-top: 4px;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-  }
-
-  .action-list p {
-    margin-top: 6px;
-    line-height: 1.45;
-    font-size: 0.9rem;
+  .map-container :global(.map-shell) {
+    width: 100% !important;
+    height: 100% !important;
+    opacity: 1 !important;
+    visibility: visible !important;
   }
 
   .summary {
@@ -451,69 +569,156 @@
     gap: 12px;
   }
 
-  .spotlight {
-    display: grid;
-    gap: 4px;
-    padding: 10px;
-    border-radius: 12px;
-    background: rgba(182, 154, 99, 0.16);
-    border: 1px solid rgba(182, 154, 99, 0.32);
-  }
-
-  .spotlight p,
-  .spotlight strong,
-  .spotlight span,
-  .spotlight small {
-    margin: 0;
-  }
-
-  .spotlight p {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: rgba(233, 241, 252, 0.76);
-  }
-
-  .spotlight span {
-    font-size: 0.76rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: rgba(233, 241, 252, 0.76);
-  }
-
-  .spotlight small {
-    color: rgba(233, 241, 252, 0.82);
-  }
-
-  .replay .summary {
-    display: none;
-  }
-
-  .replay.split .summary,
-  .replay.fullscreen .summary {
-    display: grid;
-  }
-
   .summary h4 {
     font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 0.14em;
     color: rgba(218, 227, 240, 0.72);
+    margin: 0;
+  }
+
+  .summary p {
+    color: rgba(233, 241, 252, 0.78);
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+
+  .log-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 380px;
+    overflow-y: auto;
+    padding-right: 8px;
+    margin-bottom: 16px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  }
+
+  .log-container::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .log-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+  }
+
+  .log-entry {
+    display: flex;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: background 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .log-entry:hover, .log-entry.active {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(100, 180, 255, 0.3);
+    transform: translateX(4px);
+  }
+
+  .entry-index {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.3);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .log-entry.active .entry-index {
+    color: var(--accent, #60a5fa);
+  }
+
+  .view-btn {
+    opacity: 0;
+    background: rgba(100, 180, 255, 0.2);
+    border: none;
+    color: #60a5fa;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0 12px;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+
+  .log-entry:hover .view-btn {
+    opacity: 1;
+  }
+
+  .type-indicator {
+    width: 4px;
+    background: var(--indicator);
+    flex-shrink: 0;
+  }
+
+  .entry-body {
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-grow: 1;
+  }
+
+  .entry-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .entry-label {
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.95);
+    line-height: 1.4;
+  }
+
+  .entry-badge {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.6);
+    white-space: nowrap;
+  }
+
+  .entry-detail {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-family: monospace;
+  }
+
+  .feed-header {
+    margin: 20px 0 10px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    text-align: center;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.04), transparent);
+    padding: 8px;
+    border-radius: 6px;
+    flex-shrink: 0;
   }
 
   .meta {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-  }
-
-  .replay.panel .action-list,
-  .replay.split .action-list {
-    max-height: 34vh;
-  }
-
-  .replay.fullscreen .action-list {
-    max-height: calc(100vh - 260px);
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   .meta span {
@@ -521,11 +726,10 @@
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.06);
     font-size: 0.8rem;
+    color: rgba(233, 241, 252, 0.78);
   }
 
   @media (max-width: 980px) {
-    .replay.panel,
-    .replay.split,
     .replay.fullscreen {
       top: 50%;
       left: 50%;

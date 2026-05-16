@@ -30,17 +30,17 @@ class WaterSystem(BaseModel):
 class CityMetrics(BaseModel):
     """City metrics model - Key indicators for city health & education."""
 
-    eq: int = Field(default=50, ge=0, le=200)  # Education Quality
-    hq: int = Field(default=50, ge=0, le=200)  # Health Quality
-    crime_rate: int = Field(default=50, ge=0, le=100)
-    pollution_air: int = Field(default=50, ge=0, le=100)
-    pollution_water: int = Field(default=50, ge=0, le=100)
-    land_value_avg: int = Field(default=50, ge=0, le=255)
-    approval: int = Field(default=50, ge=0, le=100)
-    unemployment: int = Field(default=5, ge=0, le=100)
-    traffic_avg: int = Field(default=50, ge=0, le=100)
+    eq: float = Field(default=50.0, ge=0.0, le=200.0)  # Education Quality
+    hq: float = Field(default=50.0, ge=0.0, le=200.0)  # Health Quality
+    crime_rate: float = Field(default=50.0, ge=0.0, le=100.0)
+    pollution_air: float = Field(default=50.0, ge=0.0, le=100.0)
+    pollution_water: float = Field(default=50.0, ge=0.0, le=100.0)
+    land_value_avg: float = Field(default=50.0, ge=0.0, le=255.0)
+    approval: float = Field(default=50.0, ge=0.0, le=100.0)
+    unemployment: float = Field(default=5.0, ge=0.0, le=100.0)
+    traffic_avg: float = Field(default=50.0, ge=0.0, le=100.0)
     rci_demand: RCIDemand = Field(default_factory=RCIDemand)
-    composite_score: int = Field(default=0, ge=0)
+    composite_score: float = Field(default=0.0, ge=0.0)
 
     class Config:
         json_schema_extra = {
@@ -66,7 +66,7 @@ class CityState(BaseModel):
     name: str
     owner: str = Field(...)  # "player" or "ai"
     population: int = Field(default=0, ge=0)
-    treasury: int = Field(default=10000, ge=0)
+    treasury: float = Field(default=10000.0, ge=0.0)  # Changed from int to float to prevent validation crashes
     months_bankrupt: int = Field(default=0, ge=0, le=12)
     zones: List[Dict] = Field(default_factory=list)
     buildings: List[Dict] = Field(default_factory=list)
@@ -88,10 +88,10 @@ class CityState(BaseModel):
             "education": 100,
         },
         "bonds": [],
-        "last_year_income": 0,
-        "last_year_expenses": 0,
-        "monthly_income": 0,
-        "monthly_expenses": 0,
+        "last_year_income": 0.0,
+        "last_year_expenses": 0.0,
+        "monthly_income": 0.0,
+        "monthly_expenses": 0.0,
     })
     ordinances: List[str] = Field(default_factory=list)
     metrics: CityMetrics = Field(default_factory=CityMetrics)

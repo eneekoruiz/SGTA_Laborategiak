@@ -29,6 +29,10 @@ export const gameSpeed = writable<'normal' | 'fast' | 'instant'>('normal');
 export const isLoading = writable<boolean>(false);
 export const errorMessage = writable<string>('');
 
+// Session state tracking
+export type SessionStatus = 'active' | 'expired' | 'logged_out';
+export const sessionStatus = writable<SessionStatus>('active');
+
 // Cheat history (UI-only, not persisted)
 export const cheatHistory = writable<string[]>([]);
 

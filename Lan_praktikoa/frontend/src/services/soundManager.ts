@@ -22,14 +22,14 @@ const STORAGE_KEYS = {
   volume: 'simhiri.audio.volume'
 };
 
-const DEFAULT_VOLUME = 0.48;
+const DEFAULT_VOLUME = 0.70;
 
 class SoundManager {
   private isMuted = false;
   private volumeLevel = DEFAULT_VOLUME;
   private listeners = new Set<StateListener>();
   private firstInteractionArmed = false;
-  private userUnlocked = false;
+  public userUnlocked = false;
   private bgmPlaying = false;
   private lastSfxAt: Partial<Record<SFXType, number>> = {};
 
@@ -96,6 +96,9 @@ class SoundManager {
   playSFX(type: SFXType): void {
     if (this.isMuted || this.volumeLevel <= 0) return;
 
+    // Proactively ensure audio context is active
+    audio.initAudio();
+
     const now = Date.now();
     const cooldown = this.SFX_COOLDOWN_MS[type];
     const last = this.lastSfxAt[type] ?? 0;
@@ -115,7 +118,7 @@ class SoundManager {
         audio.playDemolitionSound();
         break;
       case 'click':
-        audio.playCashSound();
+        audio.playClickSound();
         break;
       case 'money':
         audio.playCashSound();

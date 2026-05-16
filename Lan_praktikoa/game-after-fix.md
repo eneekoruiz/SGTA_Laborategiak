@@ -1,2 +1,0 @@
-- main [ref=e4]:
-  - generic [ref=e6]: Cannot read properties of undefined (reading 'population')

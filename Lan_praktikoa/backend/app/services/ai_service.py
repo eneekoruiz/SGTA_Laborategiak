@@ -74,6 +74,8 @@ async def get_ai_turn(game_state: Dict[str, Any]) -> AITurnResponse:
 
     Fallback: AI zerbitzua erortzen bada, ekintza lehenetsiak itzuli.
     """
+    print(f"🔍 [3. AI SERVICE] Execution started...")
+    
     filtered_state = _filter_state_for_ai(game_state)
 
     # Available actions determine
@@ -85,7 +87,7 @@ async def get_ai_turn(game_state: Dict[str, Any]) -> AITurnResponse:
                 "commercial_dense", "industrial_light", "industrial_dense"]
     can_build = ["school", "college", "library", "museum", "hospital",
                  "police_station", "fire_station"]
-    
+
     # Power plants available by year
     if current_year >= 1900:
         can_build.extend(["coal_power", "oil_power"])
@@ -122,9 +124,11 @@ async def get_ai_turn(game_state: Dict[str, Any]) -> AITurnResponse:
             **filtered_state,
             "available_actions": available_actions,
         },
+        "historia": [],  # Empty history for now - can be populated from game history
         "personality": filtered_state.get("ai_personality", "balanced"),
         "difficulty": filtered_state.get("difficulty", "medium"),
     }
+    # AI_SERVICE_URL deia egingo dugu, Groq/GitHub/Mock kudeaketa ai-service barruan egingo da.
 
     try:
         async with httpx.AsyncClient(timeout=AI_REQUEST_TIMEOUT) as client:
@@ -135,11 +139,38 @@ async def get_ai_turn(game_state: Dict[str, Any]) -> AITurnResponse:
             response.raise_for_status()
             result = response.json()
 
-            actions = result.get("actions", [{"type": "pass"}])
-            reasoning = result.get("reasoning", "AI ez du arrazoimenik eman")
+            actions = result.get("ekintzak", [])
+            # Backend-ak AITurnResponse formatua espero du (actions), baina mapatu behar dugu AIActionApplier-ek ulertzeko (type / details)
+            mapped_actions = []
+            for act in actions:
+                # Backend-erako mapaketa (type/details) kudeatu, baina jatorrizko propietateak (mota/parametroak/hibridoak) mantendu
+                mota = act.get("mota", "")
+                params = act.get("parametroak", {})
+                
+                # Mapatutako objektua sortu, act-eko propietate guztiak kopiatuz (hibridoa izateko)
+                mapped_act = act.copy()
+                
+                if mota == "placeZone":
+                    mapped_act.update({"type": "zone", "details": {"zone_type": params.get("zone_type"), "position": params.get("position"), "size": params.get("size", {"w": 1, "h": 1})}})
+                elif mota in ("buildStructure", "build") or str(mota).startswith("eraiki_"):
+                    building_type = params.get("building_type")
+                    if not building_type and str(mota).startswith("eraiki_"):
+                        building_type = str(mota).replace("eraiki_", "")
+                    mapped_act.update({"type": "building", "details": {"building_type": building_type, "position": params.get("position")}})
+                elif mota == "placeInfrastructure":
+                    mapped_act.update({"type": "infrastructure", "details": {"type": params.get("infrastructure_type"), "segments": [{"from": params.get("start_position"), "to": params.get("end_position")}]}})
+                elif mota == "pass":
+                    mapped_act.update({"type": "pass"})
+                else:
+                    mapped_act.update({"type": mota, "details": params})
+                
+                mapped_actions.append(mapped_act)
+
+            reasoning_obj = result.get("reasoning", {})
+            reasoning = reasoning_obj.get("analisia", "AI ez du arrazoimenik eman") if isinstance(reasoning_obj, dict) else str(reasoning_obj)
 
             return AITurnResponse(
-                actions=actions,
+                actions=mapped_actions,
                 reasoning=reasoning,
             )
 

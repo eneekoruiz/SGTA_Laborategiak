@@ -48,10 +48,10 @@ class Budget(BaseModel):
     tax_rates: TaxRates = Field(default_factory=TaxRates)
     funding: Funding = Field(default_factory=Funding)
     bonds: List[Bond] = Field(default_factory=list)
-    last_year_income: int = Field(default=0)
-    last_year_expenses: int = Field(default=0)
-    monthly_income: int = Field(default=0)
-    monthly_expenses: int = Field(default=0)
+    last_year_income: float = Field(default=0.0)  # Changed from int to float
+    last_year_expenses: float = Field(default=0.0)  # Changed from int to float
+    monthly_income: float = Field(default=0.0)  # Changed from int to float
+    monthly_expenses: float = Field(default=0.0)  # Changed from int to float
 
     class Config:
         json_schema_extra = {
@@ -65,10 +65,10 @@ class Budget(BaseModel):
                     "education": 100,
                 },
                 "bonds": [],
-                "last_year_income": 50000,
-                "last_year_expenses": 45000,
-                "monthly_income": 4500,
-                "monthly_expenses": 4000,
+                "last_year_income": 50000.0,
+                "last_year_expenses": 45000.0,
+                "monthly_income": 4500.0,
+                "monthly_expenses": 4000.0,
             }
         }
 

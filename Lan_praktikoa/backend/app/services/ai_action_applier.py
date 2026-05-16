@@ -1,11 +1,9 @@
-"""AI ekintzak AI hiriari aplikatzeko zerbitzua.
-
-Fitxategi honek AI zerbitzutik jasotako ekintzak (zona, eraikin, azpiegitura,
-aurrekontu, ordenantza, eraso) AIaren hiriari aplikatzen dizkio.
-"""
+import logging
 from typing import Dict, Any, List
 from uuid import uuid4
 from datetime import datetime
+
+logger = logging.getLogger("ai_action_applier")
 
 
 class AIActionApplier:
@@ -78,7 +76,7 @@ class AIActionApplier:
             details = action.get("details", {})
 
             if action_type == "pass":
-                applied_actions.append({"action": "pass", "success": True})
+                applied_actions.append({"action_type": "pass", "description": "No action taken", "success": True})
                 continue
 
             if action_type == "zone":
@@ -86,46 +84,81 @@ class AIActionApplier:
                     ai_city, details, treasury, current_date, map_size
                 )
                 if success:
-                    applied_actions.append(action_result)
+                    applied_actions.append({**action, **action_result})
 
             elif action_type == "build":
                 success, treasury, action_result = AIActionApplier._apply_build(
                     ai_city, details, treasury, current_date, map_size
                 )
                 if success:
-                    applied_actions.append(action_result)
+                    applied_actions.append({**action, **action_result})
 
             elif action_type == "infrastructure":
                 success, treasury, action_result = AIActionApplier._apply_infrastructure(
                     ai_city, details, treasury, map_size
                 )
                 if success:
-                    applied_actions.append(action_result)
+                    applied_actions.append({**action, **action_result})
 
             elif action_type == "budget":
                 success, action_result = AIActionApplier._apply_budget(
                     ai_city, details
                 )
                 if success:
-                    applied_actions.append(action_result)
+                    applied_actions.append({**action, **action_result})
 
             elif action_type == "ordinance":
                 success, action_result = AIActionApplier._apply_ordinance(
                     ai_city, details
                 )
                 if success:
-                    applied_actions.append(action_result)
+                    applied_actions.append({**action, **action_result})
 
             elif action_type == "attack":
                 # Erasoa jokalariaren hiriari (backend-ean kudeatuko da)
                 applied_actions.append({
+                    **action,
                     "action": "attack",
+                    "type": "attack",
                     "details": details,
                     "success": True,
                 })
 
         ai_city["treasury"] = treasury
         return ai_city, applied_actions
+
+    @staticmethod
+    def _is_tile_occupied(ai_city: Dict, x: int, y: int) -> bool:
+        """Check if a tile is occupied by a zone, building or infrastructure in the AI city."""
+        # Check zones
+        for zone in ai_city.get("zones", []):
+            pos = zone.get("position", {})
+            size = zone.get("size", {"w": 1, "h": 1})
+            zx, zy = pos.get("x", 0), pos.get("y", 0)
+            zw, zh = size.get("w", 1), size.get("h", 1)
+            if zx <= x < zx + zw and zy <= y < zy + zh:
+                return True
+        # Check buildings
+        for building in ai_city.get("buildings", []):
+            pos = building.get("position", {})
+            size = building.get("size", {"w": 1, "h": 1})
+            bx, by = pos.get("x", 0), pos.get("y", 0)
+            bw, bh = size.get("w", 1), size.get("h", 1)
+            if bx <= x < bx + bw and by <= y < by + bh:
+                return True
+        
+        # Check infrastructure (roads, etc.)
+        infra = ai_city.get("infrastructure", {})
+        for segments in infra.values():
+            if not isinstance(segments, list): continue
+            for seg in segments:
+                for t in seg.get("tiles_covered", []):
+                    try:
+                        if int(t.get("x", -1)) == x and int(t.get("y", -1)) == y:
+                            return True
+                    except (TypeError, ValueError):
+                        continue
+        return False
 
     @staticmethod
     def _apply_zone(ai_city: Dict, details: Dict, treasury: float,
@@ -146,8 +179,16 @@ class AIActionApplier:
 
         # Posizioa balidatu
         px, py = position.get("x", 0), position.get("y", 0)
+        pw, ph = size.get("w", 1), size.get("h", 1)
         if not (0 <= px < map_size.get("width", 100)) or not (0 <= py < map_size.get("height", 100)):
             return False, treasury, {}
+
+        # Spatial Validation: Ensure no overlap with existing zones/buildings
+        for x in range(px, px + pw):
+            for y in range(py, py + ph):
+                if AIActionApplier._is_tile_occupied(ai_city, x, y):
+                    logger.debug(f"AI Zone blocked: Tile ({x}, {y}) occupied")
+                    return False, treasury, {}
 
         zone_id = f"zone_{uuid4().hex[:8]}"
         new_zone = {
@@ -169,8 +210,12 @@ class AIActionApplier:
         treasury -= total_cost
 
         return True, treasury, {
-            "action": "zone",
-            "details": {"zone_type": zone_type, "position": position, "size": size},
+            "action_type": "zone",
+            "type": "zone",
+            "description": f"Placed {zone_type} zone",
+            "zone_type": zone_type,
+            "position": position,
+            "size": size,
             "cost": total_cost,
             "success": True,
         }
@@ -194,6 +239,11 @@ class AIActionApplier:
         if not (0 <= px < map_size.get("width", 100)) or not (0 <= py < map_size.get("height", 100)):
             return False, treasury, {}
 
+        # Spatial Validation: Ensure no overlap with existing zones/buildings
+        if AIActionApplier._is_tile_occupied(ai_city, px, py):
+            logger.debug(f"AI Building blocked: Tile ({px}, {py}) occupied")
+            return False, treasury, {}
+
         building_id = f"building_{uuid4().hex[:8]}"
         new_building = {
             "id": building_id,
@@ -212,8 +262,11 @@ class AIActionApplier:
         treasury -= cost
 
         return True, treasury, {
-            "action": "build",
-            "details": {"building_type": building_type, "position": position},
+            "action_type": "build",
+            "type": "build",
+            "description": f"Built {building_type}",
+            "building_type": building_type,
+            "position": position,
             "cost": cost,
             "success": True,
         }
@@ -253,14 +306,23 @@ class AIActionApplier:
             tiles_covered = AIActionApplier._interpolate_tiles(
                 segment.get("from", {}), segment.get("to", {})
             )
-            new_segment["tiles_covered"] = tiles_covered
+            
+            # Spatial Validation: Filter out occupied tiles (skip)
+            valid_tiles = [t for t in tiles_covered if not AIActionApplier._is_tile_occupied(ai_city, t["x"], t["y"])]
+            if not valid_tiles:
+                continue
+
+            new_segment["tiles_covered"] = valid_tiles
             ai_city.setdefault("infrastructure", {}).setdefault(category, []).append(new_segment)
 
         treasury -= total_cost
 
         return True, treasury, {
-            "action": "infrastructure",
-            "details": {"type": infra_type, "segments_count": len(segments)},
+            "action_type": "infrastructure",
+            "type": "infrastructure",
+            "description": f"Placed {infra_type}",
+            "infrastructure_type": infra_type,
+            "segments_count": len(segments),
             "cost": total_cost,
             "success": True,
         }

@@ -10,6 +10,9 @@
   import NewGamePage from './views/NewGamePage.svelte';
   import { currentRoute, navigate, startRouter } from './services/router';
 
+import SessionExpiredOverlay from './components/SessionExpiredOverlay.svelte';
+  import { sessionStatus } from './store/ui';
+
   let route = $currentRoute;
   let isRedirecting = false;
   
@@ -78,6 +81,8 @@
 {:else}
   <LandingPage />
 {/if}
+
+<SessionExpiredOverlay />
 
 <style>
   /**

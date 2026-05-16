@@ -66,8 +66,8 @@
   $: eqStatus = education.eq >= 120 ? 'Altua' : education.eq >= 95 ? 'Egonkorra' : 'Hauskorra';
   $: hqStatus = health.hq >= 110 ? 'Indartsua' : health.hq >= 90 ? 'Egonkorra' : 'Ahula';
   $: tickerItems = [
-    `EDU // EQ ${education.eq} (${eqStatus})`,
-    `OSASUNA // HQ ${health.hq} (${hqStatus})`,
+    `EDU // EQ ${Math.round(education.eq)} (${eqStatus})`,
+    `OSASUNA // HQ ${Math.round(health.hq)} (${hqStatus})`,
     `BIZI-ITXAROPENA // ${health.average_lifespan.toFixed(1)} urte`,
     `INDUSTRIA // Goi-teknologia ${(education.effects.high_tech_industry_pct * 100).toFixed(0)}%`,
     `ARRISKUA // Kutsaduraren eragina ${health.pollution_health_impact}`,
@@ -97,13 +97,13 @@
   <div class="metrics-grid">
     <article>
       <h3>EQ</h3>
-      <p class="value mono">{education.eq}</p>
-      <p class="trend" class:up={education.eq_trend >= 0}>Joera: {education.eq_trend >= 0 ? '+' : ''}{education.eq_trend}</p>
+      <p class="value mono">{Math.round(education.eq)}</p>
+      <p class="trend" class:up={education.eq_trend >= 0}>Joera: {education.eq_trend >= 0 ? '+' : ''}{education.eq_trend.toFixed(1)}</p>
     </article>
     <article>
       <h3>HQ</h3>
-      <p class="value mono">{health.hq}</p>
-      <p class="trend" class:up={health.hq_trend >= 0}>Joera: {health.hq_trend >= 0 ? '+' : ''}{health.hq_trend}</p>
+      <p class="value mono">{Math.round(health.hq)}</p>
+      <p class="trend" class:up={health.hq_trend >= 0}>Joera: {health.hq_trend >= 0 ? '+' : ''}{health.hq_trend.toFixed(1)}</p>
     </article>
     <article>
       <h3>Bizi-itxaropena</h3>

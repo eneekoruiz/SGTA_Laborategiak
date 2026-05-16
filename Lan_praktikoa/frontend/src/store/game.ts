@@ -14,19 +14,61 @@ import {
   getTickInterval
 } from '../lib/simulation/core';
 
+const STORAGE_KEY = 'simhiri_game_state';
+
+function loadPersistedState(): GameState | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as GameState;
+  } catch {
+    return null;
+  }
+}
+
+function persistState(state: GameState | null) {
+  try {
+    if (!state) {
+      localStorage.removeItem(STORAGE_KEY);
+      return;
+    }
+    // Don't store the full map tiles in localStorage — just metadata
+    const light = {
+      ...state,
+      map: { tiles: [] } // Strip heavy tile data
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(light));
+  } catch {
+    // Storage full or unavailable — silent fail
+  }
+}
+
 /**
  * GAME STATE STORES
  * Single source of truth for all game data.
- * All mutations flow through action functions that call apiService.
- * Components subscribe to stores via $storeName syntax.
  */
 
 // Primary writable stores
-export const gameState = writable<GameState | null>(null);
+export const gameState = writable<GameState | null>(loadPersistedState());
 export const stats = writable<StatsResponse | null>(null);
 export const education = writable<EducationResponse | null>(null);
 export const health = writable<HealthResponse | null>(null);
 export const aiTurn = writable<AITurnPayload | null>(null);
+
+// AI Service Status Store
+export const aiServiceStatus = writable<'available' | 'unavailable' | 'loading'>('loading');
+export const aiActions = writable<Array<{
+  action_type: string;
+  position?: { x: number; y: number };
+  building_type?: string;
+  infrastructure_type?: string;
+  segments?: Array<{ from: { x: number; y: number }; to: { x: number; y: number } }>;
+}>>([]);
+
+// Auto-persist gameState metadata on every change
+if (typeof window !== 'undefined') {
+  gameState.subscribe(persistState);
+}
 
 export type MetricHistoryPoint = {
   year: number;
@@ -285,6 +327,38 @@ export function updateTileAt(x: number, y: number, updater: (tile: Tile) => Tile
 }
 
 /**
+ * Surgical batch update for multiple tiles.
+ * Prevents full map cloning by only cloning affected rows and the top-level array.
+ */
+export function updateTilesAt(updates: Array<{ x: number; y: number; updater: (tile: Tile) => Tile }>): void {
+  gameState.update((current) => {
+    if (!current || !current.map.tiles) return current;
+
+    const tiles = current.map.tiles;
+    const nextRows = [...tiles];
+    const modifiedRows = new Set<number>();
+
+    for (const { x, y, updater } of updates) {
+      if (!nextRows[y]?.[x]) continue;
+
+      if (!modifiedRows.has(y)) {
+        nextRows[y] = [...nextRows[y]];
+        modifiedRows.add(y);
+      }
+      nextRows[y][x] = normalizeTileOccupancy(updater(nextRows[y][x]));
+    }
+
+    return {
+      ...current,
+      map: {
+        ...current.map,
+        tiles: nextRows
+      }
+    };
+  });
+}
+
+/**
  * Optimistic state commit helper.
  * 1) Apply local mutation immediately.
  * 2) Execute API work in background.
@@ -331,6 +405,8 @@ export function resetGameStores() {
   health.set(null);
   aiTurn.set(null);
   metricHistory.set([]);
+  aiServiceStatus.set('loading');
+  aiActions.set([]);
 }
 
 /**
@@ -388,3 +464,5 @@ export function applyAutoGrowth() {
     return applyAutoGrowthSnapshot(current);
   });
 }
+
+

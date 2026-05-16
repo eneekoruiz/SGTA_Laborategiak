@@ -19,8 +19,17 @@ class Settings:
     PORT: int = int(os.getenv("PORT", 5000))
     DEBUG: bool = os.getenv("DEBUG", "True").lower() == "true"
 
-    # CORS
-    CORS_ORIGINS: list = os.getenv("CORS_ORIGINS", "http://localhost:3001,http://localhost:5173,http://localhost:3000").split(",")
+    # CORS - Permissive for development
+    CORS_ORIGINS: list = [
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
+    ]
     CORS_CREDENTIALS: bool = True
     CORS_METHODS: list = ["*"]
     CORS_HEADERS: list = ["*"]

@@ -132,7 +132,7 @@
     <div class="chips">
       <span>Pop {stats?.ai.population ?? 0}</span>
       <span>Score {stats?.ai.composite_score ?? 0}</span>
-      <span>§ {stats?.ai.treasury ?? 0}</span>
+      <span>§ {Math.floor(stats?.ai.treasury ?? 0)}</span>
       <span>{stats?.ai.approval ?? 0}%</span>
     </div>
 

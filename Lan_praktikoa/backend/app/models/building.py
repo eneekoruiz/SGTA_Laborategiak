@@ -61,6 +61,11 @@ class BuildingType(str, Enum):
     WATER_PUMP = "water_pump"
     WATER_TREATMENT = "water_treatment"
 
+    # Arkologiak
+    ARCOLOGY_PLYMOUTH = "arcology_plymouth"
+    ARCOLOGY_DARCO = "arcology_darco"
+    ARCOLOGY_LAUNCH = "arcology_launch"
+
 
 class Building(BaseModel):
     """Eraikinaren datu eredua."""
