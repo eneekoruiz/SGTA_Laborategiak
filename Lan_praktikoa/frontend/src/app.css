@@ -53,11 +53,18 @@ body {
     radial-gradient(1100px 680px at 8% 14%, rgba(142, 168, 140, 0.17), transparent 62%),
     radial-gradient(900px 540px at 88% 6%, rgba(182, 154, 99, 0.12), transparent 58%),
     linear-gradient(160deg, #0f1a31 0%, #122139 42%, #142440 100%);
+  background-attachment: fixed;
   min-height: 100vh;
-  letter-spacing: 0.005em;
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow: hidden;
+  animation: bgPulse 20s infinite alternate ease-in-out;
+}
+
+@keyframes bgPulse {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 10% 5%; }
 }
 
 button {

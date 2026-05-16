@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { blur, fade } from 'svelte/transition';
   import App from './App.svelte';
   import ApiErrorNotifications from './components/ApiErrorNotifications.svelte';
   import { getStoredAuthToken } from './services/apiService';
@@ -61,30 +62,42 @@ import SessionExpiredOverlay from './components/SessionExpiredOverlay.svelte';
 <ApiErrorNotifications />
 
 <!-- CRITICAL: Show loading while redirecting from protected routes -->
-{#if isRedirecting}
-  <div class="loading-screen">
-    <div class="spinner"></div>
-    <p>Aguardatzen...</p>
+{#key route.name}
+  <div class="route-container" in:blur={{ duration: 400, amount: 8 }} out:fade={{ duration: 200 }}>
+    {#if isRedirecting}
+      <div class="loading-screen">
+        <div class="spinner"></div>
+        <p>Aguardatzen...</p>
+      </div>
+    {:else if route.name === 'landing'}
+      <LandingPage />
+    {:else if route.name === 'login'}
+      <LoginView />
+    {:else if route.name === 'register'}
+      <RegisterView />
+    {:else if route.name === 'games'}
+      <GameListView />
+    {:else if route.name === 'new-game'}
+      <NewGamePage />
+    {:else if route.name === 'game'}
+      <App />
+    {:else}
+      <LandingPage />
+    {/if}
   </div>
-{:else if route.name === 'landing'}
-  <LandingPage />
-{:else if route.name === 'login'}
-  <LoginView />
-{:else if route.name === 'register'}
-  <RegisterView />
-{:else if route.name === 'games'}
-  <GameListView />
-{:else if route.name === 'new-game'}
-  <NewGamePage />
-{:else if route.name === 'game'}
-  <App />
-{:else}
-  <LandingPage />
-{/if}
+{/key}
 
 <SessionExpiredOverlay />
 
 <style>
+  .route-container {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
   /**
    * Loading screen shown during redirects
    * Z-index 9999 to appear above all content
