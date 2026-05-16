@@ -282,6 +282,14 @@ export namespace Turn {
         treasury_change: number;
       };
     };
+    ai_actions?: Array<{
+      action_type: string;
+      position?: { x: number; y: number };
+      building_type?: string;
+      infrastructure_type?: string;
+      segments?: Array<{ from: { x: number; y: number }; to: { x: number; y: number } }>;
+    }>;
+    ai_city?: { population: number; treasury: number };
     game_state: GameState;
     victory_check: {
       status: 'ongoing' | 'victory' | 'defeat';

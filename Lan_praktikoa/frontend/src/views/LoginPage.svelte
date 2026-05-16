@@ -6,11 +6,18 @@
   import ErrorAlert from '../components/ErrorAlert.svelte';
   import FormField from '../components/FormField.svelte';
 
+  import { sessionStatus } from '../store/ui';
+
   let email = '';
   let password = '';
   let loading = false;
   let error = '';
   let affectedFields: string[] = [];
+  
+  // Detect session expired state from global store
+  $: if ($sessionStatus === 'expired' && !error) {
+    error = 'Zure saioa amaitu da. Mesedez, sartu berriro zure kontuan jarraitzeko.';
+  }
 
   // Form-specific error store
   const formErrors = createFormErrorStore();
@@ -28,6 +35,7 @@
 
     try {
       await login(email.trim(), password);
+      sessionStatus.set('active');
       navigate('/games', true);
     } catch (err) {
       // Extract error details from enhanced error object

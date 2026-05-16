@@ -23,10 +23,10 @@
   };
 
   const statusCards = [
-    { label: 'Hileko diru-sarrerak', value: () => budget?.monthly_income ?? 0, tone: 'positive', icon: '◌' },
-    { label: 'Hileko gastuak', value: () => budget?.monthly_expenses ?? 0, tone: 'negative', icon: '◌' },
+    { label: 'Hileko diru-sarrerak', value: () => Math.floor(budget?.monthly_income ?? 0), tone: 'positive', icon: '◌' },
+    { label: 'Hileko gastuak', value: () => Math.floor(budget?.monthly_expenses ?? 0), tone: 'negative', icon: '◌' },
     { label: 'Egonkortasun zibikoa', value: () => Math.round(((stats?.player.approval ?? 0) + (stats?.player.eq ?? 0) + (stats?.player.hq ?? 0)) / 3), tone: 'neutral', icon: '◌' },
-    { label: 'Altxorra', value: () => budget?.last_year_income ?? 0, tone: 'accent', icon: '◌' }
+    { label: 'Altxorra', value: () => Math.floor(budget?.last_year_income ?? 0), tone: 'accent', icon: '◌' }
   ] as const;
 
   let loading = false;

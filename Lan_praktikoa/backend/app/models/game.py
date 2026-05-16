@@ -35,6 +35,8 @@ class VictoryStatus(str, Enum):
     AI_SCORE = "ai_score"
     PLAYER_BANKRUPT = "player_bankrupt"
     PLAYER_ARKOLOGY_EXODUS = "player_arkology_exodus"
+    PLAYER_WON = "player_won"
+    AI_WON = "ai_won"
 
 
 class CurrentDate(BaseModel):

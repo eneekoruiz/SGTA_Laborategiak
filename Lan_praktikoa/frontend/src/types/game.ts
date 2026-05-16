@@ -293,6 +293,8 @@ export interface StatsResponse {
     rci_demand: { r: number; c: number; i: number };
     power_coverage: number;
     water_coverage: number;
+    monthly_income: number;
+    monthly_expenses: number;
   };
   ai: {
     population: number;
@@ -330,6 +332,7 @@ export interface HealthResponse {
   average_lifespan: number;
   mortality_rate: number;
   pollution_health_impact: number;
+  pollution_series?: number[];
 }
 
 export interface OverlayData {

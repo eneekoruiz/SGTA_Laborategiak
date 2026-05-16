@@ -36,3 +36,28 @@ ENV/
 *.sqlite3
 *.db
 .playwright-mcp/
+
+# =========================
+# ARTIFACTOS DE IA Y TESTEO
+# =========================
+# Bloquear capturas y reportes visuales
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# Bloquear JSONs de diagnóstico pero mantener configuraciones críticas
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!*.config.json
+!ai_contract.json
+!check-compiled.json
+
+# Bloquear scripts de testeo puntuales
+demo_error_handling.py
+test_error_handling.py
+test_auth_flow.py
+scratch_*.py
+dump_game.py

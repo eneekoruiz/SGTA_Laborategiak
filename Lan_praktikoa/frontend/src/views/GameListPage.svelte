@@ -14,7 +14,8 @@
 
     try {
       const result = await listGames();
-      games = result.games ?? [];
+      // API returns {success, message, data: [...games]} or {success, message, data: {games: [...]}}
+      games = Array.isArray(result) ? result : (result.games ?? result.data?.games ?? result.data ?? []);
     } catch (err) {
       error = err instanceof Error ? err.message : 'Partidak kargatzeak huts egin du';
     } finally {
@@ -89,24 +90,24 @@
         <article class="card">
           <div class="card-top">
             <div>
-              <h2>{game.name}</h2>
-              <p>{game.player_city_name} vs {game.ai_city_name}</p>
+              <h2>{game.name || game.player_city_name}</h2>
+              <p>{game.player_city_name || 'Hiria'} vs {game.ai_city_name || 'AA'}</p>
             </div>
-            <span class="badge">{game.victory_status}</span>
+            <span class="badge">{game.victory_status || 'Abian'}</span>
           </div>
 
           <dl>
             <div>
               <dt>Data</dt>
-              <dd>{formatDate(game.current_date)}</dd>
+              <dd>{formatDate(game.current_date || {year: 1900, month: 1})}</dd>
             </div>
             <div>
               <dt>Biztanleria</dt>
-              <dd>{game.player_population.toLocaleString()}</dd>
+              <dd>{(game.player_population || game.player_city?.population || 0).toLocaleString()}</dd>
             </div>
             <div>
               <dt>Azken gordetzea</dt>
-              <dd>{new Date(game.last_saved).toLocaleString()}</dd>
+              <dd>{new Date(game.last_saved || Date.now()).toLocaleString()}</dd>
             </div>
             <div>
               <dt>Gordetze automatikoa</dt>
@@ -115,9 +116,9 @@
           </dl>
 
           <div class="actions">
-            <button class="primary" on:click={() => navigate(`/game/${game.id}`)}>Kargatu</button>
-            <button class="secondary" on:click={() => removeGame(game.id)} disabled={deletingId === game.id}>
-              {deletingId === game.id ? 'Ezabatzen...' : 'Ezabatu'}
+            <button class="primary" on:click={() => navigate(`/game/${game.id || game.game_id}`)}>Kargatu</button>
+            <button class="secondary" on:click={() => removeGame(game.id || game.game_id)} disabled={deletingId === (game.id || game.game_id)}>
+              {deletingId === (game.id || game.game_id) ? 'Ezabatzen...' : 'Ezabatu'}
             </button>
           </div>
         </article>

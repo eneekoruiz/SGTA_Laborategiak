@@ -8,6 +8,7 @@
 import { navigate } from '../router';
 import { clearAuthToken } from './auth';
 import { sendNotification } from '../errorHandler';
+import { sessionStatus } from '../../store/ui';
 
 /**
  * Global response interceptor for all fetch requests
@@ -22,41 +23,28 @@ export async function interceptResponse(response: Response, endpoint: string): P
   if (response.status === 401) {
     // 1. Clear all auth data IMMEDIATELY
     clearAuthToken();
+    sessionStatus.set('expired');
     
-    // 2. Extract error message from response
+    // 2. Extract error message
     let message = 'Zure saioa amaitu da, mesedez saioa hasi berriro.';
-    try {
-      const errorData = await response.clone().json();
-      if (errorData.message) {
-        message = errorData.message;
-      }
-    } catch {
-      // Response was not JSON, use default
-    }
     
-    // 3. Check if already on auth route to avoid redirect loop
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
     const isAuthRoute = currentPath === '/login' || currentPath === '/register';
     
-    // 4. Log what we're doing
-    console.warn(`[HTTP_INTERCEPTOR] 🔴 401 on ${endpoint} - Token cleared`);
+    console.warn(`[HTTP_INTERCEPTOR] 🔴 401 on ${endpoint} - Session Expired`);
     
-    // 5. Redirect ONLY if not already on auth route (prevents redirect loops)
     if (typeof window !== 'undefined' && !isAuthRoute) {
-      console.warn(`[HTTP_INTERCEPTOR] Redirecting to /login and showing notification`);
-      // Use setTimeout to ensure state is cleared first
-      setTimeout(() => {
-        navigate('/login', true);
-        // Show notification with message
-        sendNotification({
-          title: 'Saioa Amaitu da',
-          message,
-          priority: 'high',
-          endpoint,
-          duration: 5000
-        });
-      }, 0);
-    } else if (isAuthRoute) {
+      navigate('/login', true);
+      
+      sendNotification({
+        title: 'Saioa amaitu da',
+        message: 'Segurtasun arrazoiengatik zure saioa itxi da. Sartu berriro jarraitzeko.',
+        priority: 'high',
+        endpoint,
+        duration: 8000
+      });
+    }
+ else if (isAuthRoute) {
       console.warn(`[HTTP_INTERCEPTOR] Already on auth route (${currentPath}) - Skipping redirect`);
     }
     
@@ -71,6 +59,7 @@ export async function interceptResponse(response: Response, endpoint: string): P
   if (response.status === 403) {
     // Treat 403 like 401 for safety (might be permissions issue)
     clearAuthToken();
+    sessionStatus.set('expired');
     
     let message = 'Ez duzu berari diren baimenak.';
     try {

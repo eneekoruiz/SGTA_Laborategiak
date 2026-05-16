@@ -146,48 +146,48 @@ export function handleApiError(
     if (error.status >= 500) {
       level = 'critical';
       priority = 'high';
-      title = 'Server Error';
-      message = `The server encountered an error (${error.status}). Please try again later.`;
+      title = 'Zerbitzari errorea';
+      message = 'Arazo bat gertatu da zerbitzarian. Saiatu berriro minutu batzuk barru.';
       isNetworkError = true;
     } else if (error.status === 408 || error.status === 504) {
       priority = 'high';
-      title = 'Request Timeout';
-      message = 'The request took too long. The server may be slow or offline.';
+      title = 'Konexio motela';
+      message = 'Zerbitzariak denbora gehiegi behar du erantzuteko. Egiaztatu zure konexioa.';
       isNetworkError = true;
     } else if (error.status >= 400) {
-      title = 'Request Error';
-      message = error.statusText || 'Invalid request sent to server';
+      title = 'Eskaera errorea';
+      message = 'Ezin izan da ekintza burutu. Baliteke datu batzuk okerrak izatea.';
     }
   } else if (error instanceof Error) {
     // JavaScript error (network, timeout, parse, etc.)
     const msg = error.message.toLowerCase();
 
     if (msg.includes('fetch') || msg.includes('network')) {
-      title = 'Network Error';
+      title = 'Konexio errorea';
       priority = 'high';
-      message = 'Cannot reach the server. Check your internet connection.';
+      message = 'Ezin izan dugu zerbitzarira iritsi. Egiaztatu zure WiFi-a edo datu-konexioa.';
       isNetworkError = true;
     } else if (msg.includes('timeout') || msg.includes('abort')) {
-      title = 'Request Timeout';
+      title = 'Konexio motela';
       priority = 'high';
-      message = 'The server is not responding. It may be offline or overloaded.';
+      message = 'Zerbitzaria ez dago erantzuten. Saiatu berriro orrialdea berritzen.';
       isNetworkError = true;
     } else if (msg.includes('json')) {
-      title = 'Invalid Response';
-      message = 'The server sent an invalid response. The server code may be broken.';
+      title = 'Datu errorea';
+      message = 'Datuen tratamenduan errore bat gertatu da.';
     } else {
       // Use the message from the error object (which may have been enhanced)
       message = error.message;
     }
   } else if (error && typeof error === 'object') {
     // Plain object with error details (new format)
-    title = error.title || message || 'Error';
-    message = error.message || 'An unexpected error occurred';
-    level = contextOrLevel as ErrorLevel || error.level || 'error';
+    title = error.title || message || 'Errorea';
+    message = error.message || 'Ustekabeko errore bat gertatu da';
+    level = (contextOrLevel as ErrorLevel) || error.level || 'error';
     priority = error.priority || 'medium';
 
     // Check if network error
-    if (statusCode === 0 || error.message?.includes('network') || error.message?.includes('konexio')) {
+    if (statusCode === 0 || error.message?.toLowerCase().includes('network') || error.message?.includes('konexio')) {
       isNetworkError = true;
     }
   }

@@ -188,12 +188,12 @@
             <div class="chart-stats">
               <div class="stat">
                 <span>Egungoa:</span>
-                <strong>{education.eq}</strong>
+                <strong>{Math.round(education.eq)}</strong>
               </div>
               <div class="stat">
                 <span>Joera:</span>
                 <strong class:positive={education.eq_trend >= 0}>
-                  {education.eq_trend >= 0 ? '+' : ''}{education.eq_trend}
+                  {education.eq_trend >= 0 ? '+' : ''}{education.eq_trend.toFixed(1)}
                 </strong>
               </div>
               <div class="stat">
@@ -288,7 +288,7 @@
             <div class="chart-stats">
               <div class="stat">
                 <span>Osasun maila:</span>
-                <strong>{health.hq}</strong>
+                <strong>{Math.round(health.hq)}</strong>
               </div>
               <div class="stat">
                 <span>Bizi-itxaropena:</span>

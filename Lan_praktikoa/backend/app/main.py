@@ -57,6 +57,16 @@ async def health_check():
     )
 
 
+@app.get("/api/health", response_model=APIResponse, tags=["Root"])
+async def api_health_check():
+    """API health endpoint with /api prefix (frontend calls this)."""
+    return APIResponse(
+        success=True,
+        message="Backend API martxan",
+        data={"status": "healthy", "version": settings.API_VERSION},
+    )
+
+
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(games.router, prefix="/api/games", tags=["Games"])
@@ -153,9 +163,18 @@ async def global_exception_handler(request, exc):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(
-        app,
-        host=settings.HOST,
-        port=settings.PORT,
-        reload=settings.DEBUG,
-    )
+    # If reload is True, we must pass the app as an import string
+    if settings.DEBUG:
+        uvicorn.run(
+            "app.main:app",
+            host=settings.HOST,
+            port=settings.PORT,
+            reload=True,
+        )
+    else:
+        uvicorn.run(
+            app,
+            host=settings.HOST,
+            port=settings.PORT,
+            reload=False,
+        )

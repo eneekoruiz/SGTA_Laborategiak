@@ -1,24 +1,31 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
 
-  let isExpanded = false;
+  let isExpanded = true;
   
   // Draggable state
   let isDragging = false;
   let dragStartX = 0;
   let dragStartY = 0;
   let panelLeft = 20;
-  let panelBottom = 28;
+  let panelTop = 100;
+  let hasMoved = false;
 
   const shortcuts = [
-    { key: 'R', action: 'Mapa biratu' },
-    { key: 'U', action: 'Lurpeko bista' },
-    { key: 'Space', action: 'Mugitu eta nabigatu' },
-    { key: 'Esc', action: 'Hautapena garbitu' },
-    { key: 'Ctrl + Tab', action: 'Trikimailu kontsola' }
+    { key: 'R', action: 'Mapa biratu (90°)' },
+    { key: 'U', action: 'Lurpeko/Gaine bista' },
+    { key: 'Space', action: 'Mugitu (Pan) eutsi' },
+    { key: 'B', action: 'Eraitsi (Bulldozer)' },
+    { key: 'Esc', action: 'Utzi tresna' },
+    { key: 'Ctrl + P', action: 'Erendimendu-metra' },
+    { key: 'Alt + K', action: 'Trikimailu Kontsola' }
   ];
 
   function toggleExpand(): void {
+    if (hasMoved) {
+      hasMoved = false;
+      return;
+    }
     isExpanded = !isExpanded;
   }
 
@@ -29,11 +36,10 @@
   }
 
   function onDragStart(e: MouseEvent): void {
-    if (!isExpanded) return;
-    
     isDragging = true;
+    hasMoved = false;
     dragStartX = e.clientX - panelLeft;
-    dragStartY = e.clientY + panelBottom;
+    dragStartY = e.clientY - panelTop;
     
     document.addEventListener('mousemove', onDragMove);
     document.addEventListener('mouseup', onDragEnd);
@@ -43,15 +49,16 @@
 
   function onDragMove(e: MouseEvent): void {
     if (!isDragging) return;
+    hasMoved = true;
     
     panelLeft = Math.max(0, e.clientX - dragStartX);
-    panelBottom = Math.max(0, dragStartY - e.clientY);
+    panelTop = Math.max(0, e.clientY - dragStartY);
     
     // Keep panel within viewport bounds
     const panelWidth = 240;
     const panelHeight = 250;
     panelLeft = Math.min(window.innerWidth - panelWidth, Math.max(0, panelLeft));
-    panelBottom = Math.min(window.innerHeight - panelHeight, Math.max(0, panelBottom));
+    panelTop = Math.min(window.innerHeight - panelHeight, Math.max(0, panelTop));
   }
 
   function onDragEnd(): void {
@@ -67,9 +74,15 @@
   aria-label="Teklatu-lasterbideak" 
   on:mouseenter={() => (isExpanded = true)} 
   on:mouseleave={handleMouseLeave}
-  style="left: {panelLeft}px; bottom: {panelBottom}px;"
+  style="left: {panelLeft}px; top: {panelTop}px;"
 >
-  <button class="legend-pill" on:click={toggleExpand} aria-label="Teklatu-lasterbideak">
+  <button 
+    class="legend-pill" 
+    class:dragging={isDragging}
+    on:mousedown={onDragStart} 
+    on:click={toggleExpand} 
+    aria-label="Teklatu-lasterbideak"
+  >
     <span class="icon">⌨</span>
     {#if isExpanded}
       <span class="label">Lasterbideak</span>
@@ -97,9 +110,9 @@
 <style>
   .keyboard-legend {
     position: fixed;
-    bottom: 28px;
-    left: 20px;
-    z-index: 20;
+    top: 72px;
+    left: 16px;
+    z-index: 100;
     font-family: inherit;
     transition: none;
   }
@@ -108,22 +121,28 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 12px;
+    padding: 7px 12px;
     border-radius: 999px;
-    border: 1px solid rgba(100, 200, 255, 0.4);
-    background: linear-gradient(145deg, rgba(15, 25, 40, 0.8), rgba(20, 35, 55, 0.6));
-    backdrop-filter: blur(16px) saturate(150%);
-    color: rgba(180, 220, 255, 0.9);
-    font-size: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 25, 40, 0.5);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    color: rgba(180, 220, 255, 0.85);
+    font-size: 0.72rem;
     cursor: pointer;
     transition: all 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
 
-  .legend-pill:hover {
-    border-color: rgba(120, 220, 255, 0.6);
-    background: linear-gradient(145deg, rgba(20, 35, 55, 0.9), rgba(25, 45, 65, 0.7));
+  .legend-pill:hover, .legend-pill.dragging {
+    border-color: rgba(120, 220, 255, 0.5);
+    background: rgba(20, 35, 55, 0.65);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15), 0 8px 20px rgba(100, 180, 255, 0.15);
+  }
+
+  .legend-pill.dragging {
+    cursor: grabbing;
+    transform: scale(0.96);
   }
 
   .icon {
@@ -138,9 +157,9 @@
 
   .legend-panel {
     position: absolute;
-    bottom: 100%;
+    top: 100%;
     left: 0;
-    margin-bottom: 12px;
+    margin-top: 12px;
     padding: 0;
     width: auto;
     min-width: 220px;

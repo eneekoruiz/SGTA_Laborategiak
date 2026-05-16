@@ -1,31 +1,37 @@
 :root {
-  --oxford-blue: #16213a;
-  --oxford-blue-soft: #1d2c49;
-  --sage-green: #8ea88c;
-  --muted-gold: #b69a63;
-  --mist: #d7e2f0;
-  --ink: #ecf2fb;
-  --muted: #aebbd0;
-  --line: rgba(255, 255, 255, 0.14);
-  --font-ui: 'SF Pro Display', 'SF Pro Text', 'Segoe UI Variable', 'Inter', 'Helvetica Neue', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
-  --ease-standard: cubic-bezier(0.2, 0.72, 0.2, 1);
-  --ease-snappy: cubic-bezier(0.28, 0.9, 0.36, 1);
-  --dur-fast: 160ms;
-  --dur-mid: 240ms;
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-  --radius-sm: 12px;
-  --radius-md: 18px;
-  --radius-lg: 24px;
-  --radius-xl: 28px;
-  --glass-border: 0.5px solid rgba(255, 255, 255, 0.38);
-  --elev-1: 0 12px 24px rgba(2, 9, 20, 0.24);
-  --elev-2: 0 18px 36px rgba(2, 9, 20, 0.3);
-  --elev-3: 0 24px 48px rgba(2, 9, 20, 0.36);
+  --oxford-blue: #0a0f18;
+  --oxford-blue-soft: #121a2b;
+  --sage-green: #7eb382;
+  --muted-gold: #c5a86d;
+  --mist: #e2e8f0;
+  --ink: #f8fafc;
+  --muted: #94a3b8;
+  --line: rgba(255, 255, 255, 0.08);
+  
+  --font-ui: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-premium: cubic-bezier(0.19, 1, 0.22, 1);
+
+  --dur-fast: 150ms;
+  --dur-mid: 250ms;
+  --dur-slow: 400ms;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 32px;
+
+  --glass-bg: rgba(13, 20, 33, 0.75);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  
+  --elev-1: 0 4px 12px rgba(0, 0, 0, 0.2);
+  --elev-2: 0 12px 24px rgba(0, 0, 0, 0.3);
+  --elev-3: 0 24px 48px rgba(0, 0, 0, 0.4);
 }
 
 * {
@@ -56,6 +62,55 @@ body {
 
 button {
   font: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: all var(--dur-fast) var(--ease-standard);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  user-select: none;
+  outline: none;
+}
+
+button:active {
+  transform: scale(0.96);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
+.premium-btn {
+  background: var(--glass-bg);
+  border: var(--glass-border);
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: var(--elev-1);
+  backdrop-filter: blur(12px);
+}
+
+.premium-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--elev-2);
+}
+
+.primary-btn {
+  background: var(--sage-green);
+  color: var(--oxford-blue);
+  box-shadow: 0 4px 14px 0 rgba(126, 179, 130, 0.39);
+}
+
+.primary-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: 0 6px 20px rgba(126, 179, 130, 0.45);
 }
 
 h1,
@@ -246,6 +301,49 @@ p {
 .icon-sm {
   width: 16px;
   height: 16px;
+}
+
+/** INTERACTIVE ELEMENTS - Global Premium Feel **/
+.dock-item, 
+.tool-card, 
+.chip, 
+.rail-trigger, 
+.corner-btn, 
+.overlay-btn,
+.data-card,
+.stagger-item,
+.action-btn {
+  transition: all var(--dur-mid) var(--ease-premium) !important;
+  cursor: pointer;
+}
+
+.dock-item:hover:not(:disabled), 
+.tool-card:hover:not(:disabled), 
+.chip:hover:not(:disabled), 
+.rail-trigger:hover:not(:disabled), 
+.corner-btn:hover:not(:disabled), 
+.overlay-btn:hover:not(:disabled),
+.action-btn:hover:not(:disabled) {
+  transform: translateY(-3px) scale(1.02);
+  filter: brightness(1.15) saturate(1.1);
+  box-shadow: var(--elev-2);
+}
+
+.dock-item:active:not(:disabled), 
+.tool-card:active:not(:disabled), 
+.chip:active:not(:disabled) {
+  transform: translateY(0) scale(0.96);
+  filter: brightness(0.9);
+}
+
+.stagger-item {
+  animation: staggerIn var(--dur-mid) var(--ease-out) both;
+  animation-delay: calc(var(--stagger, 0) * 40ms);
+}
+
+@keyframes staggerIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /** RESPONSIVE UTILITIES **/

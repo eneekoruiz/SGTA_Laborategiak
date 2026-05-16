@@ -1,2 +1,0 @@
-- main [ref=e92]:
-  - generic [ref=e93]: Failed to fetch

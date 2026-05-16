@@ -9,6 +9,9 @@
   const dispatch = createEventDispatcher<{ close: void }>();
 
   $: dateLabel = gameState ? `${gameState.current_date.month}/${gameState.current_date.year}` : '---';
+  $: monthlyIncome = stats?.player.monthly_income ?? 0;
+  $: monthlyExpenses = stats?.player.monthly_expenses ?? 0;
+  $: finalBalance = monthlyIncome - monthlyExpenses;
   $: opinionBars = [
     { label: 'Herritarren konfiantza', value: Math.min(100, Math.max(0, stats?.player.approval ?? 0)), tone: 'positive' },
     { label: 'Aurrekontu-presioa', value: Math.min(100, Math.max(0, (stats?.player.treasury ?? 0) / 1000)), tone: 'warn' },
@@ -32,11 +35,37 @@
       </header>
 
       <section class="layout">
-        <article class="lead-story spread">
+        <!-- Ekonomia Laburpena - Monthly Financial Summary -->
+        <article class="financial-summary spread">
+          <p class="section-label">Ekonomia Laburpena</p>
+          <h3>Hileko Laburpena - {dateLabel}</h3>
+          <div class="finance-grid">
+            <div class="finance-item positive">
+              <span class="finance-label">Zergak (Guztira)</span>
+              <span class="finance-value">§{Math.round(monthlyIncome).toLocaleString()}</span>
+            </div>
+            <div class="finance-item negative">
+              <span class="finance-label">Mantentze Kostuak</span>
+              <span class="finance-value">§{Math.round(monthlyExpenses).toLocaleString()}</span>
+            </div>
+            <div class="finance-item total">
+              <span class="finance-label">Oreka Finala</span>
+              <span class="finance-value" class:pos={finalBalance >= 0} class:neg={finalBalance < 0}>
+                {finalBalance >= 0 ? '+' : ''}§{Math.round(finalBalance).toLocaleString()}
+              </span>
+            </div>
+            <div class="finance-item treasury">
+              <span class="finance-label">Altxorra (Unekoa)</span>
+              <span class="finance-value">§{Math.round(stats?.player.treasury ?? 0).toLocaleString()}</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="lead-story">
           <p class="section-label">Azaleko albistea</p>
           <h3>Hiriaren taupada: biztanleria {stats?.player.population ?? 0}</h3>
           <p>
-            Altxorra § {stats?.player.treasury ?? 0} da une honetan, eta planifikatzaileek agenda
+            Altxorra § {Math.floor(stats?.player.treasury ?? 0)} da une honetan, eta planifikatzaileek agenda
             ausartagoa baloratzen dute aurkariaren uneko erritmoaren aurrean.
           </p>
           <p class="dropcap">
@@ -147,6 +176,47 @@
     border-radius: 10px;
     padding: 14px;
   }
+  
+  /* Financial Summary Styles */
+  .financial-summary {
+    background: linear-gradient(135deg, rgba(43, 33, 23, 0.08), rgba(43, 33, 23, 0.04));
+    border: 2px solid rgba(100, 77, 44, 0.25);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 8px;
+  }
+  .finance-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 10px;
+  }
+  .finance-item {
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 8px;
+    padding: 12px;
+    display: grid;
+    gap: 4px;
+    text-align: center;
+  }
+  .finance-item.positive { border-bottom: 3px solid #5c8d5a; }
+  .finance-item.negative { border-bottom: 3px solid #c94a4a; }
+  .finance-item.total { border-bottom: 3px solid #6e86a9; background: rgba(110, 134, 169, 0.15); }
+  .finance-item.treasury { border-bottom: 3px solid #c98a3a; }
+  .finance-label {
+    font-size: 0.72rem;
+    color: #6c5b43;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .finance-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #2b2117;
+  }
+  .finance-value.pos { color: #5c8d5a; }
+  .finance-value.neg { color: #c94a4a; }
+  
   .dropcap::first-letter {
     float: left;
     font-size: 3rem;

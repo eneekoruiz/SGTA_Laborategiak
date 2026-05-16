@@ -15,13 +15,20 @@ class Reasoning(BaseModel):
 class Action(BaseModel):
     """
     AA-k proposatutako ekintzaren eredua.
-
-    Attributes:
-        mota (str): Ekintzaren mota.
-        parametroak (dict): Ekintzaren parametroak.
+    Formatua hibridoa da: Backend-erako 'mota/parametroak' eta Frontend-erako propietate planoak.
     """
-    mota: str = Field(..., description="Ekintzaren mota")
-    parametroak: Dict[str, Any] = Field(..., description="Ekintzaren parametroak")
+    mota: str = Field(..., description="Ekintzaren mota (Backend)")
+    parametroak: Dict[str, Any] = Field(..., description="Ekintzaren parametroak (Backend)")
+    
+    # Propietate planoak Frontend-erako (Hibridoa)
+    type: Optional[str] = Field(None, description="Ekintzaren mota (Frontend)")
+    position: Optional[Dict[str, int]] = Field(None, description="Posizioa (Frontend)")
+    building_type: Optional[str] = Field(None, description="Eraikin mota (Frontend)")
+    zone_type: Optional[str] = Field(None, description="Zona mota (Frontend)")
+    infrastructure_type: Optional[str] = Field(None, description="Azpiegitura mota (Frontend)")
+    size: Optional[Dict[str, int]] = Field(None, description="Tamaina (Frontend)")
+    start_position: Optional[Dict[str, int]] = Field(None, description="Hasierako posizioa (Frontend)")
+    end_position: Optional[Dict[str, int]] = Field(None, description="Amaierako posizioa (Frontend)")
 
 class AIResponse(BaseModel):
     """

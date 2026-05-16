@@ -1,4 +1,4 @@
-﻿"""Hiriko zonen kudeaketa bideak MongoDB persistentearekin."""
+"""Hiriko zonen kudeaketa bideak MongoDB persistentearekin."""
 from fastapi import APIRouter, HTTPException, status, Depends
 from uuid import uuid4
 from datetime import datetime
@@ -7,16 +7,11 @@ from ..models import ZoneCreate, APIResponse
 from ..db.database import get_games_collection
 from ..auth.dependencies import get_current_user_id
 
+from ..services.game_constants import GAME_CONSTANTS
+
 router = APIRouter()
 
-ZONE_COSTS = {
-    "residential_light": 5,
-    "residential_dense": 10,
-    "commercial_light": 5,
-    "commercial_dense": 10,
-    "industrial_light": 5,
-    "industrial_dense": 10,
-}
+ZONE_COSTS = GAME_CONSTANTS["ZONE_COSTS"]
 
 
 @router.post("/{game_id}/zone", response_model=APIResponse, tags=["City Actions"])
@@ -47,7 +42,7 @@ async def create_zone(game_id: str, zone: ZoneCreate, user_id: str = Depends(get
     if current_treasury < total_cost:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Diru faltak: zona kostua §{total_cost} da eta duzun kantitatea §{current_treasury} da",
+            detail=f"Ez dago diru nahikorik. Zona honek §{total_cost} kostatzen du baina §{current_treasury} dituzu.",
         )
 
     map_size = game.get("map", {}).get("size", {"width": 100, "height": 100})
@@ -85,7 +80,30 @@ async def create_zone(game_id: str, zone: ZoneCreate, user_id: str = Depends(get
     game["player_city"] = player_city
     game["last_saved"] = datetime.utcnow()
 
+    # Update map tiles so the zone renders immediately
+    tiles = game.get("map", {}).get("tiles", [])
+    for dt in affected_tiles:
+        tx, ty = dt["x"], dt["y"]
+        if tiles and len(tiles) > ty and len(tiles[ty]) > tx:
+            tile = tiles[ty][tx]
+            if not tile.get("building"):
+                tile["zone"] = {
+                    "id": zone_id,
+                    "type": zone.type,
+                    "position": {"x": tx, "y": ty},
+                    "size": {"w": 1, "h": 1},
+                    "development_level": 0,
+                    "powered": False,
+                    "watered": False,
+                    "road_access": False,
+                }
+                tile["surfaceEntity"] = {"type": "zone", "value": zone.type}
+
     await games_collection.replace_one({"_id": game_id}, game)
+
+    # Clean up internal fields for response
+    game.pop("_id", None)
+    game.pop("user_id", None)
 
     return APIResponse(
         success=True,
@@ -95,6 +113,7 @@ async def create_zone(game_id: str, zone: ZoneCreate, user_id: str = Depends(get
             "cost": total_cost,
             "treasury_after": player_city["treasury"],
             "affected_tiles": affected_tiles,
+            "game_state": game,
         },
     )
 
@@ -155,7 +174,10 @@ async def create_infrastructure(game_id: str, data: dict, user_id: str = Depends
     current_treasury = player_city.get("treasury", 0)
 
     if current_treasury < total_cost:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Diru faltak daude")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ez dago diru nahikorik. Azpiegitura honek §{total_cost} kostatzen du baina §{current_treasury} dituzu.",
+        )
 
     infra_id = f"infra_{uuid4().hex[:8]}"
     current_date = game.get("current_date", {"year": 1900, "month": 1})
@@ -197,7 +219,26 @@ async def create_infrastructure(game_id: str, data: dict, user_id: str = Depends
     game["player_city"] = player_city
     game["last_saved"] = datetime.utcnow()
 
+    # Update map tiles with infrastructure data
+    tiles = game.get("map", {}).get("tiles", [])
+    is_underground = infra_type in ("water_pipe", "subway_tunnel")
+    for dt in tiles_covered:
+        tx, ty = dt["x"], dt["y"]
+        if tiles and len(tiles) > ty and len(tiles[ty]) > tx:
+            tile = tiles[ty][tx]
+            infra_list = tile.setdefault("infrastructure", [])
+            if infra_type not in infra_list:
+                infra_list.append(infra_type)
+            if is_underground:
+                tile["undergroundEntity"] = {"type": "infrastructure", "value": infra_type}
+            else:
+                tile["surfaceEntity"] = {"type": "infrastructure", "value": infra_type}
+
     await games_collection.replace_one({"_id": game_id}, game)
+
+    # Clean up internal fields for response
+    game.pop("_id", None)
+    game.pop("user_id", None)
 
     return APIResponse(
         success=True,
@@ -207,5 +248,6 @@ async def create_infrastructure(game_id: str, data: dict, user_id: str = Depends
             "cost": total_cost,
             "segments_placed": len(tiles_covered),
             "treasury_after": player_city["treasury"],
+            "game_state": game,
         },
     )

@@ -25,15 +25,15 @@
   function getLevelColors(level: string) {
     switch (level) {
       case 'info':
-        return 'text-sky-900 border-sky-200 bg-sky-50/80';
+        return 'text-sky-900 border-sky-100 bg-white/95';
       case 'warning':
-        return 'text-amber-900 border-amber-200 bg-amber-50/80';
+        return 'text-amber-900 border-amber-100 bg-white/95';
       case 'error':
-        return 'text-rose-900 border-rose-200 bg-rose-50/80';
+        return 'text-rose-900 border-rose-100 bg-white/95';
       case 'critical':
-        return 'text-red-950 border-red-300 bg-red-100/85';
+        return 'text-red-950 border-red-200 bg-white/95';
       default:
-        return 'text-slate-900 border-slate-200 bg-white/80';
+        return 'text-slate-900 border-slate-100 bg-white/95';
     }
   }
 
@@ -53,59 +53,60 @@
   }
 </script>
 
-<!-- Server Offline Banner -->
-{#if backendOffline}
-  <div class="fixed top-0 left-0 right-0 border-b border-rose-300/70 bg-rose-100/80 backdrop-blur-md px-4 py-3 z-50 shadow-sm">
-    <div class="flex items-center gap-3 text-rose-950 text-sm">
-      <span class="text-xs uppercase tracking-[0.18em] font-semibold">Konektatu gabe</span>
-      <span>
-        <strong>Backend zerbitzaria ez dago erabilgarri</strong> — Ezaugarri batzuk mugatuta egon daitezke. Tokiko mock datuak erabiltzen dira.
-      </span>
-    </div>
-  </div>
-{/if}
 
 <!-- Error Toast Notifications -->
-<div class="fixed top-16 right-4 z-40 pointer-events-none">
-  <div class="flex flex-col gap-3">
+<div class="fixed top-8 right-8 z-[9999] pointer-events-none w-full max-w-md">
+  <div class="flex flex-col gap-4">
     {#each errors as error (error.id)}
       <div
-        transition:slide={{ duration: 300 }}
-        class="pointer-events-auto backdrop-blur-xl rounded-2xl border px-4 py-3 shadow-[0_14px_40px_rgba(15,23,42,0.18)] {getLevelColors(
+        transition:slide={{ duration: 400 }}
+        class="pointer-events-auto backdrop-blur-2xl rounded-2xl border px-5 py-4 shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden relative {getLevelColors(
           error.level
         )}"
       >
-        <div class="flex items-start gap-3">
-          <span class="text-[10px] uppercase tracking-[0.16em] font-semibold px-2 py-1 rounded-full border border-current/20 bg-white/45 flex-shrink-0">{getLevelIcon(error.level)}</span>
-          <div class="flex-1 min-w-0">
-            <div class="font-semibold text-sm leading-tight">{error.title}</div>
-            <div class="text-xs opacity-80 mt-1 leading-relaxed">{error.message}</div>
-            {#if error.endpoint}
-              <div class="text-[11px] opacity-60 mt-2 font-mono truncate">{error.endpoint}</div>
+        <!-- Background Accent -->
+        <div class="absolute inset-0 opacity-[0.03] pointer-events-none bg-gradient-to-br {error.level === 'critical' ? 'from-red-500 to-transparent' : 'from-amber-500 to-transparent'}"></div>
+        
+        <div class="flex items-start gap-4 relative z-10">
+          <div class="flex-shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center {error.level === 'critical' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}">
+            {#if error.level === 'critical' || error.level === 'error'}
+              <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            {:else}
+              <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
             {/if}
           </div>
-          <button
-            on:click={() => removeErrorNotification(error.id)}
-            class="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity rounded-xl bg-white/50 hover:bg-white/80 p-1"
-            aria-label="Jakinarazpena itxi"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true" class="w-3.5 h-3.5">
-              <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-            </svg>
-          </button>
+
+          <div class="flex-1 min-w-0">
+            <div class="font-bold text-slate-900 text-[16px] leading-tight mb-1">{error.title}</div>
+            <div class="text-slate-600 text-[14px] leading-relaxed font-medium">{error.message}</div>
+            
+            <div class="flex items-center gap-3 mt-4">
+              {#if error.retryable}
+                <button
+                  on:click={() => window.location.reload()}
+                  class="flex items-center gap-2 text-xs font-bold px-4 py-2.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-900/20"
+                >
+                  <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3">
+                    <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  Berritu orrialdea
+                </button>
+              {/if}
+              
+              <button
+                on:click={() => removeErrorNotification(error.id)}
+                class="text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors px-2 py-1"
+              >
+                Ezkutatu
+              </button>
+            </div>
+          </div>
         </div>
 
-        {#if error.action && error.retryable}
-          <button
-            on:click={() => {
-              error.action?.();
-              removeErrorNotification(error.id);
-            }}
-            class="mt-2 text-xs px-2 py-1 rounded-lg opacity-80 hover:opacity-100 bg-white/60 transition-opacity"
-          >
-            Saiatu berriro
-          </button>
-        {/if}
       </div>
     {/each}
   </div>

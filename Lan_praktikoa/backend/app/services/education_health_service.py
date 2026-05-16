@@ -113,7 +113,7 @@ class EducationHealthService:
 
         # Uneko balioari aldaketa gehien
         new_eq = current_eq + eq_change
-        new_eq = max(0, min(200, int(new_eq)))
+        new_eq = max(0, min(200, round(new_eq, 2)))
 
         breakdown["new_eq"] = new_eq
 
@@ -211,7 +211,7 @@ class EducationHealthService:
 
         # Uneko balioari aldaketa gehien
         new_hq = current_hq + hq_change
-        new_hq = max(0, min(200, int(new_hq)))
+        new_hq = max(0, min(200, round(new_hq, 2)))
 
         breakdown["new_hq"] = new_hq
 

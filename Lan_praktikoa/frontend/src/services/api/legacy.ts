@@ -6,8 +6,12 @@ import {
   setGameState,
   setStats,
   treasury,
-  updateTileAt
+  updateTileAt,
+  aiServiceStatus,
+  aiActions,
+  gameState
 } from '../../store/game';
+import { get } from 'svelte/store';
 import { handleApiError, onApiSuccess } from '../errorHandler';
 import { navigate } from '../router';
 import { interceptResponse } from './interceptor';
@@ -189,6 +193,8 @@ interface EndMonthResponse {
     events: string[];
   };
   ai_turn: AITurnPayload | null;
+  ai_actions?: AITurnAction[];
+  ai_city?: { population: number; treasury: number };
   game_state: GameState;
   victory_check: {
     status: string;
@@ -242,22 +248,34 @@ const apiRuntimeConfig = {
  */
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-/**
- * Request timeout in milliseconds
- */
-const API_TIMEOUT = 10000; // 10 seconds
+const API_TIMEOUT = 45000; // 45 seconds default for improved stability during complex turns
 
 interface FetchOptions {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: unknown;
   token?: string;
+  timeout?: number; // Optional override for heavy operations like AI turns
 }
 
 /**
  * Low-level fetch wrapper with error handling.
  * Handles JWT auth, timeouts, and all error scenarios.
  */
-async function request<T>(endpoint: string, options: FetchOptions): Promise<T> {
+/**
+ * Helper for exponential backoff delay
+ */
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Low-level fetch wrapper with error handling and automatic retries.
+ * Handles JWT auth, timeouts, and all error scenarios.
+ */
+async function request<T>(
+  endpoint: string,
+  options: FetchOptions,
+  retryCount = 0
+): Promise<T> {
+  const MAX_RETRIES = 2; // Total 3 attempts
   const url = `${API_BASE}${endpoint}`;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
@@ -271,7 +289,8 @@ async function request<T>(endpoint: string, options: FetchOptions): Promise<T> {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+    const timeoutValue = options.timeout || API_TIMEOUT;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutValue);
 
     const response = await fetch(url, {
       method: options.method,
@@ -293,6 +312,14 @@ async function request<T>(endpoint: string, options: FetchOptions): Promise<T> {
     }
 
     if (!response.ok) {
+      // Handle retryable server errors (503 Service Unavailable or 504 Gateway Timeout)
+      if ((response.status === 503 || response.status === 504) && retryCount < MAX_RETRIES) {
+        const delay = Math.pow(2, retryCount) * 1000;
+        console.warn(`[API_RETRY] ${response.status} on ${endpoint}. Retrying in ${delay}ms...`);
+        await sleep(delay);
+        return request<T>(endpoint, options, retryCount + 1);
+      }
+
       // Parse error response from backend with enhanced error details
       let errorData: any = {};
       let errorMessage = `HTTP ${response.status}`;
@@ -353,7 +380,18 @@ async function request<T>(endpoint: string, options: FetchOptions): Promise<T> {
     const data = await response.json(); 
     onApiSuccess(); // Reset failure counter on success
     return data;
-  } catch (err) {
+  } catch (err: any) {
+    // Check for network errors that are retryable
+    const isNetworkError = err.name === 'TypeError' && (err.message.includes('fetch') || err.message.includes('NetworkError'));
+    const isTimeout = err.name === 'AbortError' || err.message.includes('abort');
+
+    if ((isNetworkError || isTimeout) && retryCount < MAX_RETRIES) {
+      const delay = Math.pow(2, retryCount) * 1000;
+      console.warn(`[API_RETRY] Network failure on ${endpoint}. Retrying in ${delay}ms... (Attempt ${retryCount + 1})`);
+      await sleep(delay);
+      return request<T>(endpoint, options, retryCount + 1);
+    }
+
     // Handle all types of errors
     if (err instanceof Error) {
       // Extract error details for UI
@@ -367,31 +405,32 @@ async function request<T>(endpoint: string, options: FetchOptions): Promise<T> {
       let errorMessage = err.message;
       let errorLevel: 'info' | 'warning' | 'error' | 'critical' = 'error';
 
-      if (err.message.includes('abort')) {
+      if (isTimeout) {
         // Timeout
-        errorTitle = 'Denbora amaitu da';
-        errorMessage = 'Eskararen denbora amaitu da. Konexioa geldoa dago edo zerbitzaria ez dago erabilgarri.';
+        errorTitle = 'Konexio motela';
+        errorMessage = 'Zerbitzaria ez dago erantzuten. Zure konexioa geldoa izan daiteke.';
         errorLevel = 'warning';
       } else if (statusCode === 422) {
         // Validation error
-        errorTitle = 'Balioaren errorea';
+        errorTitle = 'Datu okerrak';
+        errorMessage = 'Sartutako datu batzuk ez dira baliozkoak.';
         errorLevel = 'warning';
       } else if (statusCode === 401 || statusCode === 403) {
         // Auth error
-        errorTitle = 'Autentikazio errorea';
+        errorTitle = 'Saio errorea';
         errorLevel = 'error';
       } else if (statusCode >= 500) {
         // Server error
-        errorTitle = 'Zerbitzariaren errorea';
-        errorMessage = 'Zerbitzarian errore bat gertatu da. Saiatu berriro geroago.';
+        errorTitle = 'Zerbitzari errorea';
+        errorMessage = 'Arazo bat gertatu da gure zerbitzarian. Saiatu berriro minutu batzuk barru.';
         errorLevel = 'critical';
       } else if (!statusCode) {
         // Network error
         errorTitle = 'Konexio errorea';
-        if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-          errorMessage = 'Ezin da zerbitzariarekin konektatu. Egiaztatu zure Internet konexioa.';
+        if (isNetworkError) {
+          errorMessage = 'Ezin izan dugu zerbitzarira iritsi. Egiaztatu zure WiFi-a edo datu-konexioa.';
         } else if (err.message.includes('CORS')) {
-          errorMessage = 'Baliabide eta korronte gurutzatuen policy errorea.';
+          errorMessage = 'Segurtasun arazo bat gertatu da konexioan (CORS).';
         }
         errorLevel = 'critical';
       }
@@ -413,7 +452,6 @@ async function request<T>(endpoint: string, options: FetchOptions): Promise<T> {
       // Interceptor will send its own notification via sendNotification()
       if (!handledByInterceptor) {
         // Pass error details to store for UI display
-        // The UI will extract field-specific errors if needed
         handleApiError(
           {
             title: errorTitle,
@@ -496,6 +534,20 @@ export async function getGame(gameId: string): Promise<{ game_state: GameState }
 }
 
 /**
+ * Fetches global game constants (costs, maintenance, etc.) from the active API provider.
+ *
+ * Why: centralizing costs allows for easy balance updates without frontend changes.
+ */
+export async function getConstants(): Promise<any> {
+  const result = await tryRealElseMock(
+    '/api/config/constants',
+    { method: 'GET' },
+    () => Promise.resolve(null)
+  );
+  return (result as any).data || result;
+}
+
+/**
  * Loads scoreboard/stats projection for HUD and side panels.
  *
  * Why: keeping this endpoint wrapper stable avoids coupling UI widgets to
@@ -551,7 +603,7 @@ export async function saveGame(
 ): Promise<{ message: string; saved_at: string }> {
   return tryRealElseMock(
     `/api/games/${gameId}/save`,
-    { method: 'POST', body: { name } },
+    { method: 'POST', body: { name }, timeout: 30000 },
     () =>
       Promise.resolve({
         message: 'Game saved (mock)',
@@ -574,17 +626,19 @@ export async function placeZone(
     `/api/games/${gameId}/zone`,
     {
       method: 'POST',
-      body: { zone_type: zoneType, position, size }
+      body: { type: zoneType, position, size }
     },
     () => mockApiService.placeZone(gameId, zoneType, position, size)
   );
 
+  const data = (result as any).data || result;
+
   // Deduct cost from treasury immediately (action buffering)
   if (result.success) {
-    deductTreasury(result.cost);
+    deductTreasury(data.cost);
   }
 
-  return result;
+  return data;
 }
 
 /**
@@ -603,21 +657,28 @@ export async function placeInfrastructure(
   treasury_after: number;
   game_state: GameState;
 }> {
+  // Backend expects {type, start_position, end_position} not {type, segments}
+  // Convert segments array to start/end positions
+  const start = segments.length > 0 ? segments[0].from : { x: 0, y: 0 };
+  const end = segments.length > 0 ? segments[segments.length - 1].to : start;
+
   const result = await tryRealElseMock(
     `/api/games/${gameId}/infrastructure`,
     {
       method: 'POST',
-      body: { type, segments }
+      body: { type, start_position: start, end_position: end }
     },
     () => mockApiService.placeInfrastructure(gameId, type, segments)
   );
 
+  const data = (result as any).data || result;
+
   // Deduct cost from treasury immediately (action buffering)
   if (result.success) {
-    deductTreasury(result.cost);
+    deductTreasury(data.cost);
   }
 
-  return result;
+  return data;
 }
 
 /**
@@ -628,23 +689,26 @@ export async function placeInfrastructure(
 export async function buildStructure(
   gameId: string,
   buildingType: string,
-  position: Position
+  position: Position,
+  size: Size = { w: 1, h: 1 }
 ): Promise<BuildActionResponse> {
   const result = await tryRealElseMock(
     `/api/games/${gameId}/build`,
     {
       method: 'POST',
-      body: { type: buildingType, position }
+      body: { type: buildingType, position, size }
     },
     () => mockApiService.buildStructure(gameId, buildingType, position)
   );
 
+  const data = (result as any).data || result;
+
   // Deduct cost from treasury immediately (action buffering)
   if (result.success) {
-    deductTreasury(result.cost);
+    deductTreasury(data.cost);
   }
 
-  return result;
+  return data;
 }
 
 /**
@@ -655,9 +719,10 @@ export async function buildStructure(
 export async function placeBuilding(
   gameId: string,
   buildingType: string,
-  position: Position
+  position: Position,
+  size: Size = { w: 1, h: 1 }
 ): Promise<BuildActionResponse> {
-  return buildStructure(gameId, buildingType, position);
+  return buildStructure(gameId, buildingType, position, size);
 }
 
 /**
@@ -670,24 +735,30 @@ export async function demolish(
   position: Position,
   type: string
 ): Promise<DemolishResponse> {
+  // Backend expects {target: "zone"|"building"|"infrastructure", position?, target_id?}
+  const target = (type === 'zone' || type === 'building' || type === 'infrastructure') 
+    ? type 
+    : (type === 'zone' ? 'zone' : 'building');
   const result = await tryRealElseMock(
     `/api/games/${gameId}/demolish`,
     {
       method: 'POST',
-      body: { position, type }
+      body: { target, position, target_id: null }
     },
     () => mockApiService.demolish(gameId, position, type)
   );
 
+  const data = (result as any).data || result;
+
   // Demolition has an explicit fee and a 50% refund of original cost.
   // Positive delta means treasury increases, negative delta means treasury decreases.
   if (result.success) {
-    const demolitionFee = typeof result.cost === 'number' ? result.cost : 10;
-    const treasuryDelta = result.refund - demolitionFee;
+    const demolitionFee = typeof data.cost === 'number' ? data.cost : 10;
+    const treasuryDelta = (data.refund || 0) - demolitionFee;
     deductTreasury(-treasuryDelta);
   }
 
-  return result;
+  return data;
 }
 
 /**
@@ -754,9 +825,10 @@ export async function attackRival(
   disasterType: string,
   target: 'player' | 'ai'
 ): Promise<AttackResponse> {
+  // Backend expects {attack_type: string} not {disaster_type, target}
   return tryRealElseMock(
     `/api/games/${gameId}/attack`,
-    { method: 'POST', body: { disaster_type: disasterType, target } },
+    { method: 'POST', body: { attack_type: disasterType } },
     () => mockApiService.attackRival(gameId, disasterType, target)
   );
 }
@@ -770,29 +842,56 @@ export async function attackRival(
 export async function endMonth(
   gameId: string
 ): Promise<EndMonthResponse> {
-  const result = await tryRealElseMock(
-    `/api/games/${gameId}/endMonth`,
-    { method: 'POST' },
-    () => mockApiService.endMonth(gameId)
-  );
+  console.log("🔍 [1. FRONTEND] Requesting AI Turn for game:", gameId);
+  
+  try {
+    const result = await tryRealElseMock(
+      `/api/games/${gameId}/endMonth`,
+      { method: 'POST', timeout: 60000 },
+      () => mockApiService.endMonth(gameId)
+    );
+    
+    console.log("🔍 [4. FRONTEND] Received AI Response:", JSON.stringify(result, null, 2).slice(0, 500));
 
-  if (result?.game_state) {
-    const gs = result.game_state;
-    setGameState(gs);
-    treasury.set(gs.player_city.treasury);
-    population.set(gs.player_city.population);
-    rci_demand.set({ ...gs.player_city.metrics.rci_demand });
-    if (result.stats) {
-      setStats(result.stats);
+    // Backend returns {success, message, data: {game_state, new_date, player_simulation, ...}}
+    // Extract game_state from nested data structure
+    const gameStateData = result.data?.game_state || result.game_state;
+
+    if (gameStateData) {
+      setGameState(gameStateData);
+      treasury.set(gameStateData.player_city.treasury);
+      population.set(gameStateData.player_city.population);
+      rci_demand.set({ ...gameStateData.player_city.metrics.rci_demand });
     }
+
+    // Extract stats if present in response
+    const statsData = result.data?.stats || result.stats;
+    if (statsData) {
+      setStats(statsData);
+    }
+
+    // Set AI service status and actions from response
+    if (result.success) {
+      aiServiceStatus.set('available');
+      aiActions.set(result.data?.ai_actions || []);
+      // Clear any "AI Service Unavailable" error messages from UI state
+      // The errorHandler will handle this via onApiSuccess() which resets failure counter
+      
+    }
+
+    return result;
+  } catch (error) {
+    console.error("❌ [4. FRONTEND] Network Error:", error);
+    console.error("❌ [4. FRONTEND] Error details:", {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      status: (error as any)?.statusCode || (error as any)?.status,
+      details: (error as any)?.detail || (error as any)?.message
+    });
+    throw error;
   }
-
-  return result;
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+
 
 function parseAiActions(rawActions: unknown): AITurnAction[] {
   if (typeof rawActions === 'string') {
@@ -828,6 +927,40 @@ function syncStateFromAction(result: MaybeGameStateResult): void {
  * dispatch keeps replay behavior stable in both USE_MOCK and live modes.
  */
 async function runAiAction(gameId: string, action: AITurnAction): Promise<void> {
+  // CANDADO INVIOLABLE (SEGURIDAD IA)
+  if (action.position) {
+    const { x, y } = action.position;
+    const currentGameState = get(gameState);
+    const targetTile = currentGameState?.map.tiles[y]?.[x];
+    
+    if (targetTile) {
+      const isStructurePresent = !!(targetTile.building || targetTile.zone);
+      const actionType = action.action_type || (action as any).type;
+      const actionIsInfrastructure = actionType === 'road' || actionType === 'infrastructure';
+
+      // Bloqueo de asfalto sobre zonas/edificios
+      if (isStructurePresent && actionIsInfrastructure) {
+        console.error(`DETENIDO: La IA intentó asfaltar la zona/edificio en [${x}, ${y}]. Acción abortada.`);
+        return; 
+      }
+      
+      // Validación de 'Destructive Actions': Solo el jugador puede demoler
+      if (actionType === 'demolish' && isStructurePresent) {
+        console.error(`SEGURIDAD: Intento de demolición de la IA bloqueado en [${x}, ${y}]. Solo el jugador puede demoler estructuras.`);
+        return;
+      }
+
+      // Bloqueo general de sobrescritura
+      const isConstruction = ['zone', 'build', 'building', 'infrastructure'].includes(actionType);
+      const isOccupied = isStructurePresent || (targetTile.infrastructure && targetTile.infrastructure.length > 0);
+      
+      if (isOccupied && isConstruction) {
+        console.warn(`[AI_SAFETY] Acción ignorada por ocupación en [${x}, ${y}]:`, actionType);
+        return;
+      }
+    }
+  }
+
   if (action.action_type === 'zone' && action.position && action.zone_type) {
     const result = await placeZone(gameId, action.zone_type, action.position, { w: 1, h: 1 });
     syncStateFromAction(result);

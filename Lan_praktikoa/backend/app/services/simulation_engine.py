@@ -13,6 +13,7 @@ from datetime import datetime
 import random
 from ..models.game import GameState, CurrentDate
 from .education_health_service import EducationHealthService
+from .game_constants import GAME_CONSTANTS, POWER_PLANT_SPECS, BUILDING_COSTS, SERVICE_MAINTENANCE, ARCOLOGY_SPECS
 
 
 class SimulationEngine:
@@ -30,46 +31,11 @@ class SimulationEngine:
     8. Bankarrota-kontrola
     9. Garaipena-baldintzak egiaztatzea
     """
+    POWER_PLANT_SPECS = POWER_PLANT_SPECS
+    BUILDING_COSTS = BUILDING_COSTS
+    SERVICE_MAINTENANCE = SERVICE_MAINTENANCE
+    ARCOLOGY_SPECS = ARCOLOGY_SPECS
 
-    # Zonaren mota -> kostua per lauki
-    ZONE_COSTS = {
-        "residential_light": 5,
-        "residential_dense": 10,
-        "commercial_light": 5,
-        "commercial_dense": 10,
-        "industrial_light": 5,
-        "industrial_dense": 10,
-    }
-
-    # Azpiegituraren mota -> kostua per lauki
-    INFRA_COSTS = {
-        "road": 10,
-        "highway": 25,
-        "highway_ramp": 25,
-        "power_line": 2,
-        "rail": 3,
-        "water_pipe": 1,
-        "subway_tunnel": 5,
-    }
-
-    # Energiaren kontsumoa (MW)
-    POWER_DEMAND = {
-        "zone_level_1": 1,
-        "zone_level_2": 2,
-        "zone_level_3": 4,
-        "service_building": 2,
-    }
-
-    # Zerbitzu-eraikinen mantentze-kostuak
-    SERVICE_MAINTENANCE = {
-        "school": 1.5,
-        "college": 5,
-        "library": 2.5,
-        "museum": 5,
-        "hospital": 3.0,
-        "police_station": 2.5,
-        "fire_station": 2.5,
-    }
 
     def __init__(self):
         """Simulazioaren motorra hasieratzen du."""
@@ -155,7 +121,14 @@ class SimulationEngine:
 
         # 6. CRECIMIENTO
         population_delta = self._calculate_population_change(city, rci_demand)
-        new_population = max(0, city.get("population", 0) + population_delta)
+        
+        # Arcology population bonus
+        arcology_pop = 0
+        for b in city.get("buildings", []):
+            if b.get("type") in ARCOLOGY_SPECS:
+                arcology_pop += ARCOLOGY_SPECS[b.get("type")]["population"]
+        
+        new_population = max(0, city.get("population", 0) + population_delta + arcology_pop)
 
         # 7. ECONOMÍA
         monthly_income = self._calculate_monthly_income(city)
@@ -371,73 +344,143 @@ class SimulationEngine:
 
     def _calculate_power_coverage(self, city: Dict) -> Dict:
         """
-        Energiaren sarea estaldura exekutatzen du (sinplifikatua).
-
-        SPECS.md § 1.4 oinarrian: zentral desberdinak MW desberdinak ematen dituzte.
-
-        Args:
-            city: Hiriren egoera
-
-        Returns:
-            Hiztegia: capacity (MW), demand (MW), coverage_pct (0-100)
+        Energiaren estaldura kalkulatzen du BFS algoritmoarekin.
         """
-        # Zentral elektrikoak zenbatzen dira
-        power_plants = city.get("buildings", [])
-        power_capacity = 0
-        for building in power_plants:
-            if "power" in building.get("type", ""):
-                # Sinplifikaturik: batez bestean 200 MW per zentral
-                # TODO: Per-tipuaren ahalmen zehatzak gehitu SPECS.md § 1.4 iturrian
-                power_capacity += 200
+        tiles = city.get("map", {}).get("tiles", [])
+        if not tiles:
+            # Fallback if map not embedded in city state
+            return {"capacity": 0, "demand": 0, "coverage_pct": 0}
 
-        # Zonak eta energiaren eskaria
-        zones = city.get("zones", [])
-        power_demand = len(zones) * 2  # Batez bestean 2 MW per zona
+        # 1. Zentral elektrikoak eta haien ahalmena aurkitu
+        power_plants = []
+        total_capacity = 0
+        for b in city.get("buildings", []):
+            spec = self.POWER_PLANT_SPECS.get(b.get("type"))
+            if spec:
+                total_capacity += spec["power"]
+                # Power plant coordinates (footprint)
+                px, py = b["position"]["x"], b["position"]["y"]
+                pw, ph = b.get("size", {"w": 4, "h": 4})["w"], b.get("size", {"w": 4, "h": 4})["h"]
+                power_plants.append((px, py, pw, ph))
 
-        # Estaldura-ehunekoa
-        coverage_pct = min(
-            100, int((power_capacity / max(power_demand, 1)) * 100)
+        # 2. BFS konexioa kalkulatu (Zentraletatik hasita)
+        connected_tiles = self._calculate_utility_connectivity_bfs(
+            tiles, power_plants, "power_line"
         )
 
+        # 3. Demanda eta estaldura markatu
+        total_demand = 0
+        powered_count = 0
+        target_zones = city.get("zones", [])
+        height = len(tiles)
+        width = len(tiles[0])
+        
+        for zone in target_zones:
+            zx, zy = zone["position"]["x"], zone["position"]["y"]
+            level = zone.get("development_level", 0)
+            demand = 1 + level
+            total_demand += demand
+            
+            is_powered = (zx, zy) in connected_tiles
+            zone["powered"] = is_powered
+            if is_powered: powered_count += 1
+            
+            # Sync to physical tiles for frontend overlay
+            if 0 <= zy < height and 0 <= zx < width:
+                tiles[zy][zx]["powered"] = is_powered
+
+        coverage_pct = min(100, int((total_capacity / max(total_demand, 1)) * 100))
+        
         return {
-            "capacity": power_capacity,
-            "demand": power_demand,
+            "capacity": total_capacity,
+            "demand": total_demand,
             "coverage_pct": coverage_pct,
         }
 
     def _calculate_water_coverage(self, city: Dict) -> Dict:
         """
-        Uraren sistema estaldura exekutatzen du (sinplifikatua).
-
-        SPECS.md § 1.4 oinarrian: water_pump-ek ura banatzten dute.
-
-        Args:
-            city: Hiriren egoera
-
-        Returns:
-            Hiztegia: capacity, demand, coverage_pct (0-100)
+        Uraren estaldura kalkulatzen du BFS algoritmoarekin.
         """
-        # Ur-ponpa zenbatzen dira
-        water_pumps = city.get("buildings", [])
-        water_capacity = 0
-        for building in water_pumps:
-            if building.get("type") == "water_pump":
-                water_capacity += 20  # 20 unitate per ponpa
+        tiles = city.get("map", {}).get("tiles", [])
+        if not tiles:
+            return {"capacity": 0, "demand": 0, "coverage_pct": 0}
 
-        # Uraren eskaria
-        zones = city.get("zones", [])
-        water_demand = len(zones) * 2
+        # 1. Ur-ponpak
+        pumps = []
+        total_capacity = 0
+        for b in city.get("buildings", []):
+            if b.get("type") == "water_pump":
+                total_capacity += 20
+                pumps.append((b["position"]["x"], b["position"]["y"], 1, 1))
 
-        # Estaldura-ehunekoa
-        coverage_pct = min(
-            100, int((water_capacity / max(water_demand, 1)) * 100)
+        # 2. BFS (Water pipes)
+        connected_tiles = self._calculate_utility_connectivity_bfs(
+            tiles, pumps, "water_pipe"
         )
 
+        # 3. Estaldura markatu
+        total_demand = 0
+        target_zones = city.get("zones", [])
+        height = len(tiles)
+        width = len(tiles[0])
+
+        for zone in target_zones:
+            zx, zy = zone["position"]["x"], zone["position"]["y"]
+            total_demand += 2 # Simplified water demand
+            
+            is_watered = (zx, zy) in connected_tiles
+            zone["watered"] = is_watered
+            
+            # Sync to physical tiles for frontend overlay
+            if 0 <= zy < height and 0 <= zx < width:
+                tiles[zy][zx]["watered"] = is_watered
+
+        coverage_pct = min(100, int((total_capacity / max(total_demand, 1)) * 100))
         return {
-            "capacity": water_capacity,
-            "demand": water_demand,
+            "capacity": total_capacity,
+            "demand": total_demand,
             "coverage_pct": coverage_pct,
         }
+
+    def _calculate_utility_connectivity_bfs(self, tiles, sources, infra_type) -> set:
+        """
+        BFS bidez konexio sarea kalkulatzen du (Gara 8 - Konektibitate algoritmoa).
+        """
+        height = len(tiles)
+        if height == 0: return set()
+        width = len(tiles[0])
+        connected = set()
+        queue = []
+
+        # Iturburuak gehitu (Zentralak/Ponpak)
+        for sx, sy, sw, sh in sources:
+            for dy in range(sh):
+                for dx in range(sw):
+                    tx, ty = sx + dx, sy + dy
+                    if 0 <= ty < height and 0 <= tx < width:
+                        connected.add((tx, ty))
+                        queue.append((tx, ty))
+
+        # Norabideak: Gora, Behera, Ezkerra, Eskuina
+        dirs = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+
+        while queue:
+            cx, cy = queue.pop(0)
+            
+            for dx, dy in dirs:
+                nx, ny = cx + dx, cy + dy
+                if 0 <= ny < height and 0 <= nx < width and (nx, ny) not in connected:
+                    tile = tiles[ny][nx]
+                    # Konexioa: azpiegitura mota bada, edo eraikina bada (konektore gisa)
+                    infra_list = tile.get("infrastructure") or []
+                    has_infra = infra_type in infra_list
+                    has_building = "building" in tile
+                    
+                    if has_infra or has_building:
+                        connected.add((nx, ny))
+                        queue.append((nx, ny))
+        
+        return connected
 
     def _calculate_road_coverage(self, city: Dict) -> Dict:
         """
@@ -452,8 +495,11 @@ class SimulationEngine:
             Hiztegia: coverage_pct (0-100)
         """
         roads = city.get("infrastructure", {}).get("roads", [])
+        if not isinstance(roads, list):
+            roads = []
         road_tiles = sum(
-            len(road.get("tiles_covered", [])) for road in roads
+            len(road.get("tiles_covered", [])) if isinstance(road.get("tiles_covered"), list) else 0
+            for road in roads
         )
 
         total_tiles = 100 * 100  # 100x100 mapa gutxienez
@@ -465,44 +511,50 @@ class SimulationEngine:
         self, city: Dict, power: Dict, water: Dict, roads: Dict
     ) -> int:
         """
-        Zonan garapen-mailaren trantsizioak exekutatzen ditu.
-
-        SPECS.md § 1.3 oinarrian:
-        - Maila 0→1: Energia >50% + bideak >30% behar ditu
-        - Maila 1→2: Ura >50% + RCI positiboa beharra
-        - Maila 2→3: Energia + ura >80% + zerbitzuak + baldintza onak
-
-        Args:
-            city: Hiriren egoera
-            power: Energi-estaldura hiztegia
-            water: Uraren estaldura hiztegia
-            roads: Bideen estaldura hiztegia
-
-        Returns:
-            Garatutako zonan kopurua
+        Zonan garapen-mailaren trantsizioak exekutatzen ditu (SPECS.md § 1.3).
         """
         zones_developed = 0
         zones = city.get("zones", [])
+        tiles = city.get("map", {}).get("tiles", [])
+        if not tiles: return 0
 
         for zone in zones:
             if zone.get("development_level", 0) < 3:
                 current_level = zone.get("development_level", 0)
+                zx, zy = zone["position"]["x"], zone["position"]["y"]
+                
+                has_road = self._has_nearby_infrastructure(zx, zy, tiles, ["road", "highway"], radius=3)
+                is_powered = zone.get("powered", False)
+                is_watered = zone.get("watered", False)
 
-                # Maila 0→1: Energia + bideak
-                if current_level == 0 and power["coverage_pct"] > 50 and roads["coverage_pct"] > 30:
+                # Maila 0→1: Energia + errepide sarbidea (~3 lauki)
+                if current_level == 0 and is_powered and has_road:
                     zone["development_level"] = 1
                     zones_developed += 1
-                # Maila 1→2: Ura eta positiboko RCI
-                elif current_level == 1 and water["coverage_pct"] > 50:
+                # Maila 1→2: Ura + eskari positiboa
+                elif current_level == 1 and is_watered:
+                    # RCI eskaria check-a simulate_turn-ean egiten da, hemen garapen fisikoa
                     zone["development_level"] = 2
                     zones_developed += 1
-                # Maila 2→3: Energia + ura >80%
-                elif current_level == 2:
-                    if power["coverage_pct"] > 80 and water["coverage_pct"] > 80:
-                        zone["development_level"] = 3
-                        zones_developed += 1
+                # Maila 2→3: Baldintza onak
+                elif current_level == 2 and is_powered and is_watered:
+                    zone["development_level"] = 3
+                    zones_developed += 1
 
         return zones_developed
+
+    def _has_nearby_infrastructure(self, x, y, tiles, infra_types, radius=3) -> bool:
+        """Gertuko azpiegitura bilatzen du erradio batean."""
+        height = len(tiles)
+        width = len(tiles[0])
+        for dy in range(-radius, radius + 1):
+            for dx in range(-radius, radius + 1):
+                nx, ny = x + dx, y + dy
+                if 0 <= ny < height and 0 <= nx < width:
+                    tile_infra = tiles[ny][nx].get("infrastructure") or []
+                    if any(t in tile_infra for t in infra_types):
+                        return True
+        return False
 
     def _process_zone_abandonment(self, city: Dict) -> int:
         """
@@ -687,42 +739,33 @@ class SimulationEngine:
 
     def _calculate_monthly_income(self, city: Dict) -> float:
         """
-        Hileko zergaren sarrera kalkulatzen du.
-
-        SPECS.md § 1.6 oinarrian:
-        - Erresidentzial zergak = biztanleria × tasa × 0.01 × lur-balioaren faktorea
-        - Komertziala zergak = garatu-zonak × tasa × 0.2 × lur-balioaren faktorea
-        - Industriala zergak = garatu-zonak × tasa × 0.15 × lur-balioaren faktorea
-
-        Args:
-            city: Hiriren egoera
-
-        Returns:
-            Hileko zergaren sarrera (oinarrian)
+        Hileko zergaren sarrera kalkulatzen du (SPECS.md § 1.6).
         """
         budget = city.get("budget", {})
         population = city.get("population", 0)
         metrics = city.get("metrics", {})
-        land_value = metrics.get("land_value_avg", 50) / 100  # Normalizatu 0-1
+        
+        # land_value_factor: 100 is base (1.0), 200 is 2.0, etc.
+        land_value_factor = metrics.get("land_value_avg", 50) / 100.0
 
         tax_rates = budget.get("tax_rates", {})
-        r_rate = tax_rates.get("residential", 7) / 100
-        c_rate = tax_rates.get("commercial", 7) / 100
-        i_rate = tax_rates.get("industrial", 7) / 100
+        r_rate = tax_rates.get("residential", 7)
+        c_rate = tax_rates.get("commercial", 7)
+        i_rate = tax_rates.get("industrial", 7)
 
         # Mota bakoitzaren garatu-zonak zenbatzen dira
         zones = city.get("zones", [])
-        c_zones = len(
+        c_zones_developed = len(
             [z for z in zones if "commercial" in z.get("type", "") and z.get("development_level", 0) > 0]
         )
-        i_zones = len(
+        i_zones_developed = len(
             [z for z in zones if "industrial" in z.get("type", "") and z.get("development_level", 0) > 0]
         )
 
-        # Sarrera kalkulatu
-        residential_income = population * r_rate * (0.5 + land_value)
-        commercial_income = c_zones * 50 * c_rate * (0.5 + land_value)
-        industrial_income = i_zones * 50 * i_rate * (0.5 + land_value)
+        # SPECS.md § 1.6 formulak
+        residential_income = population * r_rate * 0.01 * land_value_factor
+        commercial_income = c_zones_developed * c_rate * 0.2 * land_value_factor
+        industrial_income = i_zones_developed * i_rate * 0.15 * land_value_factor
 
         return residential_income + commercial_income + industrial_income
 
@@ -800,139 +843,77 @@ class SimulationEngine:
     def _update_metrics(self, city: Dict, rci_demand: Dict, new_population: int) -> Dict:
         """
         Hiriren metrikak eguneratzen ditu (EQ, HQ, krimena, kutsadura, etc).
-
-        SPECS.md § 3.6 eta Grupo 8 espezializazioaren oinarrian:
-        - EQ (Hezkuntza Kalitate): ikastetxeak, colegiak, liburtegia, museoa
-        - HQ (Osasun Kalitate): ospitalak, kutsadura, heriotza
-        - Krimena: Poliziak + EQaren bonus
-        - Kutsadura: Industriaren zonak + air + ura
-        - Lurraren balioa: Zerbitzuak - krimena - kutsadura
-        - Approval: Zerga batez bestean - HQ, EQ bonusa
-        - Enplegu: Lan-eskaria vs biztanleria
-
-        Args:
-            city: Hiriren egoera
-            rci_demand: RCI eskariren hiztegia
-            new_population: Biztanleria-zenbakia berritzen ondoren
-
-        Returns:
-            Eguneratutako metrika hiztegia
+        SPECS.md § 3.6 eta § 1.9 oinarrian.
         """
         current_metrics = city.get("metrics", {})
-        budget = city.get("budget", {})
+        ordinances = set(city.get("ordinances", []))
         buildings = city.get("buildings", [])
-        ordinances = city.get("ordinances", [])  # Aktiboak daude (default [])
 
-        # ===== HEZKUNTZA KALITATEAREN (EQ) KALKULUA: EducationHealthService erabiliz =====
-        eq_value, eq_breakdown = EducationHealthService.calculate_eq(city, ordinances)
-        eq_effects = EducationHealthService.calculate_eq_effects(eq_value)
-        eq_trend = eq_value - current_metrics.get("eq", 50)
-
-        # ===== OSASUN KALITATEAREN (HQ) KALKULUA: EducationHealthService erabiliz =====
-        # Bi kutsadura mailak behar dituzte
-        pollution_air = current_metrics.get("pollution_air", 50)
-        pollution_water = current_metrics.get("pollution_water", 50)
+        # 1. EQ / HQ (Hezkuntza eta Osasuna - Grupo 8 logic)
+        pollution_air_prev = current_metrics.get("pollution_air", 50)
+        pollution_water_prev = current_metrics.get("pollution_water", 50)
+        
+        eq_value, eq_breakdown = EducationHealthService.calculate_eq(city, list(ordinances))
         hq_value, hq_breakdown = EducationHealthService.calculate_hq(
-            city, ordinances, pollution_air, pollution_water
+            city, list(ordinances), pollution_air_prev, pollution_water_prev
         )
+        eq_effects = EducationHealthService.calculate_eq_effects(eq_value)
         hq_effects = EducationHealthService.calculate_hq_effects(hq_value)
-        hq_trend = hq_value - current_metrics.get("hq", 50)
 
-        # ===== KRIMENA KALKULUA =====
-        # Basea 60, polizien eta ordenantzen eraginez eguneratzen da
+        # 2. Krimena (Polizia + EQ bonusa + Ordenantzak)
         police_stations = len([b for b in buildings if b.get("type") == "police_station"])
-        police_funding = budget.get("funding", {}).get("police", 100) / 100
-        crime_reduction_from_eq = eq_effects.get("crime_reduction", 0)
-        crime = 60 - (police_stations * 5 * police_funding) - crime_reduction_from_eq - (hq_value / 200 * 8)
+        base_crime = max(0, min(100, (new_population / 500) + 50 - police_stations * 10))
+        
+        # EQ high reduces crime (max -20)
+        crime_reduction_eq = (eq_value / 200) * 20
+        crime_rate = base_crime - crime_reduction_eq
+        
+        if "legalized_gambling" in ordinances: crime_rate += 10
+        if "junior_sports" in ordinances: crime_rate -= 5
+        if "anti_drug" in ordinances: crime_rate -= 5
+        if "neighborhood_watch" in ordinances: crime_rate -= 3
+        crime_rate = max(0, min(100, crime_rate))
 
-        if "legalized_gambling" in ordinances:
-            crime += 10
-        if "neighborhood_watch" in ordinances:
-            crime -= 10
-        if "junior_sports" in ordinances:
-            crime -= 5
-        if "anti_drug" in ordinances:
-            crime -= 5
-
-        crime = int(min(100, max(0, crime)))
-
-        # ===== KUTSADURA KALKULUA (AIREa eta URA) =====
-        # Industriala zonak kutsadura igotzen du
+        # 3. Kutsadura (Industria + Zentralak + Ordenantzak)
         industrial_zones = len([z for z in city.get("zones", []) if "industrial" in z.get("type", "")])
-        high_tech_reduction = eq_effects.get("high_tech_industry_pct", 0) * 0.2
-        pollution_air = int(min(100, max(0, 40 + industrial_zones * 2 - high_tech_reduction)))
-        pollution_water = int(pollution_air * 0.6)  # Uraren kutsadura, airearen % baten araberan
+        power_plants = len([b for b in buildings if "power" in b.get("type", "") and b.get("type") != "solar_power"])
+        pollution_air = (industrial_zones * 2) + (power_plants * 5)
+        
+        if "pollution_controls" in ordinances: pollution_air *= 0.85
+        pollution_air = max(0, min(100, pollution_air))
+        pollution_water = max(0, min(100, pollution_air * 0.7))
 
-        if "pollution_controls" in ordinances:
-            pollution_air = max(0, pollution_air - 15)
-            pollution_water = max(0, pollution_water - 15)
-
-        # ===== LURRAREN BALIOA =====
-        # Zerbitzuak + EQ bonusa - krimena - kutsadura
-        eq_land_bonus = eq_effects.get("land_value_bonus", 0)
-        hospital_count = len([b for b in buildings if b.get("type") == "hospital"])
-        school_count = len([b for b in buildings if b.get("type") == "school"])
-        land_value = int(
-            50
-            + (hospital_count * 5)
-            + (school_count * 3)
-            + eq_land_bonus
-            + (hq_value / 2)
-            - (crime / 100 * 30)
-            - (pollution_air / 100 * 20)
-        )
-        land_value = int(min(255, max(0, land_value)))
-
-        # ===== ASKATASUNA (APPROVAL) =====
-        avg_tax = (
-            budget.get("tax_rates", {}).get("residential", 7)
-            + budget.get("tax_rates", {}).get("commercial", 7)
-            + budget.get("tax_rates", {}).get("industrial", 7)
-        ) / 3
-        approval = int(max(0, 70 - (avg_tax * 3) + (hq_value / 10) + (eq_value / 20)))
-        if "tourist_promotion" in ordinances:
-            approval = min(100, approval + 5)
-
-        if "free_clinics" in ordinances:
-            hq_value = min(200, hq_value + 5)
-        if "pro_reading" in ordinances:
-            eq_value = min(200, eq_value + 5)
-
-        # ===== ENPLEGU =====
+        # 4. RCI Demand modifications (Ordinances)
+        r_demand = rci_demand.get("r", 0)
         c_demand = rci_demand.get("c", 0)
         i_demand = rci_demand.get("i", 0)
-        available_jobs = max(0, c_demand + i_demand) * 100
-        unemployment = int(max(0, min(100, (1 - (available_jobs / max(new_population, 1))) * 100)))
+        
+        if "sales_tax" in ordinances: c_demand *= 0.95
+        if "income_tax" in ordinances: r_demand *= 0.95
+        if "pollution_controls" in ordinances: i_demand *= 0.95
+        if "tourist_promotion" in ordinances: c_demand *= 1.10
 
-        # ===== TRAFIKA =====
-        roads = len(city.get("infrastructure", {}).get("roads", []))
-        highways = len(city.get("infrastructure", {}).get("highways", []))
-        traffic = int(max(0, 50 + (new_population / 5000) - (highways * 2)))
+        # 5. Lurraren balioa (Zerbitzuak, EQ/HQ, Krimena)
+        land_value = 50 + (eq_value/4) + (hq_value/4) - (crime_rate/2) - (pollution_air/2)
+        land_value = max(0, min(255, land_value))
 
-        # ===== OSASUN-METRIKEN OSOA =====
-        avg_lifespan, mortality_rate = self._calculate_life_expectancy_and_mortality(hq_value, pollution_air)
-
-        # ===== OSKAR-PUNTUAZIOAREN KALKULUA =====
-        composite_score = self._calculate_composite_score(
-            new_population, eq_value, hq_value, land_value, crime, pollution_air
+        # 6. Composite Score (SPECS.md § 1.9.1)
+        score = self._calculate_composite_score(
+            new_population, eq_value, hq_value, land_value, crime_rate, pollution_air
         )
 
-        # Eguneratutako metrika hiztegia itzulitzen dugu
         return {
-            "eq": eq_value,
-            "hq": hq_value,
-            "eq_trend": eq_trend,
-            "hq_trend": hq_trend,
-            "crime_rate": crime,
-            "pollution_air": pollution_air,
-            "pollution_water": pollution_water,
-            "land_value_avg": land_value,
-            "approval": approval,
-            "unemployment": unemployment,
-            "traffic_avg": min(100, traffic),
-            "rci_demand": rci_demand,
-            "composite_score": composite_score,
-            # Desglosetatutako EQ eta HQ informazioa
+            "eq": round(eq_value, 2),
+            "hq": round(hq_value, 2),
+            "crime_rate": round(crime_rate, 2),
+            "pollution_air": round(pollution_air, 2),
+            "pollution_water": round(pollution_water, 2),
+            "land_value_avg": round(land_value, 2),
+            "approval": max(0, min(100, 50 + (new_population / 1000) - (crime_rate / 10))),
+            "unemployment": current_metrics.get("unemployment", 5),
+            "traffic_avg": current_metrics.get("traffic_avg", 30),
+            "rci_demand": {"r": int(r_demand), "c": int(c_demand), "i": int(i_demand)},
+            "composite_score": score,
             "education": {
                 "facility_count": {
                     "schools": eq_breakdown.get("schools", 0),
@@ -952,8 +933,8 @@ class SimulationEngine:
                 "pollution_penalty": hq_breakdown.get("pollution_total_penalty", 0),
                 "target_hq": hq_breakdown.get("target_hq", 0),
                 "hq_change": hq_breakdown.get("hq_change", 0),
-                "average_lifespan": avg_lifespan,
-                "mortality_rate": mortality_rate,
+                "average_lifespan": hq_effects.get("average_lifespan", 50),
+                "mortality_rate": hq_effects.get("mortality_rate", 10),
             },
         }
 
@@ -1066,12 +1047,10 @@ class SimulationEngine:
             }
 
         # 4. DENBORA-GARAIPENA (SCORE): 1900 + 1200 hil = 2000. urte (100 urtean)
-        # Total months: (year - 1900) * 12 + month
         total_months = (current_date["year"] - 1900) * 12 + current_date["month"]
         if total_months >= 1200:
             player_score = player_city.get("metrics", {}).get("composite_score", 0)
             ai_score = ai_city.get("metrics", {}).get("composite_score", 0)
-            
             winner = "player" if player_score >= ai_score else "ai"
             return {
                 "status": "player_won" if winner == "player" else "ai_won",
@@ -1080,7 +1059,21 @@ class SimulationEngine:
                 "reason": f"100 urteko epea amaitu da. Jokalariaren puntuazioa: {player_score}, AI puntuazioa: {ai_score} {current_date['year']}/{current_date['month']}",
             }
 
-        # 5. Ez da garaipena-baldintza betetzen
+        # 5. ARKOLOGY EXODUS: 4 Arkology eraiki dira
+        arcology_count = 0
+        for b in player_city.get("buildings", []):
+            if b.get("type") in ARCOLOGY_SPECS:
+                arcology_count += 1
+        
+        if arcology_count >= GAME_CONSTANTS["VICTORY_CONDITIONS"].get("arcology_target", 4):
+            return {
+                "status": "player_won",
+                "condition": "arcology_exodus",
+                "winner": "player",
+                "reason": f"Arkology Éxodoa aktibatu da! {arcology_count} arkologia eraiki dituzu eta gizadia izarretara doa {current_date['year']}/{current_date['month']}",
+            }
+
+        # 6. Ez da garaipena-baldintza betetzen
         return {
             "status": "ongoing",
             "condition": None,

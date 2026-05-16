@@ -1599,8 +1599,14 @@ export const mockApiService = {
       },
       ai_turn: {
         actions: [
-          { action_type: 'zone_growth', description: 'Expanded a residential block near the core' },
-          { action_type: 'service_upgrade', description: 'Added city services to support density' }
+          {
+            type: 'building',
+            details: {
+              building_type: 'fire_station',
+              position: { x: 10, y: 10 }
+            },
+            description: 'Fire Station'
+          }
         ],
         reasoning: 'Balanced growth with service coverage while keeping treasury pressure low.',
         simulation: {
@@ -1623,6 +1629,33 @@ export const mockApiService = {
   },
 
   async getOverlay(_gameId: string, _type: string): Promise<any> {
-    return delayed({ overlay_type: _type, data: [], min_value: 0, max_value: 255 });
+    // Generate realistic overlay data based on overlay type
+    const width = 100;
+    const height = 100;
+    const data: number[][] = [];
+
+    for (let y = 0; y < height; y++) {
+      const row: number[] = [];
+      for (let x = 0; x < width; x++) {
+        let value = 0;
+        switch (_type) {
+          case 'crime': value = Math.floor(Math.random() * 80 + Math.sin(x * 0.1) * 40); break;
+          case 'pollution_air': value = Math.floor(Math.random() * 60 + Math.cos(y * 0.05) * 30); break;
+          case 'pollution_water': value = Math.floor(Math.random() * 40); break;
+          case 'land_value': value = Math.floor(Math.random() * 100 + 50); break;
+          case 'traffic': value = Math.floor(Math.random() * 70 + Math.sin(x * 0.08 + y * 0.08) * 30); break;
+          case 'power': value = Math.random() > 0.1 ? 180 + Math.floor(Math.random() * 75) : 20; break;
+          case 'water': value = Math.random() > 0.1 ? 180 + Math.floor(Math.random() * 75) : 20; break;
+          case 'fire_coverage': value = Math.floor(Math.random() * 50 + 30); break;
+          case 'police_coverage': value = Math.floor(Math.random() * 50 + 30); break;
+          case 'energy': value = Math.floor(Math.random() * 60 + 40); break;
+          default: value = Math.floor(Math.random() * 100);
+        }
+        row.push(Math.max(0, Math.min(255, value)));
+      }
+      data.push(row);
+    }
+
+    return delayed({ overlay_type: _type, data, min_value: 0, max_value: 255 });
   }
 };

@@ -12,6 +12,10 @@ class APIResponse(BaseModel):
     error_type: Optional[str] = None  # ValidationError, AuthError, NotFoundError, ServerError
     fields: Optional[List[str]] = None  # Field names affected by validation error
     details: Optional[Dict[str, Any]] = None  # Additional error details
+    
+    # AI actions passthrough for endMonth endpoint
+    ai_actions: list = []
+    ai_city: dict = {}
 
 
 class ErrorDetail(BaseModel):

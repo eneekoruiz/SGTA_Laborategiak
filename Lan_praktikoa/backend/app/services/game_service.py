@@ -6,6 +6,7 @@ import pymongo.errors
 from motor.motor_asyncio import AsyncIOMotorCollection
 from fastapi import HTTPException, status
 from ..models import GameCreate, BudgetUpdate, APIResponse, BuildingCreate
+from ..models.building import Size
 
 
 
@@ -138,6 +139,10 @@ class GameService:
     async def get_user_games(self, user_id: str, limit: int = 10, offset: int = 0) -> List[Dict[str, Any]]:
         """Erabiltzailearen jokoak lortu paginazioarekin."""
         games = await self.games_collection.find({"user_id": user_id}).skip(offset).limit(limit).to_list(length=limit)
+        # Convert MongoDB _id to id for frontend compatibility
+        for game in games:
+            if "_id" in game:
+                game["id"] = game["_id"]
         return games
 
     async def get_game(self, game_id: str, user_id: str) -> Optional[Dict[str, Any]]:
@@ -281,6 +286,11 @@ class GameService:
         if code == "diru_asko":
             player_city["treasury"] = 1_000_000
             message = "Trukua aplikatu da: diruzaina §1,000,000-ra ezarri da"
+        elif code.startswith("diru_injektatu:"):
+            amount_str = code.split(":", 1)[1]
+            amount = int(amount_str)
+            player_city["treasury"] = player_city.get("treasury", 0) + amount
+            message = f"Trukua aplikatu da: §{amount:,} gehitu dira. Altxorra: §{player_city['treasury']:,}"
         elif code == "energia_mugagabea":
             player_city.setdefault("power_grid", {})["coverage_pct"] = 100
             message = "Trukua aplikatu da: energia estaldura %100-ra ezarri da"
@@ -310,36 +320,72 @@ class GameService:
         if not game:
             return None
 
+        # Complete cost map matching all frontend building types
         cost_map = {
+            # Utility buildings
+            "coal_power": 4000,
+            "oil_power": 6500,
+            "gas_power": 2000,
+            "nuclear_power": 15000,
+            "wind_power": 100,
+            "solar_power": 1300,
+            "hydro_power": 400,
+            "microwave_power": 28000,
+            "fusion_power": 40000,
+            # Service buildings
+            "police_station": 500,
+            "fire_station": 500,
             "hospital": 500,
             "school": 250,
             "college": 1000,
             "library": 500,
             "museum": 1000,
+            # Transport
+            "bus_depot": 250,
+            "rail_station": 500,
+            "subway_station": 500,
+            "airport": 10000,
+            "seaport": 5000,
+            "water_pump": 100,
+            "water_treatment": 500,
+            "prison": 3000,
+            # Arcologies
+            "arcology_plymouth": 100000,
+            "arcology_darco": 150000,
+            "arcology_launch": 200000,
         }
 
         building_type = building.type
         if building_type not in cost_map:
-            raise ValueError("Eraikin mota baliogabea")
+            raise ValueError(f"Eraikin mota baliogabea: {building_type}")
 
         map_size = game.get("map", {}).get("size", {"width": 100, "height": 100})
         pos = building.position
-        size = building.size or {"w": 1, "h": 1}
-        if not (0 <= pos["x"] < map_size["width"] and 0 <= pos["y"] < map_size["height"]):
+        size = building.size or Size(w=1, h=1)
+
+        # Position and size are Pydantic models - use attribute access
+        px, py = pos.x, pos.y
+        sw, sh = size.w, size.h
+
+        if not (0 <= px < map_size["width"] and 0 <= py < map_size["height"]):
             raise ValueError("Eraikinaren posizioa mapa mugaren kanpoan dago")
 
-        if not (1 <= size.get("w", 1) <= 6 and 1 <= size.get("h", 1) <= 6):
+        if not (1 <= sw <= 6 and 1 <= sh <= 6):
             raise ValueError("Eraikinaren tamaina 1x1 eta 6x6 artean egon behar da")
 
-        if pos["x"] + size.get("w", 1) > map_size["width"] or pos["y"] + size.get("h", 1) > map_size["height"]:
+        if px + sw > map_size["width"] or py + sh > map_size["height"]:
             raise ValueError("Eraikinaren kokapena mapa mugaren kanpoan dago")
 
         player_city = game.get("player_city", {})
         current_treasury = player_city.get("treasury", 0)
-        cost = cost_map[building_type] * (size.get("w", 1) * size.get("h", 1))
+        cost = cost_map[building_type]
 
+        # Strict budget validation - block if insufficient funds
         if current_treasury < cost:
-            raise ValueError(f"Diru nahikoa ez. Eraikuntzak §{cost} kostatzen du baina §{current_treasury} dituzu")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Ez dago diru nahikorik. Eraikuntzak §{cost} kostatzen du baina §{current_treasury} dituzu.",
+            )
 
         building_id = f"building_{uuid4().hex[:8]}"
         current_date = game.get("current_date", {"year": 1900, "month": 1})
@@ -347,8 +393,8 @@ class GameService:
         new_building = {
             "id": building_id,
             "type": building_type,
-            "position": pos,
-            "size": size,
+            "position": {"x": px, "y": py},
+            "size": {"w": sw, "h": sh},
             "built_year": current_date["year"],
             "built_month": current_date["month"],
             "age_months": 0,
@@ -360,11 +406,44 @@ class GameService:
         player_city.setdefault("buildings", []).append(new_building)
         player_city["treasury"] = current_treasury - cost
 
+        # Update ALL tiles in building footprint
+        tiles = game.get("map", {}).get("tiles", [])
+        for dx in range(sw):
+            for dy in range(sh):
+                tx = px + dx
+                ty = py + dy
+                if tiles and len(tiles) > ty and len(tiles[ty]) > tx:
+                    tile = tiles[ty][tx]
+                    tile["building"] = {
+                        "id": building_id,
+                        "type": building_type,
+                        "position": {"x": px, "y": py},
+                        "size": {"w": sw, "h": sh},
+                        "built_year": current_date["year"],
+                        "built_month": current_date["month"],
+                        "age_months": 0,
+                        "powered": False,
+                        "funding_pct": 100,
+                        "active": True,
+                    }
+                    tile["surfaceEntity"] = {"type": "building", "value": building_type}
+
         game["player_city"] = player_city
         game["last_saved"] = datetime.utcnow()
+
+        # Build $set fields: player_city, last_saved, and all updated tiles
+        update_fields = {"player_city": player_city, "last_saved": datetime.utcnow()}
+        if tiles:
+            for dx in range(sw):
+                for dy in range(sh):
+                    tx = px + dx
+                    ty = py + dy
+                    if len(tiles) > ty and len(tiles[ty]) > tx:
+                        update_fields[f"map.tiles.{ty}.{tx}"] = tiles[ty][tx]
+
         result = await self.games_collection.update_one(
             {"_id": game_id, "user_id": user_id, "player_city.treasury": current_treasury},
-            {"$set": {"player_city": player_city, "last_saved": datetime.utcnow()}},
+            {"$set": update_fields},
         )
         if result.matched_count != 1:
             raise HTTPException(
@@ -374,54 +453,229 @@ class GameService:
         return {"message": f"{building_type} eraikina eraiki da §{cost} kostuarekin", "building": new_building, "treasury": player_city["treasury"]}
 
     async def demolish_entity(self, game_id: str, user_id: str, demolish: dict) -> Optional[Dict[str, Any]]:
-        """Zona edo eraikin bat hiritik kendu."""
+        """Zona, eraikin edo azpiegitura bat hiritik kendu."""
         game = await self.games_collection.find_one({"_id": game_id, "user_id": user_id})
         if not game:
             return None
 
         player_city = game.get("player_city", {})
+        pos = demolish.get("position")
+        target_id = demolish.get("target_id")
+        
         removed = None
+        found_target_type = None # "zone", "building", "infrastructure"
+        infra_category = None
 
-        if demolish["target"] == "zone":
-            zones = player_city.get("zones", [])
-            if demolish.get("target_id"):
-                for z in zones:
-                    if z.get("id") == demolish["target_id"]:
-                        removed = z
-                        zones.remove(z)
+        # Balio hauek SimulationEngine-rekin sinkronizatuta daude (SPECS.md § 1.4)
+        # game_constants.py-tik zuzenean hartuta
+        from .game_constants import GAME_CONSTANTS
+        ZONE_COSTS = GAME_CONSTANTS["ZONE_COSTS"]
+        BUILDING_COSTS = GAME_CONSTANTS["BUILDING_COSTS"]
+        INFRA_COSTS = GAME_CONSTANTS["INFRA_COSTS"]
+
+
+        # 1. Search Logic: First by ID, then by Position (Smart Search)
+        px, py = None, None
+        if pos:
+            try:
+                px, py = int(pos.get("x")), int(pos.get("y"))
+            except (TypeError, ValueError):
+                pass
+
+        print(f"DEBUG: Starting demolition search for target_id='{target_id}', target_type='{demolish.get('target')}', pos=({px}, {py})")
+
+        # Search by ID if available
+        if target_id:
+            # Search Zones
+            for z in player_city.get("zones", []):
+                if z.get("id") == target_id:
+                    removed, found_target_type = z, "zone"
+                    break
+            # Search Buildings
+            if not removed:
+                for b in player_city.get("buildings", []):
+                    if b.get("id") == target_id:
+                        removed, found_target_type = b, "building"
                         break
-            elif demolish.get("position"):
-                for z in zones:
-                    px, py = z.get("position", {}).get("x"), z.get("position", {}).get("y")
-                    if px == demolish["position"].get("x") and py == demolish["position"].get("y"):
-                        removed = z
-                        zones.remove(z)
+            # Search Infrastructure
+            if not removed:
+                infra = player_city.get("infrastructure", {})
+                for cat, segments in infra.items():
+                    if not isinstance(segments, list): continue
+                    for seg in segments:
+                        if seg.get("id") == target_id:
+                            removed, found_target_type, infra_category = seg, "infrastructure", cat
+                            break
+                    if removed: break
+
+        # 2. Position-based search (Footprint aware)
+        if not removed and px is not None and py is not None:
+            # Check Buildings
+            for b in player_city.get("buildings", []):
+                bx, by = b.get("position", {}).get("x"), b.get("position", {}).get("y")
+                bw, bh = b.get("size", {}).get("w", 1), b.get("size", {}).get("h", 1)
+                if bx is not None and by is not None:
+                    if int(bx) <= px < int(bx) + int(bw) and int(by) <= py < int(by) + int(bh):
+                        removed, found_target_type = b, "building"
                         break
-            player_city["zones"] = zones
-        elif demolish["target"] == "building":
-            buildings = player_city.get("buildings", [])
-            if demolish.get("target_id"):
-                for b in buildings:
-                    if b.get("id") == demolish["target_id"]:
-                        removed = b
-                        buildings.remove(b)
-                        break
-            elif demolish.get("position"):
-                for b in buildings:
-                    bp = b.get("position", {})
-                    if bp.get("x") == demolish["position"].get("x") and bp.get("y") == demolish["position"].get("y"):
-                        removed = b
-                        buildings.remove(b)
-                        break
-            player_city["buildings"] = buildings
-        else:
-            raise ValueError("Helburu mota baliogabea")
+            
+            # Check Zones
+            if not removed:
+                for z in player_city.get("zones", []):
+                    zx, zy = z.get("position", {}).get("x"), z.get("position", {}).get("y")
+                    zw, zh = z.get("size", {}).get("w", 1), z.get("size", {}).get("h", 1)
+                    if zx is not None and zy is not None:
+                        if int(zx) <= px < int(zx) + int(zw) and int(zy) <= py < int(zy) + int(zh):
+                            removed, found_target_type = z, "zone"
+                            break
+            
+            # Check Infrastructure
+            if not removed:
+                infra = player_city.get("infrastructure", {})
+                for cat, segments in infra.items():
+                    if not isinstance(segments, list): continue
+                    for seg in segments:
+                        tiles_covered = seg.get("tiles_covered", [])
+                        for t in tiles_covered:
+                            try:
+                                if int(t.get("x", -1)) == px and int(t.get("y", -1)) == py:
+                                    removed, found_target_type, infra_category = seg, "infrastructure", cat
+                                    break
+                            except (TypeError, ValueError):
+                                continue
+                        if removed: break
+                    if removed: break
 
         if not removed:
-            raise ValueError("Ez da entitaterik aurkitu kendutzeko")
+            print(f"DEBUG: Demolish FAILED - No entity found at ({px}, {py})")
+            # Return success True but with 0 refund to let frontend refresh tiles from the reload in the route
+            return {
+                "success": False,
+                "message": "Ez da entitaterik aurkitu koordenatu hauetan",
+                "removed": None,
+                "refund": 0,
+                "cost": 10
+            }
 
-        game["player_city"] = player_city
-        game["last_saved"] = datetime.utcnow()
-        await self.games_collection.replace_one({"_id": game_id, "user_id": user_id}, game)
+        # 3. Financial Impact
+        infra_type = removed.get("type", "road")
+        if found_target_type == "zone":
+            original_cost = ZONE_COSTS.get(removed.get("type"), 10)
+        elif found_target_type == "building":
+            original_cost = BUILDING_COSTS.get(removed.get("type"), 500)
+        else: # infrastructure
+            # For infrastructure, we calculate the cost of ONE tile since we are doing atomic demolition
+            original_cost = INFRA_COSTS.get(infra_type, 10)
+        
+        # SPECS.md § 772: Refund is 50% of cost.
+        # We remove the hardcoded §10 fee to avoid negative net for cheap items (roads/zones).
+        refund = int(original_cost * 0.5)
+        demolition_fee = 0 
+        # No local treasury update here - we will use atomic $inc later
 
-        return {"message": f"{demolish['target']} entitatea kendu da", "removed": removed}
+        # 4. Remove from city state lists
+        if found_target_type == "zone":
+            player_city.get("zones", []).remove(removed)
+        elif found_target_type == "building":
+            player_city.get("buildings", []).remove(removed)
+        elif found_target_type == "infrastructure":
+            # ERROR 2 FIX: Atomic demolition for infrastructure.
+            # Instead of removing the WHOLE segment, we only remove the specific tile.
+            tiles_covered = removed.get("tiles_covered", [])
+            new_tiles = [t for t in tiles_covered if not (int(t.get("x", -1)) == px and int(t.get("y", -1)) == py)]
+            
+            if not new_tiles:
+                # If no tiles left, remove the whole segment from the list
+                infra_list = player_city.get("infrastructure", {}).get(infra_category, [])
+                if removed in infra_list:
+                    infra_list.remove(removed)
+            else:
+                # Update the segment with remaining tiles
+                removed["tiles_covered"] = new_tiles
+
+        # 5. Map Synchronization (Clear tiles)
+        tile_updates = {}
+        tiles = game.get("map", {}).get("tiles", [])
+        if tiles:
+            if found_target_type in ("zone", "building"):
+                bx, by = removed.get("position", {}).get("x"), removed.get("position", {}).get("y")
+                bw, bh = removed.get("size", {}).get("w", 1), removed.get("size", {}).get("h", 1)
+                for dx in range(int(bw)):
+                    for dy in range(int(bh)):
+                        tx, ty = int(bx) + dx, int(by) + dy
+                        if 0 <= ty < len(tiles) and 0 <= tx < len(tiles[ty]):
+                            tile = tiles[ty][tx]
+                            tile.pop(found_target_type, None)
+                            tile.pop("surfaceEntity", None)
+                            tile_updates[f"map.tiles.{ty}.{tx}"] = tile
+            else: # infrastructure
+                # ERROR 2 FIX: Only clear the specific tile being demolished
+                try:
+                    if 0 <= py < len(tiles) and 0 <= px < len(tiles[py]):
+                        tile = tiles[py][px]
+                        if "infrastructure" in tile and isinstance(tile["infrastructure"], list):
+                            if infra_type in tile["infrastructure"]:
+                                tile["infrastructure"].remove(infra_type)
+                            if not tile["infrastructure"]:
+                                tile.pop("infrastructure")
+                        
+                        # Clear visual slots
+                        for slot in ["surfaceEntity", "undergroundEntity"]:
+                            ent = tile.get(slot)
+                            if ent and ent.get("type") == "infrastructure" and ent.get("value") == infra_type:
+                                tile.pop(slot, None)
+                        tile_updates[f"map.tiles.{py}.{px}"] = tile
+                except (TypeError, ValueError):
+                    pass
+
+        # 6. BFS UPDATE: Recalculate utility coverage immediately since network might be broken
+        try:
+            from .simulation_engine import SimulationEngine
+            engine = SimulationEngine()
+            # SimulationEngine methods expect a city object that has both buildings/zones AND the map.
+            city_with_map = {**player_city, "map": game.get("map", {})}
+            player_city["power_grid"] = engine._calculate_power_coverage(city_with_map)
+            player_city["water_system"] = engine._calculate_water_coverage(city_with_map)
+            player_city["road_coverage"] = engine._calculate_road_coverage(city_with_map)
+        except Exception as e:
+            print(f"DEBUG: BFS update skipped during demolition: {e}")
+
+        # 7. ATOMIC UPDATE: Use $inc for treasury to avoid race conditions with parallel requests
+        # and $set for map tiles and other state.
+        update_fields = {
+            "player_city.zones": player_city.get("zones", []),
+            "player_city.buildings": player_city.get("buildings", []),
+            "player_city.infrastructure": player_city.get("infrastructure", {}),
+            "player_city.metrics": player_city.get("metrics", {}),
+            "player_city.power_grid": player_city.get("power_grid", {}),
+            "player_city.water_system": player_city.get("water_system", {}),
+            "last_saved": datetime.utcnow()
+        }
+        
+        # Add tile updates to the same operation
+        for k, v in tile_updates.items():
+            update_fields[k] = v
+
+        result = await self.games_collection.update_one(
+            {"_id": game_id, "user_id": user_id},
+            {
+                "$set": update_fields,
+                "$inc": {"player_city.treasury": refund - demolition_fee}
+            }
+        )
+        
+        # Fetch fresh treasury for the response
+        updated_game = await self.games_collection.find_one({"_id": game_id})
+        final_treasury = updated_game.get("player_city", {}).get("treasury", 0)
+        updated_game.pop("_id", None)
+        
+        print(f"DEBUG: Demolish SUCCESS -> {found_target_type} removed. Refund: {refund}, Fee: {demolition_fee}. New Treasury: {final_treasury}")
+        
+        return {
+            "success": True,
+            "message": f"{found_target_type} entitatea kendu da", 
+            "removed": removed,
+            "refund": refund,
+            "cost": demolition_fee,
+            "game_state": updated_game
+        }

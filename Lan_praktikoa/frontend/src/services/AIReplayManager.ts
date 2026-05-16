@@ -156,9 +156,13 @@ export function buildReplayScript(payload: ReplayPayload, fallbackBefore: GameSt
   const rawActions = payload.ai_actions_sequence && payload.ai_actions_sequence.length > 0
     ? payload.ai_actions_sequence
     : (payload.ai_turn?.actions ?? []).map((action, index) => ({
+        id: undefined,
+        label: undefined,
+        detail: undefined,
         action_type: action.action_type,
         description: action.description,
         position: action.position,
+        budget_delta: undefined,
         disaster_attack: action.disaster_type ? { type: action.disaster_type, target: action.target } : null,
         // Fallback stream has no snapshots; keep full turn boundary snapshots.
         state_snapshot_before: index === 0 ? fallbackBefore : fallbackAfter,
@@ -220,7 +224,7 @@ export function getReplayActionAt(script: AIReplayScript, currentActionIndex: nu
 }
 
 export function getRivalTiles(state: GameState): Tile[][] {
-  const aiTiles = state.ai_city?.map?.tiles;
+  const aiTiles = state.map?.tiles;
   if (Array.isArray(aiTiles) && aiTiles.length > 0) {
     return JSON.parse(JSON.stringify(aiTiles)) as Tile[][];
   }
