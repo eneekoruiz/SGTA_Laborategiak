@@ -7,8 +7,8 @@
   let isDragging = false;
   let dragStartX = 0;
   let dragStartY = 0;
-  let panelLeft = 20;
-  let panelTop = 100;
+  let panelLeft = typeof window !== 'undefined' ? window.innerWidth - 180 : 1000;
+  let panelTop = 20;
   let hasMoved = false;
 
   const shortcuts = [

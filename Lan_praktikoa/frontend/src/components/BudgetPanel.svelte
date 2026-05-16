@@ -279,13 +279,19 @@
     font-size: 1.2rem;
   }
 
-  .status-card p,
-  .status-card strong {
+  .status-card p {
     margin: 0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #475569; /* Darker gray for better contrast */
+    letter-spacing: 0.01em;
   }
 
   .status-card strong {
-    font-size: 1.15rem;
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #0f172a; /* Near black for maximum legibility */
   }
 
   .status-card.positive .status-card__icon {

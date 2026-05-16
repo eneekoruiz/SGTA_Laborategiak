@@ -1349,6 +1349,8 @@
       return;
     }
 
+    if (!event.key) return; // Safety check for null keys
+    
     if (event.key.toLowerCase() === 'u') {
       undergroundMode = !undergroundMode;
     }
