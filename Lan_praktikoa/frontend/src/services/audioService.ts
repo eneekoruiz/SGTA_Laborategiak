@@ -27,7 +27,7 @@ export function initAudio(): void {
 
   if (audioInstance) {
     if (audioInstance.ctx.state === 'suspended') {
-      audioInstance.ctx.resume().catch((err) => console.warn('[Audio] Resume failed:', err));
+      void audioInstance.ctx.resume();
     }
     return;
   }
@@ -62,9 +62,6 @@ export function initAudio(): void {
 
     audioInstance = { ctx, masterGain, compressor, musicGain, sfxGain };
     console.log('[Audio] System Initialized with High-Impact Dynamics');
-    
-    // Play startup chime to confirm audio is working
-    playStartupSound();
   } catch (error) {
     console.warn('Audio context initialization failed:', error);
   }
